@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+
+  <!-- Bootstrap 5 – no build step needed -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+
+   <meta charset="UTF-8">
+  <title>{% block title %}CENFIN{% endblock %}</title>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body style="padding-top: 56px;">
+<!-- NAVBAR (edge‑to‑edge) -->
+<nav class="navbar fixed-top navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{% url 'dashboard' %}">CENFIN</a>
+
+    <!-- collapsible menu (optional hamburger) could go here -->
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:transaction_list' %}">Transactions</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'entities:list' %}">Entities</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'accounts:list' %}">Accounts</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="container-lg pt-4">
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="text-center mt-5 py-4 bg-light">
+  © {{ now|date:"Y" }} CENFIN
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080">
+  {% for m in messages %}
+    <div class="toast align-items-center text-bg-{{ m.tags|default:'primary' }} border-0 mb-2" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">
+          {{ m }}
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.toast').forEach(el => {
+      bootstrap.Toast.getOrCreateInstance(el, {
+        delay: 4000,      // 4 s auto-hide; adjust mo kung gusto
+        autohide: true
+      }).show();
+    });
+  });
+</script>
+</body>
+</html>

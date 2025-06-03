@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mt-3">{{ entity.entity_name }}</h2>
+
+<table class="table table-bordered mt-3">
+  <thead>
+     <tr><th>Account</th><th class="text-end">Balance</th></tr>
+  </thead>
+  <tbody>
+  {% for a in accounts %}
+    <tr>
+      <td>{{ a.name }}</td>                {# use .name #}
+      <td class="text-end">{{ a.balance|floatformat:0 }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="2" class="text-center">No accounts yet.</td></tr>
+  {% endfor %}
+</tbody>
+</table>
+{% endblock %}

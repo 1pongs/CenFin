@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  {% if form.instance.pk %}Edit{% else %}New{% endif %} Transaction
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <h2 class="fs-4 mb-0">
+            {% if form.instance.pk %}Edit{% else %}New{% endif %} Transaction
+          </h2>
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% crispy form %}
+          </form>
+
+          {% if form.instance.pk %}
+            <form method="post"
+              action="{% url 'transactions:transaction_delete' form.instance.pk %}"
+              class="d-flex justify-content-end mt-2"
+              onsubmit="return confirm('Delete this transaction permanently?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script type="text/javascript">
+  // Parse the JSON blob into a JS object at runtime.
+  const templatesData = JSON.parse('{{ templates_json|escapejs }}');
+
+  const templateSelect = document.getElementById('id_template');
+  templateSelect.addEventListener('change', function() {
+    const tplId = this.value;
+    if (!tplId || !templatesData[tplId]) {
+      return; 
+    }
+    const defaults = templatesData[tplId];
+
+    if (defaults.description !== undefined) {
+      document.getElementById('id_description').value = defaults.description;
+    }
+    if (defaults.date !== undefined) {
+      document.getElementById('id_date').value = defaults.date;
+    }
+    if (defaults.transaction_type !== undefined) {
+      document.getElementById('id_transaction_type').value = defaults.transaction_type;
+    }
+    if (defaults.amount !== undefined) {
+      document.getElementById('id_amount').value = defaults.amount;
+    }
+    if (defaults.account_source !== undefined) {
+      document.getElementById('id_account_source').value = defaults.account_source;
+    }
+    if (defaults.account_destination !== undefined) {
+      document.getElementById('id_account_destination').value = defaults.account_destination;
+    }
+    if (defaults.entity_source !== undefined) {
+      document.getElementById('id_entity_source').value = defaults.entity_source;
+    }
+    if (defaults.entity_destination !== undefined) {
+      document.getElementById('id_entity_destination').value = defaults.entity_destination;
+    }
+    if (defaults.remarks !== undefined) {
+      document.getElementById('id_remarks').value = defaults.remarks;
+    }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const toastElList = document.querySelectorAll('.toast');
+    toastElList.forEach(toastEl => {
+      const t = bootstrap.Toast.getOrCreateInstance(toastEl, {
+        delay: 4000,        // 4 seconds; palitan kung gusto
+        autohide: true
+      });
+      t.show();
+    });
+  });
+</script>
+{% endblock %}

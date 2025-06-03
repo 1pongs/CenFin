@@ -1,0 +1,43 @@
+<!-- templates/entities/entity_list.html -->
+{% extends "base.html" %}
+{% block title %}Entities · CENFIN{% endblock %}
+{% block content %}
+<h1 class="mb-4">Entities</h1>
+
+<table class="table table-striped align-middle">
+  <thead class="table-dark">
+    <tr>
+      <th>Entity</th>
+      <th>Fund Type</th>
+      <th class="text-end">Transfer</th>
+      <th class="text-end">Asset</th>
+      <th class="text-end">Income</th>
+      <th class="text-end">Expenses</th>
+      <th class="text-end">Liquid</th>
+      <th class="text-end">Non-Liquid</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entities %}
+      <tr>
+        <td>
+          <a href="{% url 'entities:detail' e.the_entity_id %}">
+            {{ e.the_name }}
+          </a>
+        </td>
+        <td>{{ e.the_type }}</td>
+        <td class="text-end">{{ e.total_transfer|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_asset|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_income|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_expenses|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_liquid|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_non_liquid|floatformat:0 }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="text-center">No data yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
+

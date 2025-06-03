@@ -1,0 +1,29 @@
+{# transactions/template_list.html #}
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Templates · CENFIN{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Templates</h1>
+
+  {# top bar -------------------------------------------------------------- #}
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'transactions:template_create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg"></i>&nbsp;New Template
+    </a>
+
+    {# dropdown with every saved template #}
+    <select class="form-select"
+            onchange="if(this.value){ window.location.href = '/transactions/templates/' + this.value + '/edit/'; }">
+      <option value="">Please select template form</option>
+      {% for tpl in object_list %}
+        <option value="{{ tpl.pk }}">{{ tpl.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {# message shown when no template has been chosen ----------------------- #}
+  <p class="text-center text-muted fs-4 py-5 border rounded bg-light">
+    No template selected
+  </p>
+{% endblock %}

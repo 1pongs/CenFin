@@ -1,0 +1,17 @@
+body {
+  padding-top: 4.5rem;
+}
+
+/* Maliit na font size para sa footer */
+footer {
+  font-size: 0.85rem;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover {
+  background-color: #f8f9fa;
+}
+
+#cancel-bulk-button { margin-left: .5rem; }

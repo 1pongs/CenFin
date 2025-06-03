@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  Transactions · CENFIN
+{% endblock %}
+
+{% block extra_css %}
+  <style>
+    /* Hide checkbox column by default */
+    .select-checkbox {
+      display: none;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Transactions</h1>
+  <div class="d-flex align-items-center gap-2 mb-3">
+
+    <a
+      href="{% url 'transactions:transaction_create' %}"
+      class="btn btn-primary"
+    >
+      New Transaction
+    </a>
+
+    <a
+      href="{% url 'transactions:template_list' %}"
+      class="btn btn-warning"
+    >
+      Template
+    </a>
+
+    <div class="d-flex align-items-center">
+      <select
+        id="action-select"
+        name="action"
+        class="form-select form-select-sm me-2"
+      >
+        <option value="">--Action--</option>
+        <option value="delete_multiple">Delete Multiple</option>
+      </select>
+      <button
+        id="apply-button"
+        type="submit"
+        form="bulk-action-form"
+        class="btn btn-danger btn-sm d-none"
+        onclick="return confirm('Are you sure you want to delete the selected transactions?');"
+      >
+        Apply
+      </button>
+      <button 
+          id="cancel-bulk-button"
+          type="button"
+          class="btn btn-outline-secondary btn-sm d-none">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  {# ==== bulk delete ==== #}
+  <form
+    method="post"
+    id="bulk-action-form"
+    action="{% url 'transactions:bulk_action' %}"
+  >
+    {% csrf_token %}
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <!-- Column para sa “select‐all” checkbox -->
+          <th class="select-checkbox" style="width: 30px;">
+            <input
+              type="checkbox"
+              id="select-all"
+              class="form-check-input d-none"
+            >
+          </th>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Transaction</th>
+          <th>From</th>
+          <th>To</th>
+          <th class="text-end">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in object_list %}
+          <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' txn.pk %}">
+            <td class="select-checkbox">
+              <input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="form-check-input row-checkbox d-none">
+            </td>
+            <td>{{ txn.date|date:"M d, Y" }}</td>
+            <td>{{ txn.description }}</td>
+            <td>{{ txn.transaction_type }}</td>
+            <td>{{ txn.account_source }}</td>
+            <td>{{ txn.account_destination }}</td>
+            <td class="text-end">{{ txn.amount|floatformat:2 }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center">No transactions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  /* ---------- mga element refs ---------- */
+  const actionSelect      = document.getElementById('action-select');
+  const rows              = document.querySelectorAll('.clickable-row');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const rowCheckboxes     = document.querySelectorAll('.row-checkbox');
+  const checkboxColumns   = document.querySelectorAll('.select-checkbox');
+  const applyButton       = document.getElementById('apply-button');
+  const cancelButton      = document.getElementById('cancel-bulk-button');
+
+  /* ---------- flag para alam kung bulk mode ---------- */
+  let bulkMode = false;
+
+  /* ---------- dropdown change (= toggle bulk mode) ---------- */
+  actionSelect.addEventListener('change', function () {
+    bulkMode = this.value === 'delete_multiple';
+
+    // show / hide UI for bulk delete
+    applyButton.classList.toggle('d-none', !bulkMode);
+    cancelButton.classList.toggle('d-none', !bulkMode);
+
+    checkboxColumns.forEach(el => el.style.display = bulkMode ? 'table-cell' : 'none');
+    selectAllCheckbox.classList.toggle('d-none', !bulkMode);
+
+    if (!bulkMode) {
+      selectAllCheckbox.checked = false;
+      rowCheckboxes.forEach(cb => { cb.classList.add('d-none'); cb.checked = false; });
+    } else {
+      rowCheckboxes.forEach(cb => cb.classList.remove('d-none'));
+    }
+  });
+
+  cancelButton.addEventListener('click', function () {
+    actionSelect.value = '';
+    actionSelect.dispatchEvent(new Event('change'));
+  });
+
+  selectAllCheckbox.addEventListener('change', function () {
+    const checked = this.checked;
+    rowCheckboxes.forEach(cb => {
+      if (!cb.classList.contains('d-none')) cb.checked = checked;
+    });
+  });
+
+  rows.forEach(row => {
+    row.addEventListener('click', function (e) {
+  
+      if (bulkMode || e.target.closest('input[type="checkbox"]')) return;
+
+      const url = this.dataset.href;
+      if (url) window.location = url;
+    });
+  });
+});
+</script>
+{% endblock %}
