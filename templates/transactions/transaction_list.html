@@ -93,7 +93,7 @@
             </td>
             <td>{{ txn.date|date:"M d, Y" }}</td>
             <td>{{ txn.description }}</td>
-            <td>{{ txn.transaction_type }}</td>
+            <td>{{ txn.get_transaction_type_display }}</td>
             <td>{{ txn.account_source }}</td>
             <td>{{ txn.account_destination }}</td>
             <td class="text-end">{{ txn.amount|floatformat:2 }}</td>

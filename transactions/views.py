@@ -134,3 +134,7 @@ class TemplateDeleteView(DeleteView):
     model = TransactionTemplate
     template_name = "transactions/template_confirm_delete.html"
     success_url = reverse_lazy("transactions:template_list")
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Template deleted.")
+        return super().delete(request, *args, **kwargs)

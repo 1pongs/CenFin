@@ -81,16 +81,4 @@
   });
 </script>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const toastElList = document.querySelectorAll('.toast');
-    toastElList.forEach(toastEl => {
-      const t = bootstrap.Toast.getOrCreateInstance(toastEl, {
-        delay: 4000,        // 4 seconds; palitan kung gusto
-        autohide: true
-      });
-      t.show();
-    });
-  });
-</script>
 {% endblock %}
