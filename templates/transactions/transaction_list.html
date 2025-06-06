@@ -67,6 +67,7 @@
         <div class="col-md-4">
           <label class="form-label mb-0 small">Transaction Type</label>
           <select name="transaction_type" class="form-select form-select-sm">
+            <option value="">---------</option>
             {% for val,label in txn_type_choices %}
               <option value="{{ val }}" {% if request.GET.transaction_type == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
