@@ -45,18 +45,28 @@
           <div class="row g-3">
             <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
             <div class="col-md-6">{{ form.description|as_crispy_field }}</div>
+ </div>
 
+          <div class="row g-3">
             <div class="col-md-6">{{ form.date|as_crispy_field }}</div>
             <div class="col-md-6">{{ form.transaction_type|as_crispy_field }}</div>
+          </div>
 
+          <div class="row g-3">
             <div class="col-md-6">{{ form.amount|as_crispy_field }}</div>
+          </div>
 
+          <div class="row g-3">
             <div class="col-md-6">{{ form.account_source|as_crispy_field }}</div>
             <div class="col-md-6">{{ form.account_destination|as_crispy_field }}</div>
+          </div>
 
+          <div class="row g-3">
             <div class="col-md-6">{{ form.entity_source|as_crispy_field }}</div>
             <div class="col-md-6">{{ form.entity_destination|as_crispy_field }}</div>
+          </div>
 
+          <div class="row g-3">
             <div class="col-12">{{ form.remarks|as_crispy_field }}</div>
             {{ form.autopop_map }}
           </div>

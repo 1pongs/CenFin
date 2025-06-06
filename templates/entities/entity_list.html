@@ -3,6 +3,15 @@
 {% block title %}Entities · CENFIN{% endblock %}
 {% block content %}
 <h1 class="mb-4">Entities</h1>
+<div class="d-flex gap-2 mb-3">
+  <a href="{% url 'entities:create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>New Entity
+  </a>
+  <a href="{% url 'accounts:list' %}" class="btn btn-success">
+    <i class="bi bi-plus-lg me-1"></i>Accounts
+  </a>
+</div>
+
 
 <table class="table table-striped align-middle">
   <thead class="table-dark">

@@ -1,10 +1,12 @@
 from django.shortcuts import get_object_or_404
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, CreateView
+from django.urls import reverse_lazy
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField
 from collections import defaultdict
 
 
 from entities.models import Entity
+from .forms import EntityForm
 from transactions.models import Transaction
 
 # ---------------------------------------------------------------------------
@@ -160,3 +162,10 @@ class EntityAccountDetailView(TemplateView):
         ctx["totals"] = next((row for row in rows if row["the_entity_id"] == entity_pk), None)
 
         return ctx
+
+
+class EntityCreateView(CreateView):
+    model = Entity
+    form_class = EntityForm
+    template_name = "entities/entity_form.html"
+    success_url = reverse_lazy("entities:list")
