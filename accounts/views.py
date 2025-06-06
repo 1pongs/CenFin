@@ -15,22 +15,33 @@ from transactions.models import Transaction
 def account_list(request):
     qs = (
     Account.objects.active()
-    .annotate(
-        dest_total=Coalesce(
-            Sum("transaction_as_destination__amount"),
-            Value(Decimal("0.00"), output_field=DecimalField()),
-        ),
-        src_total=Coalesce(
-            Sum("transaction_as_source__amount"),
-            Value(Decimal("0.00"), output_field=DecimalField()),
-        ),
+        .annotate(
+            dest_total=Coalesce(
+                Sum("transaction_as_destination__amount"),
+                Value(Decimal("0.00"), output_field=DecimalField()),
+            ),
+            src_total=Coalesce(
+                Sum("transaction_as_source__amount"),
+                Value(Decimal("0.00"), output_field=DecimalField()),
+            ),
+        )
+        .annotate(net_total=F("dest_total") - F("src_total"))
     )
-    .annotate(
-        net_total=F("dest_total") - F("src_total")
-    )
-    .order_by("account_name")
-    )
-    return render(request, "accounts/account_list.html", {"accounts": qs})
+    
+    search = request.GET.get("q", "").strip()
+    if search:
+        qs = qs.filter(account_name__icontains=search)
+
+    sort = request.GET.get("sort", "name")
+    if sort == "balance":
+        qs = qs.order_by("-net_total")
+    elif sort == "account_type":
+        qs = qs.order_by("account_type", "account_name")
+    else:
+        qs = qs.order_by("account_name")
+
+    context = {"accounts": qs, "search": search, "sort": sort}
+    return render(request, "accounts/account_list.html", context)
 
 
 class AccountCreateView(CreateView):
