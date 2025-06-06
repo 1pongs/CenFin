@@ -51,16 +51,6 @@ class TransactionListView(ListView):
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
 
-        asset_type = q.get("asset_type")
-        if asset_type:
-            side = q.get("asset_side", "source")
-            if side == "destination":
-                qs = qs.filter(asset_type_destination=asset_type)
-            else:
-                qs = qs.filter(asset_type_source=asset_type)
-
-        return qs
-
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["accounts"] = Account.objects.active()

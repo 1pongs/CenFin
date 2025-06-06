@@ -110,15 +110,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-4">
-          <label class="form-label mb-0 small">Asset Type</label>
-          <select name="asset_type" class="form-select form-select-sm">
-            {% for val,label in asset_type_choices %}
-              <option value="{{ val }}" {% if request.GET.asset_type == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
+
       <div class="d-flex justify-content-end gap-2 mt-3">
         <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
         <button id="cancel-filter-button" type="button" class="btn btn-outline-secondary btn-sm">Cancel</button>
