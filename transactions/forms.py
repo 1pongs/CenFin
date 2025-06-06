@@ -128,6 +128,18 @@ class TemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        if self.instance and self.instance.autopop_map:
+            for field_name, value in self.instance.autopop_map.items():
+                if field_name not in self.fields:
+                    continue
+                field = self.fields[field_name]
+                if isinstance(field, forms.ModelChoiceField):
+                    obj = field.queryset.filter(pk=value).first()
+                    if obj:
+                        self.initial[field_name] = obj
+                else:
+                    self.initial[field_name] = value
+
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(

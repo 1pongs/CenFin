@@ -73,14 +73,12 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     remarks = models.TextField(blank=True, null=True)
 
-    def save(self, *args, **kwargs):
-    # kung may template, apply lahat ng nilalaman ng autopop_map
-        if self.template:
+    def _populate_from_template(self):
+        """Apply defaults from the selected template."""
+        if self.template and self.template.autopop_map:   
             for field, default in self.template.autopop_map.items():
                 if getattr(self, field) in (None, "", 0):
                     setattr(self, field, default)
-        super().save(*args, **kwargs)
-    
 
     def _apply_defaults(self):
         """Fill the 4 dependent fields based on the chosen transaction_type."""
@@ -96,9 +94,11 @@ class Transaction(models.Model):
 
     # auto-fill before validation *and* before saving
     def clean(self):
+        self._populate_from_template()
         self._apply_defaults()
         super().clean()
 
     def save(self, *args, **kwargs):
+        self._populate_from_template()
         self._apply_defaults()
         super().save(*args, **kwargs)
