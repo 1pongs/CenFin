@@ -50,6 +50,8 @@ class TransactionListView(ListView):
         ent_dest = q.get("entity_destination")
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
+        
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
