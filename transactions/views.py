@@ -11,7 +11,7 @@ from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
 from accounts.models import Account
 from entities.models import Entity
-from .constants import TXN_TYPE_CHOICES, ASSET_TYPE_CHOICES
+from .constants import TXN_TYPE_CHOICES
 
 # Create your views here.
 
@@ -51,14 +51,6 @@ class TransactionListView(ListView):
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
 
-        asset_type = q.get("asset_type")
-        if asset_type:
-            side = q.get("asset_side", "source")
-            if side == "destination":
-                qs = qs.filter(asset_type_destination=asset_type)
-            else:
-                qs = qs.filter(asset_type_source=asset_type)
-
         return qs
 
     def get_context_data(self, **kwargs):
@@ -66,7 +58,6 @@ class TransactionListView(ListView):
         ctx["accounts"] = Account.objects.active()
         ctx["entities"] = Entity.objects.active()
         ctx["txn_type_choices"] = TXN_TYPE_CHOICES
-        ctx["asset_type_choices"] = ASSET_TYPE_CHOICES
         return ctx    
 
     def post(self, request, *args, **kwargs):
