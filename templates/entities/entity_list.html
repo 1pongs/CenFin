@@ -1,7 +1,9 @@
-<!-- templates/entities/entity_list.html -->
 {% extends "base.html" %}
+{% load humanize %}
+
 {% block title %}Entities · CENFIN{% endblock %}
 {% block content %}
+
 <h1 class="mb-4">Entities</h1>
 <div class="d-flex gap-2 mb-3">
   <a href="{% url 'entities:create' %}" class="btn btn-primary">
@@ -13,7 +15,7 @@
 </div>
 
 
-<table class="table table-striped align-middle">
+<table class="table table-hover align-middle">
   <thead class="table-dark">
     <tr>
       <th>Entity</th>
@@ -28,19 +30,15 @@
   </thead>
   <tbody>
     {% for e in entities %}
-      <tr>
-        <td>
-          <a href="{% url 'entities:detail' e.the_entity_id %}">
-            {{ e.the_name }}
-          </a>
-        </td>
+      <tr class="clickable-row" data-href="{% url 'entities:detail' e.the_entity_id %}">
+        <td>{{ e.the_name }}</td>
         <td>{{ e.the_type }}</td>
-        <td class="text-end">{{ e.total_transfer|floatformat:0 }}</td>
-        <td class="text-end">{{ e.total_asset|floatformat:0 }}</td>
-        <td class="text-end">{{ e.total_income|floatformat:0 }}</td>
-        <td class="text-end">{{ e.total_expenses|floatformat:0 }}</td>
-        <td class="text-end">{{ e.total_liquid|floatformat:0 }}</td>
-        <td class="text-end">{{ e.total_non_liquid|floatformat:0 }}</td>
+        <td class="text-end">{{ e.total_transfer|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_asset|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_income|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_expenses|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_liquid|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_non_liquid|floatformat:0|intcomma }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="8" class="text-center">No data yet.</td></tr>
@@ -48,5 +46,18 @@
   </tbody>
 </table>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', function () {
+      const url = this.dataset.href;
+      if (url) window.location = url;
+    });
+  });
+});
+</script>
 {% endblock %}
 

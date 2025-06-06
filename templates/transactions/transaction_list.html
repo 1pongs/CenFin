@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load crispy_forms_tags humanize %}
 
 {% block title %}
   Transactions · CENFIN
@@ -39,6 +40,7 @@
         class="form-select form-select-sm me-2"
       >
         <option value="">--Action--</option>
+        <option value="filter" {% if request.GET %}selected{% endif %}>Filter</option>
         <option value="delete_multiple">Delete Multiple</option>
       </select>
       <button
@@ -57,6 +59,71 @@
         Cancel
       </button>
     </div>
+  </div>
+
+    <div id="filter-container" data-active="{% if request.GET %}1{% else %}0{% endif %}" class="card card-body mb-3 d-none">
+    <form method="get" id="filter-form">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Transaction Type</label>
+          <select name="transaction_type" class="form-select form-select-sm">
+            {% for val,label in txn_type_choices %}
+              <option value="{{ val }}" {% if request.GET.transaction_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Account Source</label>
+          <select name="account_source" class="form-select form-select-sm">
+            <option value="">---------</option>
+            {% for a in accounts %}
+              <option value="{{ a.id }}" {% if request.GET.account_source == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Account Destination</label>
+          <select name="account_destination" class="form-select form-select-sm">
+            <option value="">---------</option>
+            {% for a in accounts %}
+              <option value="{{ a.id }}" {% if request.GET.account_destination == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 mt-1">
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Entity Source</label>
+          <select name="entity_source" class="form-select form-select-sm">
+            <option value="">---------</option>
+            {% for e in entities %}
+              <option value="{{ e.id }}" {% if request.GET.entity_source == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Entity Destination</label>
+          <select name="entity_destination" class="form-select form-select-sm">
+            <option value="">---------</option>
+            {% for e in entities %}
+              <option value="{{ e.id }}" {% if request.GET.entity_destination == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label mb-0 small">Asset Type</label>
+          <select name="asset_type" class="form-select form-select-sm">
+            {% for val,label in asset_type_choices %}
+              <option value="{{ val }}" {% if request.GET.asset_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+        <button id="cancel-filter-button" type="button" class="btn btn-outline-secondary btn-sm">Cancel</button>
+      </div>
+    </form>
   </div>
 
   {# ==== bulk delete ==== #}
@@ -96,7 +163,7 @@
             <td>{{ txn.get_transaction_type_display }}</td>
             <td>{{ txn.account_source }}</td>
             <td>{{ txn.account_destination }}</td>
-            <td class="text-end">{{ txn.amount|floatformat:2 }}</td>
+             <td class="text-end">{{ txn.amount|floatformat:2|intcomma }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="6" class="text-center">No transactions yet.</td></tr>
@@ -117,6 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const checkboxColumns   = document.querySelectorAll('.select-checkbox');
   const applyButton       = document.getElementById('apply-button');
   const cancelButton      = document.getElementById('cancel-bulk-button');
+  const filterContainer   = document.getElementById('filter-container');
+  const cancelFilterBtn   = document.getElementById('cancel-filter-button');
 
   /* ---------- flag para alam kung bulk mode ---------- */
   let bulkMode = false;
@@ -124,6 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ---------- dropdown change (= toggle bulk mode) ---------- */
   actionSelect.addEventListener('change', function () {
     bulkMode = this.value === 'delete_multiple';
+    const filterMode = this.value === 'filter';
 
     // show / hide UI for bulk delete
     applyButton.classList.toggle('d-none', !bulkMode);
@@ -138,12 +208,25 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       rowCheckboxes.forEach(cb => cb.classList.remove('d-none'));
     }
+    filterContainer.classList.toggle('d-none', !filterMode);
   });
 
   cancelButton.addEventListener('click', function () {
     actionSelect.value = '';
     actionSelect.dispatchEvent(new Event('change'));
   });
+
+  if (cancelFilterBtn) {
+    cancelFilterBtn.addEventListener('click', function () {
+      filterContainer.classList.add('d-none');
+      actionSelect.value = '';
+    });
+  }
+
+  if (filterContainer.dataset.active === '1') {
+    actionSelect.value = 'filter';
+    actionSelect.dispatchEvent(new Event('change'));
+  }
 
   selectAllCheckbox.addEventListener('change', function () {
     const checked = this.checked;

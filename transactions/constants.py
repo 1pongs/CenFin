@@ -8,4 +8,11 @@ transaction_type_TX_MAP = {
 }
 
 TXN_TYPE_CHOICES = (("","---------"),)+ tuple((key, key.replace('_', ' ').title())
-                                              for key in transaction_type_TX_MAP)
+                                            for key in transaction_type_TX_MAP)
+
+ASSET_TYPE_CHOICES = [
+    ("", "---------"),
+    ("liquid", "Liquid"),
+    ("non_liquid", "Non-Liquid"),
+    ("outside", "Outside"),
+]

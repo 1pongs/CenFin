@@ -9,6 +9,9 @@ import json
 
 from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
+from accounts.models import Account
+from entities.models import Entity
+from .constants import TXN_TYPE_CHOICES, ASSET_TYPE_CHOICES
 
 # Create your views here.
 
@@ -22,7 +25,49 @@ class TemplateDropdownMixin:
 class TransactionListView(ListView):
     model = Transaction
     template_name = "transactions/transaction_list.html"
-    context_object_name = "object_list"    
+    context_object_name = "object_list"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.GET
+
+        tx_type = q.get("transaction_type")
+        if tx_type:
+            qs = qs.filter(transaction_type=tx_type)
+
+        acc_src = q.get("account_source")
+        if acc_src:
+            qs = qs.filter(account_source_id=acc_src)
+
+        acc_dest = q.get("account_destination")
+        if acc_dest:
+            qs = qs.filter(account_destination_id=acc_dest)
+
+        ent_src = q.get("entity_source")
+        if ent_src:
+            qs = qs.filter(entity_source_id=ent_src)
+
+        ent_dest = q.get("entity_destination")
+        if ent_dest:
+            qs = qs.filter(entity_destination_id=ent_dest)
+
+        asset_type = q.get("asset_type")
+        if asset_type:
+            side = q.get("asset_side", "source")
+            if side == "destination":
+                qs = qs.filter(asset_type_destination=asset_type)
+            else:
+                qs = qs.filter(asset_type_source=asset_type)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["accounts"] = Account.objects.active()
+        ctx["entities"] = Entity.objects.active()
+        ctx["txn_type_choices"] = TXN_TYPE_CHOICES
+        ctx["asset_type_choices"] = ASSET_TYPE_CHOICES
+        return ctx    
 
     def post(self, request, *args, **kwargs):
         # Alamin kung anong action ang na-post
