@@ -115,7 +115,7 @@ class TransactionCreateView(CreateView):
 class TransactionUpdateView(UpdateView):
     model = Transaction
     form_class = TransactionForm
-    template_name = "transactions/transaction_form.html"
+    template_name = "transactions/transaction_edit_form.html"
     success_url = reverse_lazy("transactions:transaction_list")
 
     def get_context_data(self, **kwargs):

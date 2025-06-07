@@ -76,7 +76,7 @@
       </thead>
       <tbody>
         {% for txn in transactions %}
-        <tr>
+        <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' txn.id %}">
           <td><input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
           <td>{{ txn.date|date:"M d, Y" }}</td>
           <td>{{ txn.description }}</td>
@@ -183,5 +183,15 @@
   const rowCbs=document.querySelectorAll('.row-checkbox');
   actionSelect?.addEventListener('change',()=>{applyBtn.disabled=actionSelect.value==='';});
   selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
+
+  
+  // ===== Row click navigation =====
+  document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('input[type="checkbox"]')) return;
+      const url = row.dataset.href;
+      if (url) window.location = url;
+    });
+  });
 </script>
 {% endblock %}

@@ -15,3 +15,9 @@ footer {
 }
 
 #cancel-bulk-button { margin-left: .5rem; }
+
+/* Hide the checkbox column in the transaction table by default */
+#transaction-table .select-col { display: none; }
+#transaction-table.bulk-mode .select-col { display: table-cell; }
+/* Prevent navigating to edit pages when in bulk mode */
+#transaction-table.bulk-mode td:not(.select-col) a { pointer-events: none; }

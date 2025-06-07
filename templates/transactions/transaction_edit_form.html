@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}New Transaction{% endblock %}
+{% block title %}Edit Transaction{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -9,12 +9,20 @@
     <div class="col-lg-8 col-xl-6">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
-          <h2 class="fs-4 mb-0">New Transaction</h2>
+          <h2 class="fs-4 mb-0">Edit Transaction</h2>
         </div>
         <div class="card-body">
           <form method="post" novalidate>
             {% csrf_token %}
             {% crispy form %}
+          </form>
+
+          <form method="post"
+                action="{% url 'transactions:transaction_delete' form.instance.pk %}"
+                class="d-flex justify-content-end mt-2"
+                onsubmit="return confirm('Delete this transaction permanently?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Delete</button>
           </form>
         </div>
       </div>
