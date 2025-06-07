@@ -25,29 +25,29 @@ class TemplateDropdownMixin:
 class TransactionListView(ListView):
     model = Transaction
     template_name = "transactions/transaction_list.html"
-    context_object_name = "object_list"
+    context_object_name = "transactions"
 
     def get_queryset(self):
         qs = super().get_queryset()
-        q = self.request.GET
+        params = self.request.GET
 
-        tx_type = q.get("transaction_type")
+        tx_type = params.get("transaction_type")
         if tx_type:
             qs = qs.filter(transaction_type=tx_type)
 
-        acc_src = q.get("account_source")
+        acc_src = params.get("account_source")
         if acc_src:
             qs = qs.filter(account_source_id=acc_src)
 
-        acc_dest = q.get("account_destination")
+        acc_dest = params.get("account_destination")
         if acc_dest:
             qs = qs.filter(account_destination_id=acc_dest)
 
-        ent_src = q.get("entity_source")
+        ent_src = params.get("entity_source")
         if ent_src:
             qs = qs.filter(entity_source_id=ent_src)
 
-        ent_dest = q.get("entity_destination")
+        ent_dest = params.get("entity_destination")
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
 
@@ -58,26 +58,18 @@ class TransactionListView(ListView):
         ctx["accounts"] = Account.objects.active()
         ctx["entities"] = Entity.objects.active()
         ctx["txn_type_choices"] = TXN_TYPE_CHOICES
-        return ctx    
+        return ctx
 
     def post(self, request, *args, **kwargs):
-        # Alamin kung anong action ang na-post
-        action = request.POST.get('action')
-        selected_ids = request.POST.getlist('selected_ids')
+        action = request.POST.get("bulk-action")
+        selected_ids = request.POST.getlist("selected_ids")
 
-        if action == "delete_multiple" and selected_ids:
-            Transaction.objects.filter(pk__in=selected_ids).delete()
-            messages.success(
-                request,
-                f"{len(selected_ids)} transaction(s) successfully deleted."
-            )
-        else:
-            if action == "delete_multiple" and not selected_ids:
-                messages.error(request, "Please select at least one transaction to delete.")
-            # Kung gusto mo magdagdag ng ibang action sa future, pwede dyan
+        if action == "delete" and selected_ids:
+            Transaction.objects.filter(id__in=selected_ids).delete()
+            messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
 
-        return redirect('transactions:transaction_list')
-    
+        return redirect(reverse("transactions:transaction_list"))
+        
 def bulk_action(request):
     if request.method == 'POST':
         selected_ids = request.POST.getlist('selected_ids')
