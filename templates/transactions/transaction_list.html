@@ -62,10 +62,10 @@
 
   <!-- ================= TRANSACTION TABLE ================= -->
   <div class="table-responsive">
-    <table class="table table-hover align-middle small">
+    <table id="transaction-table" class="table table-hover align-middle small">
       <thead class="table-dark">
         <tr>
-          <th style="width:36px"><input id="select-all" type="checkbox" class="form-check-input" /></th>
+          <th id="select-col" class="select-col" style="width:36px"><input id="select-all" type="checkbox" class="form-check-input" /></th>
           <th>Date</th>
           <th>Description</th>
           <th>Transaction</th>
@@ -76,8 +76,8 @@
       </thead>
       <tbody>
         {% for txn in transactions %}
-        <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' txn.id %}">
-          <td><input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
+        <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' txn.pk %}">
+          <td class="select-col"><input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
           <td>{{ txn.date|date:"M d, Y" }}</td>
           <td>{{ txn.description }}</td>
           <td>{{ txn.get_transaction_type_display }}</td>
@@ -181,13 +181,23 @@
   const applyBtn=document.getElementById('apply-button');
   const selectAll=document.getElementById('select-all');
   const rowCbs=document.querySelectorAll('.row-checkbox');
-  actionSelect?.addEventListener('change',()=>{applyBtn.disabled=actionSelect.value==='';});
-  selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
+  const table=document.getElementById('transaction-table');
+  const rows=table?.querySelectorAll('tbody tr');
 
+  function toggleBulk(){
+    const active = actionSelect.value === 'delete_multiple';
+    applyBtn.disabled = !active;
+    table.classList.toggle('bulk-mode', active);
+  }
+
+  actionSelect?.addEventListener('change', toggleBulk);
+  selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
+  updateBulkUI();
   
   // ===== Row click navigation =====
   document.querySelectorAll('.clickable-row').forEach(row => {
     row.addEventListener('click', e => {
+      if (txnTable.classList.contains('bulk-mode')) return;
       if (e.target.closest('input[type="checkbox"]')) return;
       const url = row.dataset.href;
       if (url) window.location = url;
