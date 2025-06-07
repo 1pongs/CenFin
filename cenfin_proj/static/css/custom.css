@@ -21,3 +21,4 @@ footer {
 #transaction-table.bulk-mode .select-col { display: table-cell; }
 /* Prevent navigating to edit pages when in bulk mode */
 #transaction-table.bulk-mode td:not(.select-col) a { pointer-events: none; }
+#transaction-table.bulk-mode .clickable-row { cursor: default; }

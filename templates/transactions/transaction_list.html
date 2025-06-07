@@ -181,18 +181,18 @@
   const applyBtn=document.getElementById('apply-button');
   const selectAll=document.getElementById('select-all');
   const rowCbs=document.querySelectorAll('.row-checkbox');
-  const table=document.getElementById('transaction-table');
-  const rows=table?.querySelectorAll('tbody tr');
+  const txnTable=document.getElementById('transaction-table');
+  const rows=txnTable?.querySelectorAll('tbody tr');
 
   function toggleBulk(){
     const active = actionSelect.value === 'delete_multiple';
     applyBtn.disabled = !active;
-    table.classList.toggle('bulk-mode', active);
+    txnTable.classList.toggle('bulk-mode', active);
   }
 
   actionSelect?.addEventListener('change', toggleBulk);
   selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
-  updateBulkUI();
+  toggleBulk();
   
   // ===== Row click navigation =====
   document.querySelectorAll('.clickable-row').forEach(row => {
