@@ -1,113 +1,71 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
 {% load crispy_forms_tags humanize %}
 
-{% block title %}
-  Transactions · CENFIN
-{% endblock %}
-
-{% block extra_css %}
-  <style>
-    /* Hide checkbox column by default */
-    .select-checkbox {
-      display: none;
-    }
-  </style>
-{% endblock %}
+{% block title %}Transactions · CENFIN{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">Transactions</h1>
-  <div class="flex gap-6">
-    <aside class="w-64 lg:w-72 bg-white shadow-sm p-4 shrink-0">
-      <h2 class="font-bold mb-4">Filters</h2>
-      <form method="get" id="filter-form" class="space-y-3">
-        <div>
-          <label class="block text-sm font-medium mb-1">Transaction type</label>
-          <select name="transaction_type" class="w-full form-select form-select-sm">
-            {% for val,label in txn_type_choices %}
-              <option value="{{ val }}" {% if request.GET.transaction_type == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">From account</label>
-          <select name="account_source" class="w-full form-select form-select-sm">
-            <option value="">---------</option>
-            {% for a in accounts %}
-              <option value="{{ a.id }}" {% if request.GET.account_source == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">To account</label>
-          <select name="account_destination" class="w-full form-select form-select-sm">
-            <option value="">---------</option>
-            {% for a in accounts %}
-              <option value="{{ a.id }}" {% if request.GET.account_destination == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-         <div>
-          <label class="block text-sm font-medium mb-1">From entity</label>
-          <select name="entity_source" class="w-full form-select form-select-sm">
-            <option value="">---------</option>
-            {% for e in entities %}
-              <option value="{{ e.id }}" {% if request.GET.entity_source == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-         <div>
-          <label class="block text-sm font-medium mb-1">To entity</label>
-          <select name="entity_destination" class="w-full form-select form-select-sm">
-            <option value="">---------</option>
-            {% for e in entities %}
-              <option value="{{ e.id }}" {% if request.GET.entity_destination == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <button type="submit" class="btn btn-success w-full">Apply filters</button>
+<h1 class="mb-4">Transactions</h1>
+<div class="container-lg py-1">
+  <!-- ================= TOP TOOLBAR ================= -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+    <!-- START : left‑side primary controls -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <a href="{% url 'transactions:transaction_create' %}" class="btn btn-primary">New&nbsp;Transaction</a>
+
+      <!-- search input + sort select share the same GET form -->
+      <form id="search-sort-form" method="get" class="d-flex align-items-center gap-2 flex-wrap">
+        <input name="q" value="{{ request.GET.q }}" type="text" placeholder="Search" class="form-control form-control-sm w-auto" />
+
+        <select name="sort" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+          <option value="-date"  {% if request.GET.sort == '-date' or not request.GET.sort %}selected{% endif %}>Newest</option>
+          <option value="date"   {% if request.GET.sort == 'date' %}selected{% endif %}>Oldest</option>
+          <option value="-amount"{% if request.GET.sort == '-amount' %}selected{% endif %}>Amount ↓</option>
+          <option value="amount" {% if request.GET.sort == 'amount' %}selected{% endif %}>Amount ↑</option>
+        </select>
+
+        <!-- filter trigger -->
+        <button id="filter-btn" type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+          <i class="bi bi-funnel"></i><span class="d-none d-sm-inline">Filters</span>
+        </button>
       </form>
-    </aside>
-
-    <div class="flex-1">
-      <div class="flex items-center justify-between gap-4 py-4 border-b">
-        <div class="flex gap-2">
-          <a href="{% url 'transactions:transaction_create' %}" class="btn btn-primary">New Transaction</a>
-          <a href="{% url 'transactions:template_list' %}" class="btn btn-warning">Template</a>
-        </div>
-        <div class="flex items-center gap-1">
-          <button>&lt;</button>
-          <select class="form-select form-select-sm"></select>
-          <button>&gt;</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <select id="action-select" name="action" class="form-select form-select-sm w-44">
-            <option value="">--Bulk action--</option>
-            <option value="delete_multiple">Delete Multiple</option>
-          </select>
-          <button id="apply-button" type="submit" form="bulk-action-form" class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Apply</button>
-        </div>
-      </div>
-
-
-      {# ==== bulk delete ==== #}
-  <div class="overflow-x-auto mt-6">
-    <div class="mb-2">
-      <label class="inline-flex items-center select-checkbox">
-        <input type="checkbox" id="select-all" class="form-check-input d-none">
-        <span class="ml-2">Select all</span>
-      </label>
     </div>
-    <form
-      method="post"
-      id="bulk-action-form"
-      action="{% url 'transactions:bulk_action' %}"
-    >
-      {% csrf_token %}
-      <table class="w-full text-sm">
-        <thead class="bg-gray-800 text-white font-semibold">
-          <tr>
-            <th class="select-checkbox w-10"></th>
+    <!-- END   : left‑side primary controls -->
+
+    <!-- Template button pushed far right -->
+    <a href="{% url 'transactions:template_list' %}" class="btn btn-warning text-dark fw-semibold">Template</a>
+  </div>
+
+  <!-- ================= DATE RANGE + BULK ACTION ROW ================= -->
+  <form id="bulk-action-form" method="post" action="{% url 'transactions:bulk_action' %}" class="border rounded-2 px-3 py-2 d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    {% csrf_token %}
+
+    <!-- Date range picker -->
+    <div class="d-flex align-items-center gap-1">
+      <button class="btn btn-outline-secondary btn-sm" type="button">&lt;</button>
+      <select class="form-select form-select-sm w-auto">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+        <option>This month</option>
+      </select>
+      <button class="btn btn-outline-secondary btn-sm" type="button">&gt;</button>
+    </div>
+
+    <!-- bulk action controls -->
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <select id="action-select" name="action" class="form-select form-select-sm w-auto">
+        <option value="">--Bulk action--</option>
+        <option value="delete_multiple">Delete selected</option>
+      </select>
+      <button id="apply-button" class="btn btn-primary btn-sm" type="submit" disabled>Apply</button>
+    </div>
+  </form>
+
+  <!-- ================= TRANSACTION TABLE ================= -->
+  <div class="table-responsive">
+    <table class="table table-hover align-middle small">
+      <thead class="table-dark">
+        <tr>
+          <th style="width:36px"><input id="select-all" type="checkbox" class="form-check-input" /></th>
           <th>Date</th>
           <th>Description</th>
           <th>Transaction</th>
@@ -117,77 +75,113 @@
         </tr>
       </thead>
       <tbody>
-        {% for txn in object_list %}
-          <tr class="clickable-row hover:bg-gray-50" data-href="{% url 'transactions:transaction_update' txn.pk %}">
-            <td class="select-checkbox">
-              <input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="form-check-input row-checkbox d-none">
-            </td>
-            <td>{{ txn.date|date:"M d, Y" }}</td>
-            <td>{{ txn.description }}</td>
-            <td>{{ txn.get_transaction_type_display }}</td>
-            <td>{{ txn.account_source }}</td>
-            <td>{{ txn.account_destination }}</td>
-             <td class="text-end">{{ txn.amount|floatformat:2|intcomma }}</td>
-          </tr>
+        {% for txn in transactions %}
+        <tr>
+          <td><input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
+          <td>{{ txn.date|date:"M d, Y" }}</td>
+          <td>{{ txn.description }}</td>
+          <td>{{ txn.get_transaction_type_display }}</td>
+          <td>{{ txn.account_source }}</td>
+          <td>{{ txn.account_destination }}</td>
+          <td class="text-end">{{ txn.amount|floatformat:2|intcomma }}</td>
+        </tr>
         {% empty %}
-          <tr><td colspan="6" class="text-center">No transactions yet.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted">No transactions found.</td></tr>
         {% endfor %}
       </tbody>
-      </table>
-    </form>
+    </table>
   </div>
+</div>
+
+<!-- ================= FILTER MODAL ================ -->
+<div id="filter-modal" class="position-fixed top-0 start-0 vw-100 vh-100 d-none" style="background:rgba(0,0,0,.35);z-index:1050;">
+  <div class="d-flex justify-content-center align-items-start pt-5 h-100">
+    <div class="bg-white rounded-3 shadow p-4" style="max-width:420px;width:90%;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Filter Transactions</h5>
+        <button id="filter-close" class="btn btn-sm btn-outline-secondary">&times;</button>
+      </div>
+      <form id="filter-form" method="get" class="vstack gap-3">
+        <div>
+          <label class="form-label small mb-1">Transaction type</label>
+          <select name="transaction_type" class="form-select form-select-sm">
+            <option value="">All types</option>
+            {% for val,label in txn_type_choices %}
+            <option value="{{ val }}" {% if request.GET.transaction_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small mb-1">From account</label>
+          <select name="account_source" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for a in accounts %}
+            <option value="{{ a.id }}" {% if request.GET.account_source == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small mb-1">To account</label>
+          <select name="account_destination" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for a in accounts %}
+            <option value="{{ a.id }}" {% if request.GET.account_destination == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small mb-1">From entity</label>
+          <select name="entity_source" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for e in entities %}
+            <option value="{{ e.id }}" {% if request.GET.entity_source == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small mb-1">To entity</label>
+          <select name="entity_destination" class="form-select form-select-sm">
+            <option value="">Any</option>
+            {% for e in entities %}
+            <option value="{{ e.id }}" {% if request.GET.entity_destination == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pt-2">
+          <button type="button" id="filter-cancel" class="btn btn-outline-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  /* ---------- mga element refs ---------- */
-  const actionSelect      = document.getElementById('action-select');
-  const rows              = document.querySelectorAll('.clickable-row');
-  const selectAllCheckbox = document.getElementById('select-all');
-  const rowCheckboxes     = document.querySelectorAll('.row-checkbox');
-  const checkboxColumns   = document.querySelectorAll('.select-checkbox');
-  const applyButton       = document.getElementById('apply-button');
-  
-  /* ---------- flag para alam kung bulk mode ---------- */
-  let bulkMode = false;
+  // ===== Modal open/close =====
+  const filterBtn   = document.getElementById('filter-btn');
+  const filterModal = document.getElementById('filter-modal');
+  const filterClose = document.getElementById('filter-close');
+  const filterCancel= document.getElementById('filter-cancel');
+  function openModal(){filterModal.classList.remove('d-none');}
+  function closeModal(){filterModal.classList.add('d-none');}
+  filterBtn?.addEventListener('click',openModal);
+  filterClose?.addEventListener('click',closeModal);
+  filterCancel?.addEventListener('click',closeModal);
+  filterModal?.addEventListener('click',e=>{if(e.target===filterModal)closeModal();});
 
-  /* ---------- dropdown change (= toggle bulk mode) ---------- */
-  actionSelect.addEventListener('change', function () {
-    bulkMode = this.value === 'delete_multiple';
-    applyButton.disabled = !this.value;
-
-    checkboxColumns.forEach(el => el.style.display = bulkMode ? 'table-cell' : 'none');
-    selectAllCheckbox.classList.toggle('d-none', !bulkMode);
-
-    if (!bulkMode) {
-      selectAllCheckbox.checked = false;
-      rowCheckboxes.forEach(cb => { cb.classList.add('d-none'); cb.checked = false; });
-    } else {
-      rowCheckboxes.forEach(cb => cb.classList.remove('d-none'));
-    }
-
-      });
-
-       // initialize state on load
-  actionSelect.dispatchEvent(new Event('change'));
-
-  selectAllCheckbox.addEventListener('change', function () {
-    const checked = this.checked;
-    rowCheckboxes.forEach(cb => {
-      if (!cb.classList.contains('d-none')) cb.checked = checked;
-    });
-  });
-
-  rows.forEach(row => {
-    row.addEventListener('click', function (e) {
-  
-      if (bulkMode || e.target.closest('input[type="checkbox"]')) return;
-
-      const url = this.dataset.href;
-      if (url) window.location = url;
-    });
-  });
-});
+  // ===== Bulk action enable/disable & select all =====
+  const actionSelect=document.getElementById('action-select');
+  const applyBtn=document.getElementById('apply-button');
+  const selectAll=document.getElementById('select-all');
+  const rowCbs=document.querySelectorAll('.row-checkbox');
+  actionSelect?.addEventListener('change',()=>{applyBtn.disabled=actionSelect.value==='';});
+  selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
 </script>
 {% endblock %}

@@ -31,6 +31,14 @@ class TransactionListView(ListView):
         qs = super().get_queryset()
         params = self.request.GET
 
+        search = params.get("q", "").strip()
+        if search:
+            qs = qs.filter(description__icontains=search)
+
+        sort = params.get("sort", "-date")
+        if sort not in ["-date", "date", "amount", "-amount"]:
+            sort = "-date"
+
         tx_type = params.get("transaction_type")
         if tx_type:
             qs = qs.filter(transaction_type=tx_type)
@@ -51,13 +59,16 @@ class TransactionListView(ListView):
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
 
-        return qs
+        return qs.order_by(sort)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["accounts"] = Account.objects.active()
         ctx["entities"] = Entity.objects.active()
         ctx["txn_type_choices"] = TXN_TYPE_CHOICES
+        params = self.request.GET
+        ctx["search"] = params.get("q", "")
+        ctx["sort"] = params.get("sort", "-date")
         return ctx
 
     def post(self, request, *args, **kwargs):
