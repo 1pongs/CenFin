@@ -1,4 +1,6 @@
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
+from django.utils import timezone
+from datetime import timedelta
 
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy, reverse
@@ -59,6 +61,15 @@ class TransactionListView(ListView):
         if ent_dest:
             qs = qs.filter(entity_destination_id=ent_dest)
 
+        date_range = params.get("date_range")
+        today = timezone.now().date()
+        if date_range == "last7":
+            qs = qs.filter(date__gte=today - timedelta(days=7))
+        elif date_range == "last30":
+            qs = qs.filter(date__gte=today - timedelta(days=30))
+        elif date_range == "month":
+            qs = qs.filter(date__year=today.year, date__month=today.month)
+            
         return qs.order_by(sort)
 
     def get_context_data(self, **kwargs):

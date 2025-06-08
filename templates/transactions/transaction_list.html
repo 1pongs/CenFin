@@ -56,14 +56,14 @@
 
     <!-- Date range picker -->
     <div class="d-flex align-items-center gap-1">
-      <button class="btn btn-outline-secondary btn-sm" type="button">&lt;</button>
-      <select class="form-select form-select-sm w-auto">
-        <option>Show all</option>
-        <option>Last 7 days</option>
-        <option>Last 30 days</option>
-        <option>This month</option>
+      <button id="date-prev" class="btn btn-outline-secondary btn-sm" type="button">&lt;</button>
+      <select id="date-range-select" name="date_range" class="form-select form-select-sm w-auto">
+        <option value="" {% if not request.GET.date_range %}selected{% endif %}>Show all</option>
+        <option value="last7" {% if request.GET.date_range == 'last7' %}selected{% endif %}>Last 7 days</option>
+        <option value="last30" {% if request.GET.date_range == 'last30' %}selected{% endif %}>Last 30 days</option>
+        <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This month</option>
       </select>
-      <button class="btn btn-outline-secondary btn-sm" type="button">&gt;</button>
+      <button id="date-next" class="btn btn-outline-secondary btn-sm" type="button">&gt;</button>
     </div>
 
     <!-- bulk action controls -->
