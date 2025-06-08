@@ -25,6 +25,7 @@ urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
     path('transactions/', include('transactions.urls', namespace='transactions')),
     path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('assets/', include(('assets.urls', 'assets'), namespace='assets')),
     path('entities/', include(('entities.urls', 'entities'), namespace='entities')),
 
 ]

@@ -82,8 +82,9 @@ class Transaction(models.Model):
 
     def _apply_defaults(self):
         """Fill the 4 dependent fields based on the chosen transaction_type."""
+        key = (self.transaction_type or "").replace(" ", "_")
         try:
-            tsrc, tdest, asrc, adest = transaction_type_TX_MAP[self.transaction_type]
+            tsrc, tdest, asrc, adest = transaction_type_TX_MAP[key]
         except KeyError:
             raise ValidationError({"transaction_type": "Unknown mapping—update TX_MAP."})
 
