@@ -56,7 +56,8 @@
         <option value="">--Bulk action--</option>
         <option value="delete_multiple">Delete selected</option>
       </select>
-      <button id="apply-button" class="btn btn-primary btn-sm" type="submit" disabled>Apply</button>
+      <button id="apply-button" class="btn btn-primary btn-sm d-none" type="submit" disabled>Apply</button>
+      <button id="cancel-bulk-button" type="button" class="btn btn-outline-secondary btn-sm d-none">Cancel</button>
     </div>
   </form>
 
@@ -187,10 +188,21 @@
   function toggleBulk(){
     const active = actionSelect.value === 'delete_multiple';
     applyBtn.disabled = !active;
-    txnTable.classList.toggle('bulk-mode', active);
+    txnTable.classList.toggle('bulk-mode', !active);
+    applyBtn.classList.toggle('d-none', !active);
+    cancelBtn.classList.toggle('d-none', !active);
+    if(!active){
+      selectAll.checked = false;
+      rowCbs.forEach(cb=>cb.checked=false);
+    }
   }
 
+
   actionSelect?.addEventListener('change', toggleBulk);
+  cancelBtn?.addEventListener('click', () => {
+    actionSelect.value = '';
+    toggleBulk();
+  });
   selectAll?.addEventListener('change',()=>{rowCbs.forEach(cb=>cb.checked=selectAll.checked);});
   toggleBulk();
   
