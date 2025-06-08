@@ -3,6 +3,21 @@
 
 {% block title %}Transactions · CENFIN{% endblock %}
 
+{# ------------------------------------------------------------------------- #}
+{# EXTRA CSS                                                               #}
+{# ------------------------------------------------------------------------- #}
+{% block extra_css %}
+<style>
+  /* Hide the checkbox column (header + cells) until bulk mode is active */
+  #transaction-table:not(.bulk-mode) .select-col {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{# ------------------------------------------------------------------------- #}
+{# MAIN CONTENT                                                             #}
+{# ------------------------------------------------------------------------- #}
 {% block content %}
 <h1 class="mb-4">Transactions</h1>
 <div class="container-lg py-1">
@@ -43,6 +58,7 @@
     <div class="d-flex align-items-center gap-1">
       <button class="btn btn-outline-secondary btn-sm" type="button">&lt;</button>
       <select class="form-select form-select-sm w-auto">
+        <option>Show all</option>
         <option>Last 7 days</option>
         <option>Last 30 days</option>
         <option>This month</option>
@@ -163,6 +179,9 @@
 </div>
 {% endblock %}
 
+{# ------------------------------------------------------------------------- #}
+{# EXTRA JS                                                                 #}
+{# ------------------------------------------------------------------------- #}
 {% block extra_js %}
 <script>
   // ===== Modal open/close =====
@@ -177,26 +196,58 @@
   filterCancel?.addEventListener('click',closeModal);
   filterModal?.addEventListener('click',e=>{if(e.target===filterModal)closeModal();});
 
+   // ===== Date‑range filter =====
+  const dateSelect = document.getElementById('date-range-select');
+  const datePrev   = document.getElementById('date-prev');
+  const dateNext   = document.getElementById('date-next');
+
+  function applyDateFilter(){
+    const params = new URLSearchParams(window.location.search);
+    const value  = dateSelect.value;
+    if(value){
+      params.set('date_range', value);
+    }else{
+      params.delete('date_range');
+    }
+    params.delete('page'); // reset paginator (if you have one)
+    window.location = window.location.pathname + '?' + params.toString();
+  }
+
+  function shiftDate(offset){
+    const opts = Array.from(dateSelect.options);
+    let idx = opts.findIndex(o=>o.value === dateSelect.value);
+    idx = idx === -1 ? 0 : idx;
+    const newIdx = Math.min(Math.max(idx + offset, 0), opts.length - 1);
+    if(newIdx !== idx){
+      dateSelect.value = opts[newIdx].value;
+      applyDateFilter();
+    }
+  }
+
+  dateSelect?.addEventListener('change', applyDateFilter);
+  datePrev?.addEventListener('click',()=>shiftDate(-1));
+  dateNext?.addEventListener('click',()=>shiftDate(1));
+
   // ===== Bulk action enable/disable & select all =====
   const actionSelect=document.getElementById('action-select');
-  const applyBtn=document.getElementById('apply-button');
-  const selectAll=document.getElementById('select-all');
-  const rowCbs=document.querySelectorAll('.row-checkbox');
-  const txnTable=document.getElementById('transaction-table');
-  const rows=txnTable?.querySelectorAll('tbody tr');
+  const applyBtn    =document.getElementById('apply-button');
+  const cancelBtn   =document.getElementById('cancel-bulk-button');
+  const selectAll   =document.getElementById('select-all');
+  const rowCbs      =document.querySelectorAll('.row-checkbox');
+  const txnTable    =document.getElementById('transaction-table');
 
   function toggleBulk(){
     const active = actionSelect.value === 'delete_multiple';
     applyBtn.disabled = !active;
-    txnTable.classList.toggle('bulk-mode', !active);
+    txnTable.classList.toggle('bulk-mode', active);
     applyBtn.classList.toggle('d-none', !active);
     cancelBtn.classList.toggle('d-none', !active);
+
     if(!active){
       selectAll.checked = false;
       rowCbs.forEach(cb=>cb.checked=false);
     }
   }
-
 
   actionSelect?.addEventListener('change', toggleBulk);
   cancelBtn?.addEventListener('click', () => {
