@@ -48,28 +48,19 @@ def sell_asset(request, pk):
         if form.is_valid():
             price = form.cleaned_data["sale_price"]
             buy_tx = asset.purchase_tx
+            diff = price - (buy_tx.amount or 0)
             sell_tx = Transaction.objects.create(
                 date=timezone.now().date(),
                 description=f"Sell {asset.name}",
                 transaction_type="sell asset",
-                amount=price,
+                amount=diff,
                 account_source=buy_tx.account_destination,
                 account_destination=buy_tx.account_source,
                 entity_source=buy_tx.entity_destination,
                 entity_destination=buy_tx.entity_source,
             )
             asset.sell_tx = sell_tx
-            asset.save()
-            profit = price - (buy_tx.amount or 0)
-            if profit:
-                Transaction.objects.create(
-                    date=timezone.now().date(),
-                    description=f"Profit from {asset.name}",
-                    transaction_type="income",
-                    amount=profit,
-                    account_destination=buy_tx.account_source,
-                    entity_destination=buy_tx.entity_source,
-                )
+        
             return redirect("assets:list")
     else:
         form = SellAssetForm()

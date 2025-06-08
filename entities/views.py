@@ -111,30 +111,7 @@ class EntityListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        
-        rows = get_entity_aggregate_rows()
-
-        search = self.request.GET.get("q", "").strip().lower()
-        if search:
-            rows = [r for r in rows if search in r["the_name"].lower()]
-
-        sort = self.request.GET.get("sort", "name")
-        if sort == "-name":
-            rows.sort(key=lambda r: r["the_name"], reverse=True)
-        elif sort == "type":
-            rows.sort(key=lambda r: r["the_type"])
-        elif sort == "-type":
-            rows.sort(key=lambda r: r["the_type"], reverse=True)
-        else:
-            # default sort by name ascending
-            rows.sort(key=lambda r: r["the_name"])
-
-        ctx["name_next"] = "-name" if sort == "name" else "name"
-        ctx["type_next"] = "-type" if sort == "type" else "type"
-
-        ctx["entities"] = rows
-        ctx["search"] = self.request.GET.get("q", "")
-        ctx["sort"] = sort
+        ctx["entities"] = sorted(get_entity_aggregate_rows(), key=lambda x: x["the_name"])
         return ctx
 
 # ---------------------------------------------------------------------------
