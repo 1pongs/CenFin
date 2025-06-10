@@ -46,22 +46,31 @@ def sell_asset(request, pk):
     if request.method == "POST":
         form = SellAssetForm(request.POST)
         if form.is_valid():
-            price = form.cleaned_data["sale_price"]
+            data = form.cleaned_data
             buy_tx = asset.purchase_tx
-            diff = price - (buy_tx.amount or 0)
+            diff = data["sale_price"] - (buy_tx.amount or 0)
             sell_tx = Transaction.objects.create(
-                date=timezone.now().date(),
+                date=data["date"],
                 description=f"Sell {asset.name}",
                 transaction_type="sell asset",
                 amount=diff,
-                account_source=buy_tx.account_destination,
-                account_destination=buy_tx.account_source,
-                entity_source=buy_tx.entity_destination,
-                entity_destination=buy_tx.entity_source,
+                 account_source=data["account_source"],
+                account_destination=data["account_destination"],
+                entity_source=data["entity_source"],
+                entity_destination=data["entity_destination"],
+                remarks=data["remarks"],
             )
             asset.sell_tx = sell_tx
+            asset.save()
         
             return redirect("assets:list")
     else:
-        form = SellAssetForm()
+        initial = {
+            "date": timezone.now().date(),
+            "account_source": asset.purchase_tx.account_destination_id,
+            "account_destination": asset.purchase_tx.account_source_id,
+            "entity_source": asset.purchase_tx.entity_destination_id,
+            "entity_destination": asset.purchase_tx.entity_source_id,
+        }
+        form = SellAssetForm(initial=initial)
     return render(request, "assets/asset_sell.html", {"form": form, "asset": asset})

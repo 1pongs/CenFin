@@ -4,6 +4,7 @@ from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 from accounts.models import Account
 from entities.models import Entity
+from django.utils import timezone
 
 
 class AssetForm(forms.Form):
@@ -55,14 +56,40 @@ class AssetForm(forms.Form):
 
 
 class SellAssetForm(forms.Form):
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        initial=lambda: timezone.now().date(),
+    )
     sale_price = forms.DecimalField(max_digits=12, decimal_places=2)
+    account_source = forms.ModelChoiceField(queryset=Account.objects.all())
+    account_destination = forms.ModelChoiceField(queryset=Account.objects.all())
+    entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())
+    entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all())
+    remarks = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3}), required=False
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(
-            Row(Column("sale_price", css_class="col-md-6"), css_class="g-3"),
+            Row(
+                Column("date", css_class="col-md-6"),
+                Column("sale_price", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("account_source", css_class="col-md-6"),
+                Column("account_destination", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("entity_source", css_class="col-md-6"),
+                Column("entity_destination", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            "remarks",
             FormActions(
                 Submit("sell", "Sell", css_class="btn btn-primary"),
                 Button(

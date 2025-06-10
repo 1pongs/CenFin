@@ -38,7 +38,17 @@ class AssetTransactionAmountTest(TestCase):
         self.asset = Asset.objects.create(name="Piglet", purchase_tx=self.buy_tx)
 
     def test_sell_transaction_amount_is_difference(self):
-        response = self.client.post(reverse("assets:sell", args=[self.asset.pk]), {"sale_price": "10000"})
+        response = self.client.post(
+            reverse("assets:sell", args=[self.asset.pk]),
+            {
+                "date": timezone.now().date(),
+                "sale_price": "10000",
+                "account_source": self.acc_dest.pk,
+                "account_destination": self.acc_src.pk,
+                "entity_source": self.ent_dest.pk,
+                "entity_destination": self.ent_src.pk,
+            },
+        )
         self.assertEqual(response.status_code, 302)
 
         self.asset.refresh_from_db()
