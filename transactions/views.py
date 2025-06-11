@@ -13,6 +13,7 @@ from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
 from accounts.models import Account
 from entities.models import Entity
+from cenfin_proj.utils import get_account_balances, get_entity_balances
 from .constants import TXN_TYPE_CHOICES
 
 # Create your views here.
@@ -116,6 +117,8 @@ class TransactionCreateView(CreateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        context['account_balances'] = get_account_balances()
+        context['entity_balances'] = get_entity_balances()
         return context
 
     def form_valid(self, form):
@@ -137,6 +140,8 @@ class TransactionUpdateView(UpdateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        context['account_balances'] = get_account_balances()
+        context['entity_balances'] = get_entity_balances()
         return context
 
     def form_valid(self, form):

@@ -29,6 +29,9 @@
     </div>
   </aside>
   <div class="col-md-9">
+    <div class="text-end fw-bold mb-2">
+      Total Balance: ₱{{ total_balance|floatformat:2|intcomma }}
+    </div>
 
     {% for a in accounts %}
        <div class="card shadow-sm rounded-lg mb-3 p-3">

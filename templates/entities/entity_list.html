@@ -49,6 +49,7 @@
       <th class="text-end">Expenses</th>
       <th class="text-end">Liquid</th>
       <th class="text-end">Non-Liquid</th>
+      <th class="text-end">Balance</th>
     </tr>
   </thead>
   <tbody>
@@ -62,9 +63,10 @@
         <td class="text-end">{{ e.total_expenses|floatformat:0|intcomma }}</td>
         <td class="text-end">{{ e.total_liquid|floatformat:0|intcomma }}</td>
         <td class="text-end">{{ e.total_non_liquid|floatformat:0|intcomma }}</td>
+        <td class="text-end">{{ e.total_liquid|add:e.total_non_liquid|floatformat:0|intcomma }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="8" class="text-center">No data yet.</td></tr>
+      <tr><td colspan="9" class="text-center">No data yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>

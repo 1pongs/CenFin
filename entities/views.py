@@ -157,6 +157,7 @@ class EntityAccountDetailView(TemplateView):
             entry["balance"] -= row["total_out"]
 
         ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
+        ctx["total_balance"] = sum(b["balance"] for b in balances.values())
 
         rows = get_entity_aggregate_rows()
         ctx["totals"] = next((row for row in rows if row["the_entity_id"] == entity_pk), None)

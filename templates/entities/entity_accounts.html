@@ -17,6 +17,12 @@
   {% empty %}
     <tr><td colspan="2" class="text-center">No accounts yet.</td></tr>
   {% endfor %}
+  {% if accounts %}
+    <tr class="fw-bold">
+      <td>Total</td>
+      <td class="text-end">{{ total_balance|floatformat:0|intcomma }}</td>
+    </tr>
+  {% endif %}
 </tbody>
 </table>
 {% endblock %}

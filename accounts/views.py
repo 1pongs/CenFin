@@ -40,7 +40,16 @@ def account_list(request):
     else:
         qs = qs.order_by("account_name")
 
-    context = {"accounts": qs, "search": search, "sort": sort}
+    total_balance = qs.aggregate(total=Sum("net_total"))[
+        "total"
+    ] or Decimal("0.00")
+
+    context = {
+        "accounts": qs,
+        "search": search,
+        "sort": sort,
+        "total_balance": total_balance,
+    }
     return render(request, "accounts/account_list.html", context)
 
 

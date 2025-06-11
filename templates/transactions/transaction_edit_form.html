@@ -5,11 +5,19 @@
 
 {% block content %}
 <div class="container py-4">
+    <div class="d-flex justify-content-between mb-3">
+    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="offcanvas" data-bs-target="#entitiesDrawer" aria-controls="entitiesDrawer">Entities</button>
+    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="offcanvas" data-bs-target="#accountsDrawer" aria-controls="accountsDrawer">Accounts</button>
+  </div>
   <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-6">
       <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3">
+         <div class="card-header bg-white py-3 d-flex justify-content-between">
           <h2 class="fs-4 mb-0">Edit Transaction</h2>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="offcanvas" data-bs-target="#accountsDrawer">Accounts</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#entitiesDrawer">Entities</button>
+          </div>
         </div>
         <div class="card-body">
           <form method="post" novalidate>
@@ -29,6 +37,7 @@
     </div>
   </div>
 </div>
+{% include "includes/balance_drawers.html" %}
 {% endblock %}
 
 {% block extra_js %}

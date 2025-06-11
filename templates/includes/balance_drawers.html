@@ -1,0 +1,38 @@
+{% load humanize %}
+<div class="offcanvas offcanvas-start" tabindex="-1" id="accountsDrawer" aria-labelledby="accountsDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="accountsDrawerLabel">Accounts</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="list-group list-group-flush">
+      {% for acc in account_balances %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ acc.account_name }}
+          <span class="badge bg-primary rounded-pill">₱{{ acc.balance|floatformat:2|intcomma }}</span>
+        </li>
+      {% empty %}
+        <li class="list-group-item">No accounts found.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="entitiesDrawer" aria-labelledby="entitiesDrawerLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="entitiesDrawerLabel">Entities</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="list-group list-group-flush">
+      {% for ent in entity_balances %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ ent.entity_name }}
+          <span class="badge bg-primary rounded-pill">₱{{ ent.balance|floatformat:2|intcomma }}</span>
+        </li>
+      {% empty %}
+        <li class="list-group-item">No entities found.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
