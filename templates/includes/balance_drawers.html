@@ -36,3 +36,30 @@
     </ul>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const accountsDrawer = document.getElementById('accountsDrawer');
+    const entitiesDrawer = document.getElementById('entitiesDrawer');
+    const formContainer = document.querySelector('.container.py-4');
+    if (!formContainer) return;
+
+    if (accountsDrawer) {
+      accountsDrawer.addEventListener('shown.bs.offcanvas', () => {
+        formContainer.classList.add('form-offset-right');
+      });
+      accountsDrawer.addEventListener('hidden.bs.offcanvas', () => {
+        formContainer.classList.remove('form-offset-right');
+      });
+    }
+
+    if (entitiesDrawer) {
+      entitiesDrawer.addEventListener('shown.bs.offcanvas', () => {
+        formContainer.classList.add('form-offset-left');
+      });
+      entitiesDrawer.addEventListener('hidden.bs.offcanvas', () => {
+        formContainer.classList.remove('form-offset-left');
+      });
+    }
+  });
+</script>
