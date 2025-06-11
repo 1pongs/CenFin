@@ -28,11 +28,11 @@ footer {
   --bs-offcanvas-width: 300px;
 }
 .form-offset-left {
-  margin-left: 300px;
+  transform: translateX(300px);
   transition: margin-left 0.3s ease;
 }
 
 .form-offset-right {
-  margin-right: 300px;
+  transform: translateX(-300px);
   transition: margin-right 0.3s ease;
 }
