@@ -218,4 +218,4 @@ def pair_balance(request):
     )
 
     balance = inflow - outflow
-    return JsonResponse({"balance": str(balance)})
+    return JsonResponse({"balance": str(balance), "currency": "PHP"})

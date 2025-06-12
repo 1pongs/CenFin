@@ -1,32 +1,72 @@
-<div id="balance-summary" class="alert alert-info d-none mt-3"></div>
+<div id="balance-wrapper" class="mb-3 d-none">
+  <label for="balance-field" class="form-label">Balance</label>
+  <div class="d-flex align-items-center">
+    <input id="balance-field" type="text" class="form-control" readonly>
+    <div id="balance-spinner" class="spinner-border spinner-border-sm text-secondary ms-2 d-none" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+</div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const accField = document.getElementById('id_account_source');
     const entField = document.getElementById('id_entity_source');
-    const summary = document.getElementById('balance-summary');
+    const wrapper = document.getElementById('balance-wrapper');
+    const balanceInput = document.getElementById('balance-field');
+    const spinner = document.getElementById('balance-spinner');
 
-    async function update() {
-      const acc = accField && accField.value;
-      const ent = entField && entField.value;
-      if (acc && ent) {
-        try {
-          const resp = await fetch(`{% url 'transactions:pair_balance' %}?account=${acc}&entity=${ent}`);
-          if (resp.ok) {
-            const data = await resp.json();
-            summary.textContent = `Aggregate balance: ₱${parseFloat(data.balance).toFixed(2)}`;
-            summary.classList.remove('d-none');
-          }
-        } catch(err) {
-          console.error(err);
-        }
-      } else {
-        summary.classList.add('d-none');
+    function insertField() {
+      if (entField) {
+        entField.insertAdjacentElement('afterend', wrapper);
+      } else if (accField) {
+        accField.insertAdjacentElement('afterend', wrapper);
       }
     }
 
-    if (accField && entField) {
-      accField.addEventListener('change', update);
-      entField.addEventListener('change', update);
+    async function fetchBalance(acc, ent) {
+      spinner.classList.remove('d-none');
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const resp = await fetch(`{% url 'transactions:pair_balance' %}?account=${acc}&entity=${ent}`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (resp.ok) {
+          const data = await resp.json();
+          const amt = parseFloat(data.balance);
+          if (!isNaN(amt)) {
+            balanceInput.value = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            wrapper.classList.remove('d-none');
+          } else {
+            wrapper.classList.add('d-none');
+          }
+        } else {
+          wrapper.classList.add('d-none');
+          console.error('Balance fetch failed', resp.status);
+        }
+      } catch (err) {
+        wrapper.classList.add('d-none');
+        console.error(err);
+      } finally {
+        spinner.classList.add('d-none');
+      }
     }
+
+    function update() {
+      const acc = accField && accField.value;
+      const ent = entField && entField.value;
+      if (acc && ent) {
+        wrapper.classList.remove('d-none');
+        balanceInput.value = '';
+        fetchBalance(acc, ent);
+      } else {
+        wrapper.classList.add('d-none');
+        balanceInput.value = '';
+      }
+    }
+
+    insertField();
+
+    if (accField) accField.addEventListener('change', update);
+    if (entField) entField.addEventListener('change', update);
   });
 </script>
