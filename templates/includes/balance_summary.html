@@ -1,0 +1,32 @@
+<div id="balance-summary" class="alert alert-info d-none mt-3"></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const accField = document.getElementById('id_account_source');
+    const entField = document.getElementById('id_entity_source');
+    const summary = document.getElementById('balance-summary');
+
+    async function update() {
+      const acc = accField && accField.value;
+      const ent = entField && entField.value;
+      if (acc && ent) {
+        try {
+          const resp = await fetch(`{% url 'transactions:pair_balance' %}?account=${acc}&entity=${ent}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            summary.textContent = `Aggregate balance: ₱${parseFloat(data.balance).toFixed(2)}`;
+            summary.classList.remove('d-none');
+          }
+        } catch(err) {
+          console.error(err);
+        }
+      } else {
+        summary.classList.add('d-none');
+      }
+    }
+
+    if (accField && entField) {
+      accField.addEventListener('change', update);
+      entField.addEventListener('change', update);
+    }
+  });
+</script>

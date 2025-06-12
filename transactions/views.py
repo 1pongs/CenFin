@@ -2,18 +2,20 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, V
 from django.utils import timezone
 from datetime import timedelta
 
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse_lazy, reverse
-from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_GET
+from django.db.models import Sum
+from decimal import Decimal
 import json
 
 from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
 from accounts.models import Account
 from entities.models import Entity
-from cenfin_proj.utils import get_account_balances, get_entity_balances
+
 from .constants import TXN_TYPE_CHOICES
 
 # Create your views here.
@@ -117,8 +119,6 @@ class TransactionCreateView(CreateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
-        context['account_balances'] = get_account_balances()
-        context['entity_balances'] = get_entity_balances()
         return context
 
     def form_valid(self, form):
@@ -140,8 +140,6 @@ class TransactionUpdateView(UpdateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
-        context['account_balances'] = get_account_balances()
-        context['entity_balances'] = get_entity_balances()
         return context
 
     def form_valid(self, form):
@@ -193,3 +191,31 @@ class TemplateDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(request, "Template deleted.")
         return super().delete(request, *args, **kwargs)
+
+
+@require_GET
+def pair_balance(request):
+    """Return aggregate balance for a specific account and entity pair."""
+    account_id = request.GET.get("account")
+    entity_id = request.GET.get("entity")
+    if not account_id or not entity_id:
+        return JsonResponse({"error": "missing parameters"}, status=400)
+
+    inflow = (
+        Transaction.objects.filter(
+            account_destination_id=account_id,
+            entity_destination_id=entity_id,
+        ).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+
+    outflow = (
+        Transaction.objects.filter(
+            account_source_id=account_id,
+            entity_source_id=entity_id,
+        ).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+
+    balance = inflow - outflow
+    return JsonResponse({"balance": str(balance)})

@@ -22,18 +22,3 @@ footer {
 /* Prevent navigating to edit pages when in bulk mode */
 #transaction-table.bulk-mode td:not(.select-col) a { pointer-events: none; }
 #transaction-table.bulk-mode .clickable-row { cursor: default; }
-
-/* Narrower offcanvas drawers for account and entity lists */
-.drawer-short {
-  --bs-offcanvas-width: 300px;
-}
-
-.form-offset-left {
-  transform: translateX(300px);
-  transition: transform 0.3s ease;
-}
-
-.form-offset-right {
-  transform: translateX(-300px);
-  transition: transform 0.3s ease;
-}

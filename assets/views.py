@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
 from django.utils import timezone
-from cenfin_proj.utils import get_account_balances, get_entity_balances
+
 
 # Create your views here.
 
@@ -29,8 +29,6 @@ class AssetCreateView(FormView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["account_balances"] = get_account_balances()
-        ctx["entity_balances"] = get_entity_balances()
         return ctx
     
     def form_valid(self, form):
@@ -85,7 +83,5 @@ def sell_asset(request, pk):
     context = {
         "form": form,
         "asset": asset,
-        "account_balances": get_account_balances(),
-        "entity_balances": get_entity_balances(),
     }
     return render(request, "assets/asset_sell.html", context)
