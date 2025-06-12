@@ -1,7 +1,14 @@
-<div id="balance-wrapper" class="mb-3 d-flex align-items-center d-none">
+<div id="account-balance-wrapper" class="mb-3 d-flex align-items-center d-none">
   <label class="form-label me-2 mb-0">Balance:</label>
-  <span id="balance-field" style="display:inline-block"></span>
-  <div id="balance-spinner" class="spinner-border spinner-border-sm text-secondary ms-2 d-none" role="status">
+  <span id="account-balance-field" style="display:inline-block"></span>
+  <div id="account-balance-spinner" class="spinner-border spinner-border-sm text-secondary ms-2 d-none" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+</div>
+<div id="entity-balance-wrapper" class="mb-3 d-flex align-items-center d-none">
+  <label class="form-label me-2 mb-0">Balance:</label>
+  <span id="entity-balance-field" style="display:inline-block"></span>
+  <div id="entity-balance-spinner" class="spinner-border spinner-border-sm text-secondary ms-2 d-none" role="status">
     <span class="visually-hidden">Loading...</span>
   </div>
 </div>
@@ -9,20 +16,20 @@
   document.addEventListener('DOMContentLoaded', () => {
     const accField = document.getElementById('id_account_source');
     const entField = document.getElementById('id_entity_source');
-    const wrapper = document.getElementById('balance-wrapper');
-    const balanceField = document.getElementById('balance-field');
-    const spinner = document.getElementById('balance-spinner');
+    const accWrapper = document.getElementById('account-balance-wrapper');
+    const entWrapper = document.getElementById('entity-balance-wrapper');
+    const accBalanceField = document.getElementById('account-balance-field');
+    const entBalanceField = document.getElementById('entity-balance-field');
+    const accSpinner = document.getElementById('account-balance-spinner');
+    const entSpinner = document.getElementById('entity-balance-spinner');
 
-    function insertField() {
-      if (entField) {
-        entField.insertAdjacentElement('afterend', wrapper);
-      } else if (accField) {
-        accField.insertAdjacentElement('afterend', wrapper);
-      }
+     function insertFields() {
+      if (accField) accField.insertAdjacentElement('afterend', accWrapper);
+      if (entField) entField.insertAdjacentElement('afterend', entWrapper);
     }
-
     async function fetchBalance(acc, ent) {
-      spinner.classList.remove('d-none');
+      accSpinner.classList.remove('d-none');
+      entSpinner.classList.remove('d-none');
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
@@ -32,20 +39,27 @@
           const data = await resp.json();
           const amt = parseFloat(data.balance);
           if (!isNaN(amt)) {
-            balanceField.textContent = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            wrapper.classList.remove('d-none');
+            const text = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            accBalanceField.textContent = text;
+            entBalanceField.textContent = text;
+            accWrapper.classList.remove('d-none');
+            entWrapper.classList.remove('d-none');
           } else {
-            wrapper.classList.add('d-none');
+            accWrapper.classList.add('d-none');
+            entWrapper.classList.add('d-none');
           }
         } else {
-          wrapper.classList.add('d-none');
+          accWrapper.classList.add('d-none');
+          entWrapper.classList.add('d-none');
           console.error('Balance fetch failed', resp.status);
         }
       } catch (err) {
-        wrapper.classList.add('d-none');
+        accWrapper.classList.add('d-none');
+        entWrapper.classList.add('d-none');
         console.error(err);
       } finally {
-        spinner.classList.add('d-none');
+        accSpinner.classList.add('d-none');
+        entSpinner.classList.add('d-none');
       }
     }
 
@@ -53,17 +67,21 @@
       const acc = accField && accField.value;
       const ent = entField && entField.value;
       if (acc && ent) {
-        wrapper.classList.remove('d-none');
-        balanceField.textContent = '';
+        accWrapper.classList.remove('d-none');
+        entWrapper.classList.remove('d-none');
+        accBalanceField.textContent = '';
+        entBalanceField.textContent = '';
         fetchBalance(acc, ent);
       } else {
-        wrapper.classList.add('d-none');
-        balanceField.textContent = '';
+        accWrapper.classList.add('d-none');
+        entWrapper.classList.add('d-none');
+        accBalanceField.textContent = '';
+        entBalanceField.textContent = '';
       }
     }
 
-    insertField();
-    update(); // show balance when fields already have initial values
+    insertFields();
+    update();
     
     if (accField) accField.addEventListener('change', update);
     if (entField) entField.addEventListener('change', update);
