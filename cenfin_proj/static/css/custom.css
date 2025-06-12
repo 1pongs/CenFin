@@ -27,12 +27,13 @@ footer {
 .drawer-short {
   --bs-offcanvas-width: 300px;
 }
+
 .form-offset-left {
   transform: translateX(300px);
-  transition: margin-left 0.3s ease;
+  transition: transform 0.3s ease;
 }
 
 .form-offset-right {
   transform: translateX(-300px);
-  transition: margin-right 0.3s ease;
+  transition: transform 0.3s ease;
 }
