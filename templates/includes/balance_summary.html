@@ -27,63 +27,85 @@
       if (accField) accField.insertAdjacentElement('afterend', accWrapper);
       if (entField) entField.insertAdjacentElement('afterend', entWrapper);
     }
-    async function fetchBalance(acc, ent) {
+    async function fetchAccountBalance(acc) {
       accSpinner.classList.remove('d-none');
-      entSpinner.classList.remove('d-none');
+      accBalanceField.textContent = '';
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetch(`{% url 'transactions:pair_balance' %}?account=${acc}&entity=${ent}`, { signal: controller.signal });
+        const resp = await fetch(`/api/balance/account/${acc}/`, { signal: controller.signal });
         clearTimeout(timeout);
         if (resp.ok) {
           const data = await resp.json();
           const amt = parseFloat(data.balance);
           if (!isNaN(amt)) {
-            const text = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            accBalanceField.textContent = text;
-            entBalanceField.textContent = text;
+            accBalanceField.textContent = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             accWrapper.classList.remove('d-none');
-            entWrapper.classList.remove('d-none');
           } else {
             accWrapper.classList.add('d-none');
-            entWrapper.classList.add('d-none');
           }
         } else {
           accWrapper.classList.add('d-none');
-          entWrapper.classList.add('d-none');
-          console.error('Balance fetch failed', resp.status);
         }
       } catch (err) {
         accWrapper.classList.add('d-none');
-        entWrapper.classList.add('d-none');
-        console.error(err);
       } finally {
         accSpinner.classList.add('d-none');
+           }
+    }
+
+    async function fetchEntityBalance(ent) {
+      entSpinner.classList.remove('d-none');
+      entBalanceField.textContent = '';
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const resp = await fetch(`/api/balance/entity/${ent}/`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (resp.ok) {
+          const data = await resp.json();
+          const amt = parseFloat(data.balance);
+          if (!isNaN(amt)) {
+            entBalanceField.textContent = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            entWrapper.classList.remove('d-none');
+          } else {
+            entWrapper.classList.add('d-none');
+          }
+        } else {
+          entWrapper.classList.add('d-none');
+        }
+      } catch (err) {
+        entWrapper.classList.add('d-none');
+      } finally {
         entSpinner.classList.add('d-none');
       }
     }
 
-    function update() {
+     function updateAccount() {
       const acc = accField && accField.value;
-      const ent = entField && entField.value;
-      if (acc && ent) {
-        accWrapper.classList.remove('d-none');
-        entWrapper.classList.remove('d-none');
-        accBalanceField.textContent = '';
-        entBalanceField.textContent = '';
-        fetchBalance(acc, ent);
+      if (acc) {
+        fetchAccountBalance(acc);
       } else {
         accWrapper.classList.add('d-none');
-        entWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
+      }
+    }
+
+    function updateEntity() {
+      const ent = entField && entField.value;
+      if (ent) {
+        fetchEntityBalance(ent);
+      } else {
+        entWrapper.classList.add('d-none');
         entBalanceField.textContent = '';
       }
     }
 
     insertFields();
-    update();
-    
-    if (accField) accField.addEventListener('change', update);
-    if (entField) entField.addEventListener('change', update);
+    updateAccount();
+    updateEntity();
+
+    if (accField) accField.addEventListener('change', updateAccount);
+    if (entField) entField.addEventListener('change', updateEntity);
   });
   </script>

@@ -219,3 +219,37 @@ def pair_balance(request):
 
     balance = inflow - outflow
     return JsonResponse({"balance": str(balance), "currency": "PHP"})
+
+
+@require_GET
+def account_balance(request, pk):
+    """Return balance for a single account."""
+    inflow = (
+        Transaction.objects.filter(account_destination_id=pk)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    outflow = (
+        Transaction.objects.filter(account_source_id=pk)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    bal = inflow - outflow
+    return JsonResponse({"balance": str(bal), "currency": "PHP"})
+
+
+@require_GET
+def entity_balance(request, pk):
+    """Return balance for a single entity."""
+    inflow = (
+        Transaction.objects.filter(entity_destination_id=pk)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    outflow = (
+        Transaction.objects.filter(entity_source_id=pk)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    bal = inflow - outflow
+    return JsonResponse({"balance": str(bal), "currency": "PHP"})
