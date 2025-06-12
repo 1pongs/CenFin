@@ -135,7 +135,12 @@ class DashboardView(TemplateView):
             .order_by("month")
         )
 
-        month_map = {row["month"].date(): row for row in qs}
+        month_map = {}
+        for row in qs:
+            month_val = row["month"]
+            if hasattr(month_val, "date"):
+                month_val = month_val.date()
+            month_map[month_val] = row
 
         months = []
         y = start_date.year
