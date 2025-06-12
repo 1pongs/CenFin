@@ -19,32 +19,66 @@
   {% endfor %}
 </div>
 
-<h2 class="mt-5">Latest Transactions</h2>
-<table class="table table-striped table-sm align-middle">
-  <thead class="table-dark">
-  <tr>
-    <th>Date</th>
-    <th>Description</th>
-    <th>From</th>
-    <th>To</th>
-    <th class="text-end">Amount</th>
-  </tr>
-</thead>
+<h2 class="mt-5">Monthly Cash‑Flow vs Assets</h2>
+<canvas id="cashFlowAssetsChart" height="120"></canvas>
 
-<tbody>
-  {% for t in latest_tx %}
-    <tr>
-      <td>{{ t.date|date:"M d, Y" }}</td>
-      <td>{{ t.description }}</td>
-      <td>{{ t.account_source|default_if_none:"-" }}</td>
-      <td>{{ t.account_destination|default_if_none:"-" }}</td>
-      <td class="text-end">₱{{ t.amount|floatformat:2|intcomma }}</td>
-    </tr>
-  {% empty %}
-    <tr><td colspan="5" class="text-center py-4">No transactions yet.</td></tr>
-  {% endfor %}
-</tbody>
-
-</table>
+<h2 class="mt-5">Top 10 “Big‑Ticket” Entries (YTD)</h2>
+<canvas id="topEntriesChart" height="120"></canvas>
 {% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {{ monthly_summary|json_script:"monthly-summary-data" }}
+  {{ top10_entries|json_script:"top-entries-data" }}
+  <script>
+    const monthlySummary = JSON.parse(document.getElementById('monthly-summary-data').textContent);
+    const top10Entries = JSON.parse(document.getElementById('top-entries-data').textContent);
+    const ms = monthlySummary;
+    const labels1 = ms.map(r => r.month);
+    const income = ms.map(r => r.income);
+    const expenses = ms.map(r => -r.expenses);
+    const liquid = ms.map(r => r.liquid);
+    const nonLiquid = ms.map(r => r.non_liquid);
+    new Chart(document.getElementById('cashFlowAssetsChart'), {
+      data: {
+        labels: labels1,
+        datasets: [
+          {label:'Income', type:'bar', stack:'flow', data:income, backgroundColor:'rgba(25,135,84,0.7)'},
+          {label:'Expenses', type:'bar', stack:'flow', data:expenses, backgroundColor:'rgba(220,53,69,0.7)'},
+          {label:'Liquid', type:'line', data:liquid, borderColor:'orange', backgroundColor:'orange', yAxisID:'y1'},
+          {label:'Non-liquid', type:'line', data:nonLiquid, borderColor:'blue', backgroundColor:'blue', yAxisID:'y1'}
+        ]
+      },
+      options:{
+        responsive:true,
+        scales:{
+          x:{stacked:true},
+          y:{stacked:true, beginAtZero:true},
+          y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}}
+        }
+      }
+    });
+
+    const te = top10Entries;
+    const labels2 = te.map(r => r.description);
+    const amounts = te.map(r => r.amount);
+    const colors = te.map(r => {
+      if(r.type==='income') return 'rgba(25,135,84,0.7)';
+      if(r.type==='expense') return 'rgba(220,53,69,0.7)';
+      if(r.type==='non_liquid') return 'rgba(13,110,253,0.7)';
+      return 'gray';
+    });
+    new Chart(document.getElementById('topEntriesChart'), {
+      type:'bar',
+      data:{ labels:labels2, datasets:[{data:amounts, backgroundColor:colors}] },
+      options:{
+        indexAxis:'y',
+        scales:{ x:{beginAtZero:true} },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  </script>
+{% endblock %}
+
 
