@@ -174,7 +174,7 @@ class DashboardView(TemplateView):
         # Top 10 big-ticket transactions for the current year
         # ------------------------------------------------------
         year_start = date(today.year, 1, 1)
-        top_entries = (
+        top_entries_qs = (
             Transaction.objects.filter(date__gte=year_start)
             .annotate(abs_amount=Abs("amount"))
             .annotate(
@@ -187,8 +187,11 @@ class DashboardView(TemplateView):
                 )
             )
             .order_by("-abs_amount")[:10]
-            .values("description", amount=F("abs_amount"), type=F("entry_type"))
+            .values("description", "abs_amount", "entry_type")
         )
-        ctx["top10_entries"] = list(top_entries)
+        ctx["top10_entries"] = [
+            {"description": row["description"], "amount": row["abs_amount"], "type": row["entry_type"]}
+            for row in top_entries_qs
+        ]
 
         return ctx
