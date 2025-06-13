@@ -18,12 +18,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 from django.views.generic import TemplateView
-from dashboard.views import DashboardView
+from dashboard.views import DashboardView, MonthlyDataView
 from transactions import views as txn_api_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", DashboardView.as_view(), name="dashboard"),
+    path("dashboard/monthly-data/", MonthlyDataView.as_view(), name="monthly-data"),
     path('api/balance/account/<int:pk>/', txn_api_views.account_balance, name='api_account_balance'),
     path('api/balance/entity/<int:pk>/', txn_api_views.entity_balance, name='api_entity_balance'),
     path('transactions/', include('transactions.urls', namespace='transactions')),

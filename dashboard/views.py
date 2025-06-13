@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, View
 from django.db.models import (
     Sum,
     Case,
@@ -9,10 +9,14 @@ from django.db.models import (
     Value,
     CharField,
 )
-from django.db.models.functions import TruncMonth, Abs
+from django.db.models.functions import Abs
 from django.utils import timezone
 from datetime import date
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from transactions.models import Transaction
+from entities.models import Entity
+from cenfin_proj.utils import get_monthly_summary
 
 # Create your views here.
 
@@ -62,114 +66,10 @@ class DashboardView(TemplateView):
             ("Asset", "asset", "info"),
             ("Net Worth", "net",       "primary"),
         ]
-
-        # ------------------------------------------------------
-        # Monthly cash-flow summary (rolling 12 months)
-        # ------------------------------------------------------
+        ctx["monthly_summary"] = get_monthly_summary()
         today = timezone.now().date()
-        first_this_month = date(today.year, today.month, 1)
-        year = first_this_month.year
-        month = first_this_month.month
-        for _ in range(11):
-            month -= 1
-            if month == 0:
-                month = 12
-                year -= 1
-        start_date = date(year, month, 1)
-
-        initial = Transaction.objects.filter(date__lt=start_date).aggregate(
-            liquid=Sum(
-                Case(
-                    When(asset_type_destination="Liquid", then=F("amount")),
-                    When(asset_type_source="Liquid", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            non_liquid=Sum(
-                Case(
-                    When(asset_type_destination="Non-Liquid", then=F("amount")),
-                    When(asset_type_source="Non-Liquid", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-        )
-
-        qs = (
-            Transaction.objects.filter(date__gte=start_date)
-            .annotate(month=TruncMonth("date"))
-            .values("month")
-            .annotate(
-                income=Sum(
-                    Case(
-                        When(transaction_type_destination="Income", then=F("amount")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-                expenses=Sum(
-                    Case(
-                        When(transaction_type_source="Expense", then=F("amount")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-                liquid_delta=Sum(
-                    Case(
-                        When(asset_type_destination="Liquid", then=F("amount")),
-                        When(asset_type_source="Liquid", then=-F("amount")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-                non_liquid_delta=Sum(
-                    Case(
-                        When(asset_type_destination="Non-Liquid", then=F("amount")),
-                        When(asset_type_source="Non-Liquid", then=-F("amount")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-            )
-            .order_by("month")
-        )
-
-        month_map = {}
-        for row in qs:
-            month_val = row["month"]
-            if hasattr(month_val, "date"):
-                month_val = month_val.date()
-            month_map[month_val] = row
-
-        months = []
-        y = start_date.year
-        m = start_date.month
-        for _ in range(12):
-            months.append(date(y, m, 1))
-            m += 1
-            if m == 13:
-                m = 1
-                y += 1
-
-        liquid_bal = initial.get("liquid") or 0
-        non_liquid_bal = initial.get("non_liquid") or 0
-        summary = []
-        for d in months:
-            row = month_map.get(d, {})
-            income = row.get("income", 0) or 0
-            expenses = row.get("expenses", 0) or 0
-            liquid_bal += row.get("liquid_delta", 0) or 0
-            non_liquid_bal += row.get("non_liquid_delta", 0) or 0
-            summary.append({
-                "month": d.strftime("%b"),
-                "income": income,
-                "expenses": expenses,
-                "liquid": liquid_bal,
-                "non_liquid": non_liquid_bal,
-            })
-        ctx["monthly_summary"] = summary
-
+        
+        ctx["entities"] = Entity.objects.active().order_by("entity_name")
         # ------------------------------------------------------
         # Top 10 big-ticket transactions for the current year
         # ------------------------------------------------------
@@ -181,17 +81,30 @@ class DashboardView(TemplateView):
                 entry_type=Case(
                     When(transaction_type_destination="Income", then=Value("income")),
                     When(transaction_type_source="Expense", then=Value("expense")),
-                    When(asset_type_destination="Non-Liquid", then=Value("non_liquid")),
+                    When(asset_type_destination="Non-Liquid", then=Value("asset")),
                     default=Value("other"),
                     output_field=CharField(),
                 )
             )
             .order_by("-abs_amount")[:10]
             .values("description", "abs_amount", "entry_type")
+            .values(category=F("description"), amount=F("abs_amount"), type=F("entry_type"))
         )
-        ctx["top10_entries"] = [
-            {"description": row["description"], "amount": row["abs_amount"], "type": row["entry_type"]}
-            for row in top_entries_qs
-        ]
+        ctx["top10_big_tickets"] = list(top_entries_qs)
 
         return ctx
+
+class MonthlyDataView(LoginRequiredMixin, View):
+    """Return monthly summary JSON filtered by entity."""
+    def get(self, request, *args, **kwargs):
+        ent = request.GET.get("entity_id")
+        if ent and ent != "all":
+            try:
+                ent = int(ent)
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "invalid entity"}, status=400)
+        else:
+            ent = None
+        data = get_monthly_summary(ent)
+        return JsonResponse(data, safe=False)
+    

@@ -20,7 +20,21 @@
 </div>
 
 <h2 class="mt-5">Monthly Cash‑Flow vs Assets</h2>
-<canvas id="cashFlowAssetsChart" height="120"></canvas>
+<div class="mb-2" style="max-width:200px;">
+  <select id="entitySelector" class="form-select form-select-sm">
+    <option value="all">All entities</option>
+    {% for e in entities %}
+      <option value="{{ e.id }}">{{ e.entity_name }}</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="position-relative">
+  <div id="chartSpinner" class="position-absolute top-50 start-50 translate-middle d-none">
+    <div class="spinner-border text-secondary" role="status"></div>
+  </div>
+  <div id="noDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
+  <canvas id="cashFlowAssetsChart" height="120"></canvas>
+</div>
 
 <h2 class="mt-5">Top 10 “Big‑Ticket” Entries (YTD)</h2>
 <canvas id="topEntriesChart" height="120"></canvas>
@@ -30,55 +44,151 @@
   {{ block.super }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   {{ monthly_summary|json_script:"monthly-summary-data" }}
-  {{ top10_entries|json_script:"top-entries-data" }}
+  {{ top10_big_tickets|json_script:"top-big-data" }}
   <script>
     const monthlySummary = JSON.parse(document.getElementById('monthly-summary-data').textContent);
-    const top10Entries = JSON.parse(document.getElementById('top-entries-data').textContent);
-    const ms = monthlySummary;
-    const labels1 = ms.map(r => r.month);
-    const income = ms.map(r => r.income);
-    const expenses = ms.map(r => -r.expenses);
-    const liquid = ms.map(r => r.liquid);
-    const nonLiquid = ms.map(r => r.non_liquid);
-    new Chart(document.getElementById('cashFlowAssetsChart'), {
+    const bigTickets = JSON.parse(document.getElementById('top-big-data').textContent);
+
+    function formatPeso(val) {
+      return `\u20B1${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    const ctx1 = document.getElementById('cashFlowAssetsChart');
+    const flowChart = new Chart(ctx1, {
       data: {
-        labels: labels1,
+        labels: monthlySummary.map(r => r.month),
         datasets: [
-          {label:'Income', type:'bar', stack:'flow', data:income, backgroundColor:'rgba(25,135,84,0.7)'},
-          {label:'Expenses', type:'bar', stack:'flow', data:expenses, backgroundColor:'rgba(220,53,69,0.7)'},
-          {label:'Liquid', type:'line', data:liquid, borderColor:'orange', backgroundColor:'orange', yAxisID:'y1'},
-          {label:'Non-liquid', type:'line', data:nonLiquid, borderColor:'blue', backgroundColor:'blue', yAxisID:'y1'}
+        {label:'Income', type:'bar', stack:'flow', backgroundColor:'rgba(25,135,84,0.7)', data: monthlySummary.map(r => r.income)},
+          {label:'Expenses', type:'bar', stack:'flow', backgroundColor:'rgba(220,53,69,0.7)', data: monthlySummary.map(r => -r.expenses)},
+          {label:'Liquid', type:'line', yAxisID:'y1', borderColor:'orange', backgroundColor:'orange', data: monthlySummary.map(r => r.liquid)},
+          {label:'Non-liquid', type:'line', yAxisID:'y1', borderColor:'blue', backgroundColor:'blue', data: monthlySummary.map(r => r.non_liquid)}
         ]
       },
       options:{
         responsive:true,
+        interaction:{mode:'index', intersect:false},
         scales:{
           x:{stacked:true},
           y:{stacked:true, beginAtZero:true},
           y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}}
+        },
+        plugins:{
+          tooltip:{
+            callbacks:{ label:ctx=>`${ctx.dataset.label}: ${formatPeso(ctx.parsed.y)}` }
+          }
         }
       }
     });
 
-    const te = top10Entries;
-    const labels2 = te.map(r => r.description);
-    const amounts = te.map(r => r.amount);
-    const colors = te.map(r => {
-      if(r.type==='income') return 'rgba(25,135,84,0.7)';
-      if(r.type==='expense') return 'rgba(220,53,69,0.7)';
-      if(r.type==='non_liquid') return 'rgba(13,110,253,0.7)';
-      return 'gray';
-    });
-    new Chart(document.getElementById('topEntriesChart'), {
+    const verticalLine = {
+      id:'vline',
+      afterDraw(chart){
+        if(chart.tooltip?._active && chart.tooltip._active.length){
+          const ctx = chart.ctx;
+          const x = chart.tooltip._active[0].element.x;
+          const topY = chart.scales.y.top;
+          const bottomY = chart.scales.y.bottom;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    };
+    flowChart.config.plugins.push(verticalLine);
+
+    const ctx2 = document.getElementById('topEntriesChart');
+    const labelPlugin = {
+      id:'barLabel',
+      afterDatasetsDraw(chart){
+        const {ctx} = chart;
+        const ds = chart.getDatasetMeta(0);
+        ds.data.forEach((bar,i)=>{
+          const val = chart.data.datasets[0].data[i];
+          if(val!==null){
+            ctx.save();
+            ctx.fillStyle='#fff';
+            ctx.textAlign='right';
+            ctx.textBaseline='middle';
+            ctx.font='12px sans-serif';
+            ctx.fillText(formatPeso(val), bar.x-4, bar.y);
+            ctx.restore();
+          }
+        });
+      }
+    };
+
+    const ticketChart = new Chart(ctx2, {
       type:'bar',
-      data:{ labels:labels2, datasets:[{data:amounts, backgroundColor:colors}] },
+      data:{
+        labels: bigTickets.map(r => r.category),
+        datasets:[{
+          data: bigTickets.map(r => r.amount),
+          backgroundColor: bigTickets.map(r => {
+            if(r.type==='income') return 'rgba(25,135,84,0.7)';
+            if(r.type==='expense') return 'rgba(220,53,69,0.7)';
+            if(r.type==='asset') return 'rgba(13,110,253,0.7)';
+            return 'gray';
+          })
+        }]
+      },
       options:{
+        responsive:true,
         indexAxis:'y',
         scales:{ x:{beginAtZero:true} },
-        plugins:{ legend:{display:false} }
+        plugins:{
+          legend:{display:false},
+          tooltip:{ callbacks:{ label:ctx=>`${ctx.label}: ${formatPeso(ctx.parsed.x)}` } }
+        }
+      },
+      plugins:[labelPlugin]
+    });
+
+    const selector = document.getElementById('entitySelector');
+    const spinner = document.getElementById('chartSpinner');
+    const noData = document.getElementById('noDataMsg');
+    const monthlyUrl = "{% url 'monthly-data' %}";
+
+    function getCookie(name){
+      const v = document.cookie.match('(^|;)\\s*'+name+'=([^;]*)');
+      return v ? v.pop() : '';
+    }
+
+    async function loadMonthly(ent){
+      spinner.classList.remove('d-none');
+      try{
+        const resp = await fetch(`${monthlyUrl}?entity_id=${ent}`, {
+          headers:{'X-CSRFToken': getCookie('csrftoken')},
+          credentials:'same-origin'
+        });
+        if(resp.ok){
+          const data = await resp.json();
+          if(data.length===0){
+            flowChart.data.labels=[];
+            flowChart.data.datasets.forEach(d=>d.data=[]);
+            noData.classList.remove('d-none');
+          }else{
+            noData.classList.add('d-none');
+            flowChart.data.labels=data.map(r=>r.month);
+            flowChart.data.datasets[0].data=data.map(r=>r.income);
+            flowChart.data.datasets[1].data=data.map(r=>-r.expenses);
+            flowChart.data.datasets[2].data=data.map(r=>r.liquid);
+            flowChart.data.datasets[3].data=data.map(r=>r.non_liquid);
+          }
+          flowChart.update();
+        }
+      }catch(err){
+        console.error(err);
+      }finally{
+        spinner.classList.add('d-none');
       }
+    }
+
+    selector.addEventListener('change', e=>{
+      loadMonthly(e.target.value);
     });
   </script>
 {% endblock %}
-
-
