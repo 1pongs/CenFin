@@ -15,6 +15,8 @@
             {{ form|crispy }}
             <div class="d-grid mt-3">
               <button type="submit" class="btn btn-primary">Log In</button>
+              <span class="text-muted">Don’t have an account? </span>
+              <a href="{% url 'users:register' %}" class="fw-semibold">Register</a>
             </div>
           </form>
         </div>

@@ -18,7 +18,7 @@ from transactions.models import Transaction
 def account_list(request):
     qs = (
         Account.objects.active()
-        .filter(user=request.user)
+        .filter(user=request.user, is_visible=True)
         .annotate(
             dest_total=Coalesce(
                 Sum("transaction_as_destination__amount"),

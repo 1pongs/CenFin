@@ -20,7 +20,11 @@ def get_entity_aggregate_rows(user):
     """Return combined entity totals from both source and destination for a user."""
     # 1️⃣ From destination side (inflows)
     dest = (
-        Transaction.objects.filter(user=user, entity_destination__is_active=True)
+        Transaction.objects.filter(
+            user=user,
+            entity_destination__is_active=True,
+            entity_destination__is_visible=True,
+        )
         .values(
             "entity_destination_id",
             "entity_destination__entity_name",
@@ -74,7 +78,11 @@ def get_entity_aggregate_rows(user):
 
     # 2️⃣ From source side (outflows)
     src = (
-        Transaction.objects.filter(user=user, entity_source__is_active=True)
+        Transaction.objects.filter(
+            user=user,
+            entity_source__is_active=True,
+            entity_source__is_visible=True,
+        )
         .values(
             "entity_source_id",
             "entity_source__entity_name",
@@ -163,7 +171,7 @@ def get_entity_aggregate_rows(user):
         data["total_non_liquid"] += row.get("total_non_liquid", 0)
 
         # 4️⃣ Ensure all active entities are represented even with zero totals
-    for ent in Entity.objects.active().filter(user=user):
+    for ent in Entity.objects.active().filter(user=user, is_visible=True):
         entry = results.setdefault(
             ent.pk,
             {

@@ -56,7 +56,7 @@
     {% for e in entities %}
       <tr class="clickable-row" data-href="{% url 'entities:detail' e.the_entity_id %}">
         <td>{{ e.the_name }}</td>
-        <td>{{ e.the_type }}</td>
+        <td>{{ e.the_type|title }}</td>
         <td class="text-end">{{ e.total_transfer|floatformat:0|intcomma }}</td>
         <td class="text-end">{{ e.total_asset|floatformat:0|intcomma }}</td>
         <td class="text-end">{{ e.total_income|floatformat:0|intcomma }}</td>

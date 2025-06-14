@@ -12,11 +12,12 @@ class Account(models.Model):
         ('Banks', 'Banks'),
         ('E-Wallet', 'E-Wallet'),
         ('Cash','Cash-on-Hand'),
-        ('Others','Others'),
+        ('Outside','Outside'),
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)
     is_active = models.BooleanField(default=True)
+    is_visible = models.BooleanField(default=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
 
     objects=AccountQuerySet.as_manager()
