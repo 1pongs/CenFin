@@ -128,7 +128,6 @@ class TransactionCreateView(CreateView):
         context['templates_json'] = json.dumps(templates_json_dict)
         context['quick_account_form'] = AccountForm(show_actions=False)
         context['quick_entity_form'] = EntityForm(show_actions=False)
-        context['quick_template_form'] = TemplateForm(user=self.request.user, show_actions=False)
         return context
 
     def form_valid(self, form):
@@ -193,6 +192,12 @@ class TemplateCreateView(TemplateDropdownMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         return kwargs
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['quick_account_form'] = AccountForm(show_actions=False)
+        ctx['quick_entity_form'] = EntityForm(show_actions=False)
+        return ctx
 
     def form_valid(self, form):
         form.instance.user = self.request.user
@@ -210,6 +215,12 @@ class TemplateUpdateView(TemplateDropdownMixin, UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         return kwargs
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['quick_account_form'] = AccountForm(show_actions=False)
+        ctx['quick_entity_form'] = EntityForm(show_actions=False)
+        return ctx
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user)

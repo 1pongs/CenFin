@@ -10,7 +10,9 @@ from .models import Asset
 from .forms import AssetForm, SellAssetForm
 from transactions.models import Transaction
 from accounts.models import Account
+from accounts.forms import AccountForm
 from entities.models import Entity
+from entities.forms import EntityForm
 
 
 class AssetListView(TemplateView):
@@ -34,6 +36,8 @@ class AssetCreateView(FormView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx['quick_account_form'] = AccountForm(show_actions=False)
+        ctx['quick_entity_form'] = EntityForm(show_actions=False)
         return ctx
     
     def form_valid(self, form):

@@ -61,7 +61,7 @@ class DashboardView(TemplateView):
         aggregates["expenses"] = expenses
         aggregates["liquid"] = liquid
         aggregates["asset"] = asset
-        aggregates["net"] = income - expenses + liquid + asset
+        aggregates["net"] = income - expenses + asset
 
         ctx["totals"] = aggregates
 
