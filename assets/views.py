@@ -18,7 +18,7 @@ class AssetListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["assets"] = Asset.objects.select_related("purchase_tx", "sell_tx")
+        ctx["assets"] = Asset.objects.select_related("purchase_tx", "sell_tx").filter(user=self.request.user)
         return ctx
 
 
@@ -27,6 +27,11 @@ class AssetCreateView(FormView):
     form_class = AssetForm
     success_url = reverse_lazy("assets:list")
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         return ctx
@@ -34,6 +39,7 @@ class AssetCreateView(FormView):
     def form_valid(self, form):
         data = form.cleaned_data
         tx = Transaction.objects.create(
+            user=self.request.user,
             date=data["date"],
             description=data["name"],
             transaction_type="buy asset",
@@ -44,19 +50,20 @@ class AssetCreateView(FormView):
             entity_destination=data["entity_destination"],
             remarks=data["remarks"],
         )
-        Asset.objects.create(name=data["name"], purchase_tx=tx)
+        Asset.objects.create(name=data["name"], purchase_tx=tx, user=self.request.user)
         return super().form_valid(form)
 
 
 def sell_asset(request, pk):
-    asset = get_object_or_404(Asset, pk=pk)
+    asset = get_object_or_404(Asset, pk=pk, user=request.user)
     if request.method == "POST":
-        form = SellAssetForm(request.POST)
+        form = SellAssetForm(request.POST, user=request.user)
         if form.is_valid():
             data = form.cleaned_data
             buy_tx = asset.purchase_tx
             diff = data["sale_price"] - (buy_tx.amount or 0)
             sell_tx = Transaction.objects.create(
+                user=request.user,
                 date=data["date"],
                 description=f"Sell {asset.name}",
                 transaction_type="sell asset",
@@ -79,7 +86,7 @@ def sell_asset(request, pk):
             "entity_source": asset.purchase_tx.entity_destination_id,
             "entity_destination": asset.purchase_tx.entity_source_id,
         }
-        form = SellAssetForm(initial=initial)
+        form = SellAssetForm(initial=initial, user=request.user)
     context = {
         "form": form,
         "asset": asset,

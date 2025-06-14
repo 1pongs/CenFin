@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 
@@ -16,6 +17,7 @@ class Account(models.Model):
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)
     is_active = models.BooleanField(default=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
 
     objects=AccountQuerySet.as_manager()
 

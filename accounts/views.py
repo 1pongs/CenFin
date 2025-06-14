@@ -14,7 +14,7 @@ from transactions.models import Transaction
 
 def account_list(request):
     qs = (
-    Account.objects.active()
+    Account.objects.active().filter(user=request.user)
         .annotate(
             dest_total=Coalesce(
                 Sum("transaction_as_destination__amount"),
@@ -58,3 +58,7 @@ class AccountCreateView(CreateView):
     form_class = AccountForm
     template_name = "accounts/account_form.html"
     success_url = reverse_lazy("accounts:list")
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)

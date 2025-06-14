@@ -12,11 +12,11 @@ from transactions.models import Transaction
 # ---------------------------------------------------------------------------
 # Helper: aggregate_totals
 # ---------------------------------------------------------------------------
-def get_entity_aggregate_rows():
-    """Return combined entity totals from both source and destination."""
+def get_entity_aggregate_rows(user):
+    """Return combined entity totals from both source and destination for a user."""
     # 1️⃣ From destination side (inflows)
     dest = (
-        Transaction.objects
+        Transaction.objects.filter(user=user)
         .values(
             "entity_destination_id",
             "entity_destination__entity_name",
@@ -46,7 +46,7 @@ def get_entity_aggregate_rows():
 
     # 2️⃣ From source side (outflows)
     src = (
-        Transaction.objects
+        Transaction.objects.filter(user=user)
         .values(
             "entity_source_id",
             "entity_source__entity_name",
@@ -111,7 +111,7 @@ class EntityListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["entities"] = sorted(get_entity_aggregate_rows(), key=lambda x: x["the_name"])
+        ctx["entities"] = sorted(get_entity_aggregate_rows(self.request.user), key=lambda x: x["the_name"])
         return ctx
 
 # ---------------------------------------------------------------------------
@@ -125,18 +125,18 @@ class EntityAccountDetailView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         entity_pk = self.kwargs["pk"]
 
-        entity = get_object_or_404(Entity, pk=entity_pk)
+        entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
         ctx["entity"] = entity
 
         # incoming per account
         inflow = (
-            Transaction.objects.filter(entity_destination_id=entity_pk)
+            Transaction.objects.filter(user=self.request.user, entity_destination_id=entity_pk)
             .values("account_destination_id", "account_destination__account_name")
             .annotate(total_in=Sum("amount"))
         )
         # outgoing per account
         outflow = (
-            Transaction.objects.filter(entity_source_id=entity_pk)
+            Transaction.objects.filter(user=self.request.user, entity_source_id=entity_pk)
             .values("account_source_id", "account_source__account_name")
             .annotate(total_out=Sum("amount"))
         )
@@ -159,7 +159,7 @@ class EntityAccountDetailView(TemplateView):
         ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
         ctx["total_balance"] = sum(b["balance"] for b in balances.values())
 
-        rows = get_entity_aggregate_rows()
+        rows = get_entity_aggregate_rows(self.request.user)
         ctx["totals"] = next((row for row in rows if row["the_entity_id"] == entity_pk), None)
 
         return ctx
@@ -170,3 +170,7 @@ class EntityCreateView(CreateView):
     form_class = EntityForm
     template_name = "entities/entity_form.html"
     success_url = reverse_lazy("entities:list")
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)

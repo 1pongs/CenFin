@@ -36,7 +36,15 @@ class TransactionForm(forms.ModelForm):
         
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        if user is not None:
+            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
+            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
+            self.fields['template'].queryset = TransactionTemplate.objects.filter(user=user)
 
         for n in self._must_fill:
             self.fields[n].required = True
@@ -126,7 +134,14 @@ class TemplateForm(forms.ModelForm):
         ]
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        if user is not None:
+            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
+            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
 
         if self.instance and self.instance.autopop_map:
             for field_name, value in self.instance.autopop_map.items():

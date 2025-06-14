@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 from accounts.models import Account
 from entities.models import Entity
 from django.db.models import JSONField
@@ -11,6 +12,7 @@ from .constants import transaction_type_TX_MAP
 class TransactionTemplate(models.Model):
     name = models.CharField(max_length=60, unique=True)
     autopop_map = models.JSONField(default=dict, blank=True, null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transaction_templates", null=True)
 
     def __str__(self):
         return self.name
@@ -21,6 +23,7 @@ class Transaction(models.Model):
         null=True, blank=True,
         on_delete=models.SET_NULL,
     )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transactions", null=True)
     
     TRANSACTION_TYPE_CHOICES = [
         ('income', 'Income'),

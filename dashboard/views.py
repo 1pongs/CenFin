@@ -27,7 +27,7 @@ class DashboardView(TemplateView):
         ctx = super().get_context_data(**kwargs)
 
         # aggregate money-in / money-out / net worth
-        aggregates = Transaction.objects.aggregate(
+        aggregates = Transaction.objects.filter(user=self.request.user).aggregate(
             income=Sum(
                 Case(When(transaction_type_destination="Income",
                           then=F("amount")),
@@ -66,16 +66,16 @@ class DashboardView(TemplateView):
             ("Asset", "asset", "info"),
             ("Net Worth", "net",       "primary"),
         ]
-        ctx["monthly_summary"] = get_monthly_summary()
+        ctx["monthly_summary"] = get_monthly_summary(user=self.request.user)
         today = timezone.now().date()
         
-        ctx["entities"] = Entity.objects.active().order_by("entity_name")
+        ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
         # ------------------------------------------------------
         # Top 10 big-ticket transactions for the current year
         # ------------------------------------------------------
         year_start = date(today.year, 1, 1)
         top_entries_qs = (
-            Transaction.objects.filter(date__gte=year_start)
+            Transaction.objects.filter(user=self.request.user, date__gte=year_start)
             .annotate(abs_amount=Abs("amount"))
             .annotate(
                 entry_type=Case(
@@ -105,7 +105,7 @@ class MonthlyDataView(View):
                 return JsonResponse({"error": "invalid entity"}, status=400)
         else:
             ent = None
-        data = get_monthly_summary(ent)
+        data = get_monthly_summary(ent, user=request.user)
         return JsonResponse(data, safe=False)
     
 
@@ -128,6 +128,6 @@ class MonthlyChartDataView(View):
         except (TypeError, ValueError):
             months = 12
 
-        data = get_monthly_cash_flow(ent, months, drop_empty=True)
+        data = get_monthly_cash_flow(ent, months, drop_empty=True, user=request.user)
         return JsonResponse(data, safe=False)
     

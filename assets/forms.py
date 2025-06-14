@@ -18,6 +18,13 @@ class AssetForm(forms.Form):
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
+            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -70,7 +77,13 @@ class SellAssetForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
+            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
+            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 
@@ -20,6 +21,7 @@ class Entity(models.Model):
     entity_name = models.CharField(max_length=100)
     entity_type = models.CharField(max_length=50, choices=entities_type_choices)
     is_active=models.BooleanField(default=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entities", null=True)
 
     objects=EntityQuerySet.as_manager()
 

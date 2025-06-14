@@ -48,14 +48,17 @@ def get_entity_balances():
     )
 
 
-def get_monthly_cash_flow(entity_id=None, months=12, drop_empty=False):
-    """Return rolling cash-flow data for the given months."""
+def get_monthly_cash_flow(entity_id=None, months=12, drop_empty=False, user=None):
+    """Return rolling cash-flow data for the given months filtered by user."""
     if months not in {3, 6, 12}:
         months = 12
 
     q = Q()
     if entity_id:
         q = Q(entity_source_id=entity_id) | Q(entity_destination_id=entity_id)
+    if user is not None:
+        q &= Q(user=user)
+    if entity_id:
         if not Transaction.objects.filter(q).exists():
             return []
 
@@ -162,8 +165,8 @@ def get_monthly_cash_flow(entity_id=None, months=12, drop_empty=False):
     return summary
 
 
-def get_monthly_summary(entity_id=None):
-    """Return rolling 12 month cash-flow summary optionally filtered by entity."""
+def get_monthly_summary(entity_id=None, user=None):
+    """Return rolling 12 month cash-flow summary optionally filtered by entity and user."""
     from django.db.models import Q
     from django.db.models.functions import TruncMonth
     from django.utils import timezone
@@ -184,6 +187,9 @@ def get_monthly_summary(entity_id=None):
     q = Q()
     if entity_id:
         q = Q(entity_source_id=entity_id) | Q(entity_destination_id=entity_id)
+    if user is not None:
+        q &= Q(user=user)
+    if entity_id:
         if not Transaction.objects.filter(q).exists():
             return []
 
