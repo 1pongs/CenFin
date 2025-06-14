@@ -88,7 +88,7 @@ WSGI_APPLICATION = 'cenfin_proj.wsgi.application'
 
 import sys
 
-if any("pytest" in arg for arg in sys.argv):
+if any(arg in ('pytest', 'test') for arg in sys.argv):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
