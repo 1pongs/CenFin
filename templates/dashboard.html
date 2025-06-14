@@ -20,12 +20,17 @@
 </div>
 
 <h2 class="mt-5">Monthly Cash‑Flow vs Assets</h2>
-<div class="mb-2" style="max-width:200px;">
-  <select id="entitySelector" class="form-select form-select-sm">
+<div class="d-flex gap-2 mb-2" style="max-width:420px;">
+  <select id="entitySelect" class="form-select form-select-sm">
     <option value="all">All entities</option>
     {% for e in entities %}
       <option value="{{ e.id }}">{{ e.entity_name }}</option>
     {% endfor %}
+  </select>
+  <select id="monthSelect" class="form-select form-select-sm">
+    <option value="12">12 months</option>
+    <option value="6">6 months</option>
+    <option value="3">3 months</option>
   </select>
 </div>
 <div class="position-relative">
@@ -147,24 +152,25 @@
       plugins:[labelPlugin]
     });
 
-    const selector = document.getElementById('entitySelector');
-    const spinner = document.getElementById('chartSpinner');
-    const noData = document.getElementById('noDataMsg');
-    const monthlyUrl = "{% url 'monthly-data' %}";
+  const entitySel = document.getElementById('entitySelect');
+  const monthSel = document.getElementById('monthSelect');
+  const spinner = document.getElementById('chartSpinner');
+  const noData = document.getElementById('noDataMsg');
+  const monthlyUrl = "{% url 'chart-monthly' %}";
 
     function getCookie(name){
       const v = document.cookie.match('(^|;)\\s*'+name+'=([^;]*)');
       return v ? v.pop() : '';
     }
 
-    async function loadMonthly(ent){
-      spinner.classList.remove('d-none');
-      try{
-        const resp = await fetch(`${monthlyUrl}?entity_id=${ent}`, {
-          headers:{'X-CSRFToken': getCookie('csrftoken')},
-          credentials:'same-origin'
+    async function loadMonthly(ent, months){
+    spinner.classList.remove('d-none');
+    try{
+        const resp = await fetch(`${monthlyUrl}?entity=${ent}&months=${months}`, {
+            headers:{'X-CSRFToken': getCookie('csrftoken')},
+            credentials:'same-origin'
         });
-        if(resp.ok){
+          if(resp.ok){
           const data = await resp.json();
           if(data.length===0){
             flowChart.data.labels=[];
@@ -185,10 +191,15 @@
       }finally{
         spinner.classList.add('d-none');
       }
-    }
+  }
 
-    selector.addEventListener('change', e=>{
-      loadMonthly(e.target.value);
+    entitySel.addEventListener('change', () => {
+      loadMonthly(entitySel.value, monthSel.value);
     });
+    monthSel.addEventListener('change', () => {
+      loadMonthly(entitySel.value, monthSel.value);
+    });
+
+    loadMonthly(entitySel.value, monthSel.value);
   </script>
 {% endblock %}

@@ -16,7 +16,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from transactions.models import Transaction
 from entities.models import Entity
-from cenfin_proj.utils import get_monthly_summary
+from cenfin_proj.utils import get_monthly_summary, get_monthly_cash_flow
 
 # Create your views here.
 
@@ -106,5 +106,28 @@ class MonthlyDataView(LoginRequiredMixin, View):
         else:
             ent = None
         data = get_monthly_summary(ent)
+        return JsonResponse(data, safe=False)
+    
+
+class MonthlyChartDataView(LoginRequiredMixin, View):
+    """Return monthly chart data filtered by entity and months."""
+
+    def get(self, request, *args, **kwargs):
+        ent = request.GET.get("entity")
+        months = request.GET.get("months")
+        if ent and ent != "all":
+            try:
+                ent = int(ent)
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "invalid entity"}, status=400)
+        else:
+            ent = None
+
+        try:
+            months = int(months)
+        except (TypeError, ValueError):
+            months = 12
+
+        data = get_monthly_cash_flow(ent, months, drop_empty=True)
         return JsonResponse(data, safe=False)
     
