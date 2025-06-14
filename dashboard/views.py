@@ -13,6 +13,7 @@ from django.db.models.functions import Abs
 from django.utils import timezone
 from datetime import date
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView
 from django.http import JsonResponse
 from transactions.models import Transaction
 from entities.models import Entity
@@ -131,3 +132,7 @@ class MonthlyChartDataView(LoginRequiredMixin, View):
         data = get_monthly_cash_flow(ent, months, drop_empty=True)
         return JsonResponse(data, safe=False)
     
+
+class UserLoginView(LoginView):
+    template_name = "registration/login.html"
+    redirect_authenticated_user = True
