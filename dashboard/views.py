@@ -53,9 +53,15 @@ class DashboardView(TemplateView):
                      output_field=DecimalField())
             ),
         )
-        aggregates["net"] = (
-            aggregates["income"] - aggregates["expenses"] + aggregates["liquid"] + aggregates["asset"]
-        )
+        income = aggregates.get("income") or 0
+        expenses = aggregates.get("expenses") or 0
+        liquid = aggregates.get("liquid") or 0
+        asset = aggregates.get("asset") or 0
+        aggregates["income"] = income
+        aggregates["expenses"] = expenses
+        aggregates["liquid"] = liquid
+        aggregates["asset"] = asset
+        aggregates["net"] = income - expenses + liquid + asset
 
         ctx["totals"] = aggregates
 

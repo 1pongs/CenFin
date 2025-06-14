@@ -6,6 +6,7 @@ from django.utils import timezone
 from accounts.models import Account
 from entities.models import Entity
 from transactions.models import Transaction
+from django.contrib.auth import get_user_model
 from .models import Asset
 
 # Create your tests here.
@@ -20,10 +21,13 @@ from .models import Asset
 )
 class AssetTransactionAmountTest(TestCase):
     def setUp(self):
-        self.acc_src = Account.objects.create(account_name="Cash", account_type="Cash")
-        self.acc_dest = Account.objects.create(account_name="AssetAcc", account_type="Others")
-        self.ent_src = Entity.objects.create(entity_name="Me", entity_type="outside")
-        self.ent_dest = Entity.objects.create(entity_name="Vendor", entity_type="outside")
+        User = get_user_model()
+        self.user = User.objects.create_user(username="tester", password="pass")
+        self.client.force_login(self.user)
+        self.acc_src = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.acc_dest = Account.objects.create(account_name="AssetAcc", account_type="Others", user=self.user)
+        self.ent_src = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.ent_dest = Entity.objects.create(entity_name="Vendor", entity_type="outside", user=self.user)
 
         self.buy_tx = Transaction.objects.create(
             date=timezone.now().date(),
@@ -34,8 +38,9 @@ class AssetTransactionAmountTest(TestCase):
             account_destination=self.acc_dest,
             entity_source=self.ent_src,
             entity_destination=self.ent_dest,
+            user=self.user,
         )
-        self.asset = Asset.objects.create(name="Piglet", purchase_tx=self.buy_tx)
+        self.asset = Asset.objects.create(name="Piglet", purchase_tx=self.buy_tx, user=self.user)
 
     def test_sell_transaction_amount_is_difference(self):
         response = self.client.post(

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Archived Entities · CENFIN{% endblock %}
+{% block content %}
+<h1 class="mb-4">Archived Entities</h1>
+{% for e in entities %}
+  <div class="card shadow-sm rounded-lg mb-3 p-3">
+    <div class="d-flex align-items-center">
+      <div class="flex-grow-1">
+        <div class="fw-semibold">{{ e.entity_name }}</div>
+        <small class="text-muted">{{ e.entity_type }}</small>
+      </div>
+      <form method="post" action="{% url 'entities:restore' e.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-primary">Restore</button>
+      </form>
+    </div>
+  </div>
+{% empty %}
+  <p>No archived entities.</p>
+{% endfor %}
+{% endblock %}

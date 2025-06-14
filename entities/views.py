@@ -1,6 +1,8 @@
-from django.shortcuts import get_object_or_404
-from django.views.generic import TemplateView, CreateView
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, View
+from django.urls import reverse_lazy, reverse
+from django.contrib import messages
+
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField
 from collections import defaultdict
 
@@ -16,107 +18,166 @@ def get_entity_aggregate_rows(user):
     """Return combined entity totals from both source and destination for a user."""
     # 1️⃣ From destination side (inflows)
     dest = (
-        Transaction.objects.filter(user=user)
+        Transaction.objects.filter(user=user, entity_destination__is_active=True)
         .values(
             "entity_destination_id",
             "entity_destination__entity_name",
-            "entity_destination__entity_type"
+            "entity_destination__entity_type",
         )
         .annotate(
             total_income=Sum(
-                Case(When(transaction_type_destination="Income", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_destination="Income", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_expenses=Sum(
-                Case(When(transaction_type_destination="Expense", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_destination="Expense", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_transfer=Sum(
-                Case(When(transaction_type_destination="Transfer", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_destination="Transfer", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_asset=Sum(
-                Case(When(transaction_type_destination="Buy Asset", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_destination="Buy Asset", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_liquid=Sum(
-                Case(When(asset_type_destination="Liquid", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(asset_type_destination="Liquid", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_non_liquid=Sum(
-                Case(When(asset_type_destination="Non-Liquid", then=F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(asset_type_destination="Non-Liquid", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
         )
     )
 
     # 2️⃣ From source side (outflows)
     src = (
-        Transaction.objects.filter(user=user)
+        Transaction.objects.filter(user=user, entity_source__is_active=True)
         .values(
             "entity_source_id",
             "entity_source__entity_name",
-            "entity_source__entity_type"
+            "entity_source__entity_type",
         )
         .annotate(
             total_income=Sum(
-                Case(When(transaction_type_source="Income", then=-F("amount")), default=0, output_field=DecimalField())
+                 Case(
+                    When(transaction_type_source="Income", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_expenses=Sum(
-                Case(When(transaction_type_source="Expense", then=-F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_source="Expense", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_transfer=Sum(
-                Case(When(transaction_type_source="Transfer", then=-F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_source="Transfer", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_asset=Sum(
-                Case(When(transaction_type_source="Sell Asset", then=-F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(transaction_type_source="Sell Asset", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_liquid=Sum(
-                Case(When(asset_type_source="Liquid", then=-F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(asset_type_source="Liquid", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
             total_non_liquid=Sum(
-                Case(When(asset_type_source="Non-Liquid", then=-F("amount")), default=0, output_field=DecimalField())
+                Case(
+                    When(asset_type_source="Non-Liquid", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
             ),
         )
     )
 
     # 3️⃣ Merge both using a defaultdict
-    results = defaultdict(lambda: {
-        "the_entity_id": None,
-        "the_name": "",
-        "the_type": "",
-        "total_income": 0,
-        "total_expenses": 0,
-        "total_transfer": 0,
-        "total_asset": 0,
-        "total_liquid": 0,
-        "total_non_liquid": 0,
-    })
+    results = defaultdict(
+        lambda: {
+            "the_entity_id": None,
+            "the_name": "",
+            "the_type": "",
+            "total_income": 0,
+            "total_expenses": 0,
+            "total_transfer": 0,
+            "total_asset": 0,
+            "total_liquid": 0,
+            "total_non_liquid": 0,
+        }
+    )
 
     for row in list(dest) + list(src):
         id_key = row.get("entity_destination_id") or row.get("entity_source_id")
-        name = row.get("entity_destination__entity_name") or row.get("entity_source__entity_name")
-        typ = row.get("entity_destination__entity_type") or row.get("entity_source__entity_type")
+        name = row.get("entity_destination__entity_name") or row.get(
+            "entity_source__entity_name"
+        )
+        typ = row.get("entity_destination__entity_type") or row.get(
+            "entity_source__entity_type"
+        )
 
         data = results[id_key]
         data["the_entity_id"] = id_key
         data["the_name"] = name
         data["the_type"] = typ
 
-        data["total_income"]       += row.get("total_income", 0)
-        data["total_expenses"]     += row.get("total_expenses", 0)
-        data["total_transfer"]     += row.get("total_transfer", 0)
-        data["total_asset"]        += row.get("total_asset", 0)
-        data["total_liquid"]       += row.get("total_liquid", 0)
-        data["total_non_liquid"]   += row.get("total_non_liquid", 0)
+        data["total_income"] += row.get("total_income", 0)
+        data["total_expenses"] += row.get("total_expenses", 0)
+        data["total_transfer"] += row.get("total_transfer", 0)
+        data["total_asset"] += row.get("total_asset", 0)
+        data["total_liquid"] += row.get("total_liquid", 0)
+        data["total_non_liquid"] += row.get("total_non_liquid", 0)
 
     return list(results.values())
+
 
 class EntityListView(TemplateView):
     template_name = "entities/entity_list.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["entities"] = sorted(get_entity_aggregate_rows(self.request.user), key=lambda x: x["the_name"])
+        ctx["entities"] = sorted(
+            get_entity_aggregate_rows(self.request.user), key=lambda x: x["the_name"]
+        )
         return ctx
+
 
 # ---------------------------------------------------------------------------
 # Detail view per entity
 # ---------------------------------------------------------------------------
+
 
 class EntityAccountDetailView(TemplateView):
     template_name = "entities/entity_accounts.html"
@@ -130,13 +191,17 @@ class EntityAccountDetailView(TemplateView):
 
         # incoming per account
         inflow = (
-            Transaction.objects.filter(user=self.request.user, entity_destination_id=entity_pk)
+            Transaction.objects.filter(
+                user=self.request.user, entity_destination_id=entity_pk
+            )
             .values("account_destination_id", "account_destination__account_name")
             .annotate(total_in=Sum("amount"))
         )
         # outgoing per account
         outflow = (
-            Transaction.objects.filter(user=self.request.user, entity_source_id=entity_pk)
+            Transaction.objects.filter(
+                user=self.request.user, entity_source_id=entity_pk
+            )
             .values("account_source_id", "account_source__account_name")
             .annotate(total_out=Sum("amount"))
         )
@@ -151,7 +216,7 @@ class EntityAccountDetailView(TemplateView):
         for row in outflow:
             acc_pk = row["account_source_id"]
             acct_name = row.get("account_source__account_name", "")
-            entry = balances.setdefault(acc_pk, {"name": acct_name, "balance":0})
+            entry = balances.setdefault(acc_pk, {"name": acct_name, "balance": 0})
             if not entry["name"]:
                 entry["name"] = acct_name
             entry["balance"] -= row["total_out"]
@@ -160,7 +225,9 @@ class EntityAccountDetailView(TemplateView):
         ctx["total_balance"] = sum(b["balance"] for b in balances.values())
 
         rows = get_entity_aggregate_rows(self.request.user)
-        ctx["totals"] = next((row for row in rows if row["the_entity_id"] == entity_pk), None)
+        ctx["totals"] = next(
+            (row for row in rows if row["the_entity_id"] == entity_pk), None
+        )
 
         return ctx
 
@@ -174,3 +241,51 @@ class EntityCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
+
+
+class EntityUpdateView(UpdateView):
+    model = Entity
+    form_class = EntityForm
+    template_name = "entities/entity_form.html"
+    success_url = reverse_lazy("entities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Entity updated successfully!")
+        return response
+
+
+class EntityDeleteView(DeleteView):
+    model = Entity
+    template_name = "entities/entity_confirm_delete.html"
+    success_url = reverse_lazy("entities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        obj = self.get_object()
+        obj.delete()
+        messages.success(request, "Entity deleted.")
+        return redirect(self.success_url)
+
+
+class EntityArchivedListView(TemplateView):
+    template_name = "entities/entity_archived_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["entities"] = Entity.objects.filter(user=self.request.user, is_active=False)
+        return ctx
+
+
+class EntityRestoreView(View):
+    def post(self, request, pk):
+        ent = get_object_or_404(Entity, pk=pk, user=request.user, is_active=False)
+        ent.is_active = True
+        ent.save()
+        messages.success(request, "Entity restored.")
+        return redirect(reverse("entities:archived"))

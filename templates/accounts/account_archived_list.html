@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Archived Accounts · CENFIN{% endblock %}
+{% block content %}
+<h1 class="mb-4">Archived Accounts</h1>
+{% for a in accounts %}
+  <div class="card shadow-sm rounded-lg mb-3 p-3">
+    <div class="d-flex align-items-center">
+      <div class="flex-grow-1">
+        <div class="fw-semibold">{{ a.account_name }}</div>
+        <small class="text-muted">{{ a.account_type }}</small>
+      </div>
+      <form method="post" action="{% url 'accounts:restore' a.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-primary">Restore</button>
+      </form>
+    </div>
+  </div>
+{% empty %}
+  <p>No archived accounts.</p>
+{% endfor %}
+{% endblock %}
