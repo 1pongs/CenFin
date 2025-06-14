@@ -1,6 +1,7 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
+from django.urls import reverse_lazy
 from crispy_forms.bootstrap import FormActions
 from .models import Entity
 
@@ -31,7 +32,8 @@ class EntityForm(forms.ModelForm):
                         "cancel",
                         "Cancel",
                         css_class="btn btn-outline-secondary",
-                        onclick="history.back()",
+                        onclick=f"window.location.href='{reverse_lazy('entities:list')}'",
+                        type="button",
                     ),
                     css_class="d-flex justify-content-end gap-2 mt-3",
                 )

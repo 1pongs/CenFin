@@ -212,44 +212,16 @@ class EntityListView(TemplateView):
                 or search.lower() in r["the_type"].lower()
             ]
 
-        sort = params.get("sort", "name")
-        valid_sorts = {
-            "name",
-            "-name",
-            "type",
-            "-type",
-            "balance",
-            "-balance",
-        }
-        if sort not in valid_sorts:
-            sort = "name"
+        fund_type = params.get("fund_type", "").strip()
+        if fund_type:
+            rows = [r for r in rows if r["the_type"] == fund_type]
 
-        if sort == "name":
-            rows = sorted(rows, key=lambda x: x["the_name"])
-        elif sort == "-name":
-            rows = sorted(rows, key=lambda x: x["the_name"], reverse=True)
-        elif sort == "type":
-            rows = sorted(rows, key=lambda x: x["the_type"])
-        elif sort == "-type":
-            rows = sorted(rows, key=lambda x: x["the_type"], reverse=True)
-        elif sort == "balance":
-            rows = sorted(
-                rows,
-                key=lambda x: x["total_liquid"] + x["total_non_liquid"],
-            )
-        elif sort == "-balance":
-            rows = sorted(
-                rows,
-                key=lambda x: x["total_liquid"] + x["total_non_liquid"],
-                reverse=True,
-            )
+        rows = sorted(rows, key=lambda x: x["the_name"])
 
         ctx["entities"] = rows
         ctx["search"] = search
-        ctx["sort"] = sort
-        ctx["name_next"] = "-name" if sort == "name" else "name"
-        ctx["type_next"] = "-type" if sort == "type" else "type"
-        ctx["balance_next"] = "-balance" if sort == "balance" else "balance"
+        ctx["fund_type"] = fund_type
+        ctx["fund_types"] = Entity.entities_type_choices
         return ctx
 
 

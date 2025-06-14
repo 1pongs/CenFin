@@ -15,28 +15,13 @@
     <i class="bi bi-plus-lg me-1"></i>New Entity</a>
     <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
       <input type="text" name="q" value="{{ search }}" placeholder="Search" class="form-control form-control-sm w-auto" />
-      <input type="hidden" name="sort" value="{{ sort }}" />
+      <select name="fund_type" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+        <option value="">All Fund Types</option>
+        {% for val,label in fund_types %}
+        <option value="{{ val }}" {% if fund_type == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
     </form>
-    <div class="dropdown">
-      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">Sort</button>
-      <ul class="dropdown-menu">
-        <li>
-          <a class="dropdown-item" href="?q={{ search }}&sort={{ name_next }}">
-            Sort by Name {% if sort == 'name' %}↑{% elif sort == '-name' %}↓{% endif %}
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item" href="?q={{ search }}&sort={{ type_next }}">
-            Sort by Type {% if sort == 'type' %}↑{% elif sort == '-type' %}↓{% endif %}
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item" href="?q={{ search }}&sort={{ balance_next }}">
-            Sort by Balance {% if sort == 'balance' %}↑{% elif sort == '-balance' %}↓{% endif %}
-          </a>
-        </li>
-      </ul>
-    </div>
   </div>
   <a href="{% url 'accounts:list' %}" class="btn btn-success">Accounts</a>
 </div>
