@@ -12,8 +12,7 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <div class="d-flex flex-wrap align-items-center gap-2">
     <a href="{% url 'entities:create' %}" class="btn btn-primary">
-    <i class="bi bi-plus-lg me-1"></i>New Entity
-  </a>
+    <i class="bi bi-plus-lg me-1"></i>New Entity</a>
     <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
       <input type="text" name="q" value="{{ search }}" placeholder="Search" class="form-control form-control-sm w-auto" />
       <input type="hidden" name="sort" value="{{ sort }}" />

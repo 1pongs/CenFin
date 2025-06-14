@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from crispy_forms.helper    import FormHelper
 from crispy_forms.layout    import Layout, Row, Column, Submit, Button, Field
 from crispy_forms.bootstrap import FormActions
@@ -40,10 +41,17 @@ class TransactionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if user is not None:
-            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
-            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
+            account_qs = Account.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            entity_qs = Entity.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+
+            self.fields['account_source'].queryset = account_qs
+            self.fields['account_destination'].queryset = account_qs
+            self.fields['entity_source'].queryset = entity_qs
+            self.fields['entity_destination'].queryset = entity_qs            
             self.fields['template'].queryset = TransactionTemplate.objects.filter(user=user)
 
         for n in self._must_fill:
@@ -139,10 +147,16 @@ class TemplateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if user is not None:
-            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
-            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
+            account_qs = Account.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            entity_qs = Entity.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            self.fields['account_source'].queryset = account_qs
+            self.fields['account_destination'].queryset = account_qs
+            self.fields['entity_source'].queryset = entity_qs
+            self.fields['entity_destination'].queryset = entity_qs
 
         if self.instance and self.instance.autopop_map:
             for field_name, value in self.instance.autopop_map.items():
