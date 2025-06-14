@@ -8,5 +8,5 @@ urlpatterns = [
     path('monthly-data/', MonthlyDataView.as_view(), name='monthly-data'),
     path('api/chart/monthly/', MonthlyChartDataView.as_view(), name='chart-monthly'),
     path('login/', UserLoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(next_page='dashboard'), name='logout'),
+    path('logout/', LogoutView.as_view(next_page='dashboard:dashboard'), name='logout'),
 ]
