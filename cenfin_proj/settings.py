@@ -74,6 +74,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.access.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -88,7 +89,9 @@ WSGI_APPLICATION = 'cenfin_proj.wsgi.application'
 
 import sys
 
-if any(arg in ('pytest', 'test') for arg in sys.argv):
+TESTING = any(arg in ('pytest', 'test') for arg in sys.argv)
+
+if TESTING:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -155,6 +158,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Authentication
-LOGIN_REDIRECT_URL = '/'
-LOGIN_URL = 'dashboard:login'
-LOGOUT_REDIRECT_URL = 'dashboard:dashboard'
+LOGIN_REDIRECT_URL = 'dashboard:dashboard'
+LOGIN_URL = 'users:login'
+LOGOUT_REDIRECT_URL = 'users:login'

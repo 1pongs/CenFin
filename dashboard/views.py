@@ -12,8 +12,7 @@ from django.db.models import (
 from django.db.models.functions import Abs
 from django.utils import timezone
 from datetime import date
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView
+
 from django.http import JsonResponse
 from transactions.models import Transaction
 from entities.models import Entity
@@ -95,7 +94,7 @@ class DashboardView(TemplateView):
 
         return ctx
 
-class MonthlyDataView(LoginRequiredMixin, View):
+class MonthlyDataView(View):
     """Return monthly summary JSON filtered by entity."""
     def get(self, request, *args, **kwargs):
         ent = request.GET.get("entity_id")
@@ -110,7 +109,7 @@ class MonthlyDataView(LoginRequiredMixin, View):
         return JsonResponse(data, safe=False)
     
 
-class MonthlyChartDataView(LoginRequiredMixin, View):
+class MonthlyChartDataView(View):
     """Return monthly chart data filtered by entity and months."""
 
     def get(self, request, *args, **kwargs):
@@ -132,7 +131,3 @@ class MonthlyChartDataView(LoginRequiredMixin, View):
         data = get_monthly_cash_flow(ent, months, drop_empty=True)
         return JsonResponse(data, safe=False)
     
-
-class UserLoginView(LoginView):
-    template_name = "registration/login.html"
-    redirect_authenticated_user = True

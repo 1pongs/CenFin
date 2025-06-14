@@ -28,9 +28,10 @@
       </ul>
       <ul class="navbar-nav ms-auto">
         {% if user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:logout' %}">Logout</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:logout' %}">Logout</a></li>
         {% else %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:login' %}">Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:login' %}">Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:register' %}">Register</a></li>
         {% endif %}
       </ul>
     </div>

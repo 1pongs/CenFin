@@ -27,5 +27,5 @@ urlpatterns = [
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('assets/', include(('assets.urls', 'assets'), namespace='assets')),
     path('entities/', include(('entities.urls', 'entities'), namespace='entities')),
-
+    path('users/', include('users.urls', namespace='users')),
 ]
