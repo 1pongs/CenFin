@@ -10,6 +10,11 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3 d-flex justify-content-between">
           <h2 class="fs-4 mb-0">New Transaction</h2>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm" id="quick-template-btn">+ Template</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-account-btn">+ Account</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
+          </div>
         </div>
         <div class="card-body">
           <form method="post" novalidate>
@@ -23,6 +28,70 @@
 </div>
 
 {% include "includes/balance_summary.html" %}
+
+<!-- ===================== QUICK ADD MODALS ===================== -->
+<div class="modal fade" id="modal-template" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-template-form">
+          {% csrf_token %}
+          {{ quick_template_form.as_p }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-template-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-account" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-account-form">
+          {% csrf_token %}
+          {{ quick_account_form.as_p }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-account-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-entity" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Entity</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-entity-form">
+          {% csrf_token %}
+          {{ quick_entity_form.as_p }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-entity-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
@@ -66,6 +135,64 @@
     }
     if (defaults.remarks !== undefined) {
       document.getElementById('id_remarks').value = defaults.remarks;
+    }
+  });
+
+    // ---------- Quick-add buttons ----------
+  const tplModal = new bootstrap.Modal(document.getElementById('modal-template'));
+  const accModal = new bootstrap.Modal(document.getElementById('modal-account'));
+  const entModal = new bootstrap.Modal(document.getElementById('modal-entity'));
+
+  document.getElementById('quick-template-btn').addEventListener('click', () => tplModal.show());
+  document.getElementById('quick-account-btn').addEventListener('click', () => accModal.show());
+  document.getElementById('quick-entity-btn').addEventListener('click', () => entModal.show());
+
+  document.getElementById('quick-template-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resp = await fetch('/api/create/template/', {
+      method: 'POST',
+      body: new FormData(e.target)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const opt = new Option(data.name, data.id, true, true);
+      templateSelect.add(opt);
+      tplModal.hide();
+      e.target.reset();
+    }
+  });
+
+  document.getElementById('quick-account-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resp = await fetch('/api/create/account/', {
+      method: 'POST',
+      body: new FormData(e.target)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      ['id_account_source','id_account_destination'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel) sel.add(new Option(data.name, data.id, true, true));
+      });
+      accModal.hide();
+      e.target.reset();
+    }
+  });
+
+  document.getElementById('quick-entity-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resp = await fetch('/api/create/entity/', {
+      method: 'POST',
+      body: new FormData(e.target)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      ['id_entity_source','id_entity_destination'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel) sel.add(new Option(data.name, data.id, true, true));
+      });
+      entModal.hide();
+      e.target.reset();
     }
   });
 </script>

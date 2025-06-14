@@ -6,13 +6,15 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Sum
 from decimal import Decimal
 import json
 
 from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
+from accounts.forms import AccountForm
+from entities.forms import EntityForm
 from accounts.models import Account
 from entities.models import Entity
 
@@ -124,6 +126,9 @@ class TransactionCreateView(CreateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        context['quick_account_form'] = AccountForm()
+        context['quick_entity_form'] = EntityForm()
+        context['quick_template_form'] = TemplateForm(user=self.request.user)
         return context
 
     def form_valid(self, form):
@@ -225,6 +230,18 @@ class TemplateDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(request, "Template deleted.")
         return super().delete(request, *args, **kwargs)
+
+
+@require_POST
+def api_create_template(request):
+    """Create a transaction template via AJAX."""
+    form = TemplateForm(request.POST, user=request.user)
+    if form.is_valid():
+        tpl = form.save(commit=False)
+        tpl.user = request.user
+        tpl.save()
+        return JsonResponse({"id": tpl.pk, "name": tpl.name})
+    return JsonResponse({"errors": form.errors}, status=400)
 
 
 @require_GET

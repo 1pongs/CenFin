@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView, View
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.db.models.functions import Coalesce
 from django.db.models import Sum, F, Value, DecimalField
 from decimal import Decimal
@@ -112,3 +114,15 @@ class AccountRestoreView(View):
         acc.save()
         messages.success(request, "Account restored.")
         return redirect(reverse("accounts:archived"))
+
+
+@require_POST
+def api_create_account(request):
+    """Create an account via AJAX."""
+    form = AccountForm(request.POST)
+    if form.is_valid():
+        acc = form.save(commit=False)
+        acc.user = request.user
+        acc.save()
+        return JsonResponse({"id": acc.pk, "name": acc.account_name})
+    return JsonResponse({"errors": form.errors}, status=400)

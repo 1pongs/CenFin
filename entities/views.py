@@ -2,6 +2,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField
 from collections import defaultdict
@@ -160,6 +162,28 @@ def get_entity_aggregate_rows(user):
         data["total_liquid"] += row.get("total_liquid", 0)
         data["total_non_liquid"] += row.get("total_non_liquid", 0)
 
+        # 4️⃣ Ensure all active entities are represented even with zero totals
+    for ent in Entity.objects.active().filter(user=user):
+        entry = results.setdefault(
+            ent.pk,
+            {
+                "the_entity_id": ent.pk,
+                "the_name": ent.entity_name,
+                "the_type": ent.entity_type,
+                "total_income": 0,
+                "total_expenses": 0,
+                "total_transfer": 0,
+                "total_asset": 0,
+                "total_liquid": 0,
+                "total_non_liquid": 0,
+            },
+        )
+        # If the entry already existed from transactions, ensure name/type set
+        if not entry["the_name"]:
+            entry["the_name"] = ent.entity_name
+        if not entry["the_type"]:
+            entry["the_type"] = ent.entity_type
+
     return list(results.values())
 
 
@@ -289,3 +313,15 @@ class EntityRestoreView(View):
         ent.save()
         messages.success(request, "Entity restored.")
         return redirect(reverse("entities:archived"))
+
+
+@require_POST
+def api_create_entity(request):
+    """Create an entity via AJAX."""
+    form = EntityForm(request.POST)
+    if form.is_valid():
+        ent = form.save(commit=False)
+        ent.user = request.user
+        ent.save()
+        return JsonResponse({"id": ent.pk, "name": ent.entity_name})
+    return JsonResponse({"errors": form.errors}, status=400)

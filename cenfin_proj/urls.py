@@ -17,12 +17,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from transactions import views as txn_api_views
+from accounts.views import api_create_account
+from entities.views import api_create_entity
+from transactions.views import api_create_template
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(('dashboard.urls', 'dashboard'), namespace='dashboard')),
     path('api/balance/account/<int:pk>/', txn_api_views.account_balance, name='api_account_balance'),
     path('api/balance/entity/<int:pk>/', txn_api_views.entity_balance, name='api_entity_balance'),
+    path('api/create/account/', api_create_account, name='api_create_account'),
+    path('api/create/entity/', api_create_entity, name='api_create_entity'),
+    path('api/create/template/', api_create_template, name='api_create_template'),
     path('transactions/', include('transactions.urls', namespace='transactions')),
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('assets/', include(('assets.urls', 'assets'), namespace='assets')),
