@@ -40,7 +40,7 @@
       <div class="modal-body">
         <form id="quick-template-form">
           {% csrf_token %}
-          {{ quick_template_form.as_p }}
+          {{ quick_template_form|crispy }}
         </form>
       </div>
       <div class="modal-footer">
@@ -61,7 +61,7 @@
       <div class="modal-body">
         <form id="quick-account-form">
           {% csrf_token %}
-          {{ quick_account_form.as_p }}
+          {{ quick_account_form|crispy }}
         </form>
       </div>
       <div class="modal-footer">
@@ -82,7 +82,7 @@
       <div class="modal-body">
         <form id="quick-entity-form">
           {% csrf_token %}
-          {{ quick_entity_form.as_p }}
+          {{ quick_entity_form|crispy }}
         </form>
       </div>
       <div class="modal-footer">

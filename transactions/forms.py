@@ -135,6 +135,7 @@ class TemplateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        show_actions = kwargs.pop('show_actions', True)
         super().__init__(*args, **kwargs)
 
         if user is not None:
@@ -157,7 +158,8 @@ class TemplateForm(forms.ModelForm):
 
         self.helper = FormHelper()
         self.helper.form_tag = False
-        self.helper.layout = Layout(
+        
+        layout_fields = [
             Row(
                 Column("name", css_class="col-md-6"),
                 Column("description", css_class="col-md-6"),
@@ -183,15 +185,21 @@ class TemplateForm(forms.ModelForm):
                 css_class="g-3",
             ),
             "remarks",
-            FormActions(
-                Submit("save", "Save", css_class="btn btn-primary"),
-                Button(
-                    "cancel", "Cancel",
-                    css_class="btn btn-outline-secondary ms-2",
-                    onclick="history.back()",
-                ),
-            ),
-        )
+        ]
+
+        if show_actions:
+            layout_fields.append(
+                FormActions(
+                    Submit("save", "Save", css_class="btn btn-primary"),
+                    Button(
+                        "cancel", "Cancel",
+                        css_class="btn btn-outline-secondary ms-2",
+                        onclick="history.back()",
+                    ),
+                )
+            )
+
+        self.helper.layout = Layout(*layout_fields)
 
     def save(self, commit=True):
         template = super().save(commit=False)

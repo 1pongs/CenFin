@@ -200,9 +200,56 @@ class EntityListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["entities"] = sorted(
-            get_entity_aggregate_rows(self.request.user), key=lambda x: x["the_name"]
-        )
+        rows = get_entity_aggregate_rows(self.request.user)
+
+        params = self.request.GET
+        search = params.get("q", "").strip()
+        if search:
+            rows = [
+                r
+                for r in rows
+                if search.lower() in r["the_name"].lower()
+                or search.lower() in r["the_type"].lower()
+            ]
+
+        sort = params.get("sort", "name")
+        valid_sorts = {
+            "name",
+            "-name",
+            "type",
+            "-type",
+            "balance",
+            "-balance",
+        }
+        if sort not in valid_sorts:
+            sort = "name"
+
+        if sort == "name":
+            rows = sorted(rows, key=lambda x: x["the_name"])
+        elif sort == "-name":
+            rows = sorted(rows, key=lambda x: x["the_name"], reverse=True)
+        elif sort == "type":
+            rows = sorted(rows, key=lambda x: x["the_type"])
+        elif sort == "-type":
+            rows = sorted(rows, key=lambda x: x["the_type"], reverse=True)
+        elif sort == "balance":
+            rows = sorted(
+                rows,
+                key=lambda x: x["total_liquid"] + x["total_non_liquid"],
+            )
+        elif sort == "-balance":
+            rows = sorted(
+                rows,
+                key=lambda x: x["total_liquid"] + x["total_non_liquid"],
+                reverse=True,
+            )
+
+        ctx["entities"] = rows
+        ctx["search"] = search
+        ctx["sort"] = sort
+        ctx["name_next"] = "-name" if sort == "name" else "name"
+        ctx["type_next"] = "-type" if sort == "type" else "type"
+        ctx["balance_next"] = "-balance" if sort == "balance" else "balance"
         return ctx
 
 

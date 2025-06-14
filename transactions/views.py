@@ -126,9 +126,9 @@ class TransactionCreateView(CreateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
-        context['quick_account_form'] = AccountForm()
-        context['quick_entity_form'] = EntityForm()
-        context['quick_template_form'] = TemplateForm(user=self.request.user)
+        context['quick_account_form'] = AccountForm(show_actions=False)
+        context['quick_entity_form'] = EntityForm(show_actions=False)
+        context['quick_template_form'] = TemplateForm(user=self.request.user, show_actions=False)
         return context
 
     def form_valid(self, form):

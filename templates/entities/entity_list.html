@@ -31,6 +31,11 @@
             Sort by Type {% if sort == 'type' %}↑{% elif sort == '-type' %}↓{% endif %}
           </a>
         </li>
+        <li>
+          <a class="dropdown-item" href="?q={{ search }}&sort={{ balance_next }}">
+            Sort by Balance {% if sort == 'balance' %}↑{% elif sort == '-balance' %}↓{% endif %}
+          </a>
+        </li>
       </ul>
     </div>
   </div>
