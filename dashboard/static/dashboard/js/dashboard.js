@@ -125,14 +125,33 @@ document.addEventListener('DOMContentLoaded', () => {
     return {labels:[], datasets:{income:[], expenses:[], liquid:[], nonliquid:[], net_worth:[]}};
   }
 
+    // Map dataset labels to API keys. Extend this map when a new dataset is
+  // introduced so the chart picks up the correct values from the payload.
+  const keyMap = {
+    'Income': 'income',
+    'Expenses': 'expenses',
+    'Liquid': 'liquid',
+    'Non-liquid': 'nonliquid',
+    'Net Worth': 'net_worth'
+  };
+
   function updateChart(payload){
     const ds = payload.datasets || {};
-    flowChart.data.labels = payload.labels || [];
-    flowChart.data.datasets[0].data = ds.income || [];
-    flowChart.data.datasets[1].data = (ds.expenses || []).map(v => -v);
-    flowChart.data.datasets[2].data = ds.liquid || [];
-    flowChart.data.datasets[3].data = ds.nonliquid || [];
-    flowChart.data.datasets[4].data = ds.net_worth || [];
+    const usedKeys = new Set();
+    flowChart.data.datasets.forEach(chartDs => {
+      const key = keyMap[chartDs.label];
+      if(key && Object.prototype.hasOwnProperty.call(ds, key)){
+        usedKeys.add(key);
+        const values = ds[key].map(Number);
+        chartDs.data = chartDs.label === 'Expenses' ? values.map(v => -v) : values;
+      }else{
+        console.warn(`Missing data for dataset '${chartDs.label}'`);
+        chartDs.data = Array(flowChart.data.labels.length).fill(0);
+      }
+    });
+    Object.keys(ds).forEach(k => {
+      if(!usedKeys.has(k)) console.warn(`API dataset '${k}' has no matching chart dataset`);
+    });
     if(flowChart.data.labels.length === 0){
       noData.classList.remove('d-none');
     }else{
