@@ -32,3 +32,23 @@ class Entity(models.Model):
 
     def __str__(self):
         return self.entity_name
+
+    def current_balance(self):
+        """Return current balance for this entity."""
+        from django.db.models import Sum
+        from decimal import Decimal
+        from transactions.models import Transaction
+
+        inflow = (
+            Transaction.objects.filter(entity_destination=self)
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+        outflow = (
+            Transaction.objects.filter(entity_source=self)
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+        return inflow - outflow

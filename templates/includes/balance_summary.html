@@ -35,9 +35,9 @@
     function checkSaveState() {
       const accBal = parseAmt(accBalanceField.textContent);
       const entBal = parseAmt(entBalanceField.textContent);
-      const ok = accBal > 0 && entBal > 0;
-      if (saveBtn) saveBtn.disabled = !ok;
-      if (ok) errorDiv.classList.add('d-none');
+      if (accBal > 0 && entBal > 0) {
+        errorDiv.classList.add('d-none');
+      }
     }
 
      function insertFields() {
@@ -128,19 +128,6 @@
     insertFields();
     updatePair();
     updateEntity();
-
-    if (form) {
-      form.addEventListener('submit', (e) => {
-        const accBal = parseAmt(accBalanceField.textContent);
-        const entBal = parseAmt(entBalanceField.textContent);
-        if (accBal <= 0 || entBal <= 0) {
-          e.preventDefault();
-          errorDiv.textContent = 'Source balance is zero—cannot save transaction.';
-          errorDiv.classList.remove('d-none');
-          if (saveBtn) saveBtn.disabled = false;
-        }
-      });
-    }
 
     if (accField) accField.addEventListener('change', updatePair);
     if (entField) entField.addEventListener('change', updateEntity);

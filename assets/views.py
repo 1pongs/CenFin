@@ -3,6 +3,7 @@ from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.contrib import messages
 
 
 # Create your views here.
@@ -63,6 +64,10 @@ class AssetCreateView(FormView):
         tx.save()
         Asset.objects.create(name=data["name"], purchase_tx=tx, user=self.request.user)
         return super().form_valid(form)
+
+def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
 
 
 def sell_asset(request, pk):

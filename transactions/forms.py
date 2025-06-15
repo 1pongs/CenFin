@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from decimal import Decimal
 from crispy_forms.helper    import FormHelper
 from crispy_forms.layout    import Layout, Row, Column, Submit, Button, Field
 from crispy_forms.bootstrap import FormActions
@@ -126,6 +127,22 @@ class TransactionForm(forms.ModelForm):
                 "Buy/Sell Asset transactions must be created from the Asset page."
             )
         return value
+    
+    def clean(self):
+        cleaned = super().clean()
+        amt = cleaned.get("amount") or Decimal("0")
+        acc = cleaned.get("account_source")
+        ent = cleaned.get("entity_source")
+
+        if acc and acc.account_name != "Outside":
+            if acc.current_balance() < amt:
+                self.add_error("account_source", f"Insufficient funds in {acc}.")
+
+        if ent and ent.entity_name != "Outside":
+            if ent.current_balance() < amt:
+                self.add_error("entity_source", f"Insufficient funds in {ent}.")
+
+        return cleaned
 
 # ---------------- Template Form ----------------
 class TemplateForm(forms.ModelForm):

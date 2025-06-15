@@ -109,11 +109,6 @@ class Transaction(models.Model):
 
         acc_id = self.account_source_id
         ent_id = self.entity_source_id
-        acc_balance = get_account_entity_balance(acc_id, ent_id, user=self.user) if acc_id and ent_id else Decimal("0")
-        ent_balance = util_entity_balance(ent_id, user=self.user) if ent_id else Decimal("0")
-
-        if acc_balance <= 0 or ent_balance <= 0:
-            raise ValidationError("Source balance is zero—cannot save transaction.")
 
     def save(self, *args, **kwargs):
         self._populate_from_template()

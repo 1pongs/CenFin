@@ -29,3 +29,23 @@ class Account(models.Model):
 
     def __str__(self):
         return self.account_name
+
+    def current_balance(self):
+        """Return current balance for this account."""
+        from django.db.models import Sum
+        from decimal import Decimal
+        from transactions.models import Transaction
+
+        inflow = (
+            Transaction.objects.filter(account_destination=self)
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+        outflow = (
+            Transaction.objects.filter(account_source=self)
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+        return inflow - outflow

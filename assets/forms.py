@@ -5,6 +5,7 @@ from crispy_forms.bootstrap import FormActions
 from accounts.models import Account
 from entities.models import Entity
 from django.utils import timezone
+from decimal import Decimal
 
 
 class AssetForm(forms.Form):
@@ -65,6 +66,22 @@ class AssetForm(forms.Form):
                 css_class="d-flex justify-content-end gap-2 mt-3",
             ),
         )
+
+def clean(self):
+        cleaned = super().clean()
+        amt = cleaned.get("amount") or Decimal("0")
+        acc = cleaned.get("account_source")
+        ent = cleaned.get("entity_source")
+
+        if acc and acc.account_name != "Outside":
+            if acc.current_balance() < amt:
+                self.add_error("account_source", f"Insufficient funds in {acc}.")
+
+        if ent and ent.entity_name != "Outside":
+            if ent.current_balance() < amt:
+                self.add_error("entity_source", f"Insufficient funds in {ent}.")
+
+        return cleaned
 
 
 class SellAssetForm(forms.Form):

@@ -141,6 +141,10 @@ class TransactionCreateView(CreateView):
         messages.success(self.request, "Transaction saved successfully!")
         return response
 
+def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+
 class TransactionUpdateView(UpdateView):
     model = Transaction
     form_class = TransactionForm
@@ -166,10 +170,13 @@ class TransactionUpdateView(UpdateView):
         return context
 
     def form_valid(self, form):
-        response = super().form_valid(form)  
+        response = super().form_valid(form)
         messages.success(self.request, "Transaction updated successfully!")
         return response
 
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
 
 def transaction_delete(request, pk):
     txn = get_object_or_404(Transaction, pk=pk, user=request.user)
