@@ -7,7 +7,6 @@ from django.utils import timezone
 
 from accounts.models import Account
 from entities.models import Entity
-from transactions.models import Transaction
 
 
 def get_account_balances():
@@ -50,6 +49,7 @@ def get_entity_balances():
 
 def get_entity_balance(entity_id, user=None):
     """Return balance for a single entity."""
+    from transactions.models import Transaction
     qs = Transaction.objects
     if user is not None:
         qs = qs.filter(user=user)
@@ -68,6 +68,7 @@ def get_entity_balance(entity_id, user=None):
 
 def get_account_balance(account_id, user=None):
     """Return balance for a single account."""
+    from transactions.models import Transaction
     qs = Transaction.objects
     if user is not None:
         qs = qs.filter(user=user)
@@ -86,6 +87,7 @@ def get_account_balance(account_id, user=None):
 
 def get_account_entity_balance(account_id, entity_id, user=None):
     """Return balance for an account/entity pair."""
+    from transactions.models import Transaction
     qs = Transaction.objects
     if user is not None:
         qs = qs.filter(user=user)
@@ -104,6 +106,7 @@ def get_account_entity_balance(account_id, entity_id, user=None):
 
 def get_monthly_cash_flow(entity_id=None, months=12, drop_empty=False, user=None):
     """Return rolling cash-flow data for the given months filtered by user."""
+    from transactions.models import Transaction
     if months not in {3, 6, 12}:
         months = 12
 

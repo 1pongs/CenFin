@@ -13,6 +13,7 @@ class Account(models.Model):
         ('E-Wallet', 'E-Wallet'),
         ('Cash','Cash'),
         ('Outside','Outside'),
+        ('Entity','Entity'),
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)
