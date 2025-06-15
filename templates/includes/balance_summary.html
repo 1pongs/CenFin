@@ -27,13 +27,14 @@
       if (accField) accField.insertAdjacentElement('afterend', accWrapper);
       if (entField) entField.insertAdjacentElement('afterend', entWrapper);
     }
-    async function fetchAccountBalance(acc) {
+    async function fetchPairBalance(acc, ent) {
       accSpinner.classList.remove('d-none');
       accBalanceField.textContent = '';
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetch(`/api/balance/account/${acc}/`, { signal: controller.signal });
+        const url = `/transactions/pair-balance/?account=${acc}&entity=${ent}`;
+        const resp = await fetch(url, { signal: controller.signal });
         clearTimeout(timeout);
         if (resp.ok) {
           const data = await resp.json();
@@ -51,7 +52,7 @@
         accWrapper.classList.add('d-none');
       } finally {
         accSpinner.classList.add('d-none');
-           }
+      }
     }
 
     async function fetchEntityBalance(ent) {
@@ -81,10 +82,11 @@
       }
     }
 
-     function updateAccount() {
+    function updatePair() {
       const acc = accField && accField.value;
-      if (acc) {
-        fetchAccountBalance(acc);
+      const ent = entField && entField.value;
+      if (acc && ent) {
+        fetchPairBalance(acc, ent);
       } else {
         accWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
@@ -99,13 +101,14 @@
         entWrapper.classList.add('d-none');
         entBalanceField.textContent = '';
       }
+      updatePair();
     }
 
     insertFields();
-    updateAccount();
+    updatePair();
     updateEntity();
 
-    if (accField) accField.addEventListener('change', updateAccount);
+    if (accField) accField.addEventListener('change', updatePair);
     if (entField) entField.addEventListener('change', updateEntity);
   });
   </script>

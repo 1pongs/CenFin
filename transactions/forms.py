@@ -78,13 +78,13 @@ class TransactionForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("account_source",      css_class="col-md-6"),
-                Column("account_destination", css_class="col-md-6"),
+                Column("entity_source",       css_class="col-md-6"),
+                Column("entity_destination",  css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
-                Column("entity_source",       css_class="col-md-6"),
-                Column("entity_destination",  css_class="col-md-6"),
+                Column("account_source",      css_class="col-md-6"),
+                Column("account_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",
