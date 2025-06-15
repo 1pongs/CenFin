@@ -19,30 +19,49 @@
   {% endfor %}
 </div>
 
-<h2 class="mt-5">Monthly Cash‑Flow vs Assets</h2>
-<div class="d-flex gap-2 mb-2" style="max-width:420px;">
-  <select id="entitySelect" class="form-select form-select-sm">
-    <option value="all">All entities</option>
-    {% for e in entities %}
-      <option value="{{ e.id }}">{{ e.entity_name }}</option>
-    {% endfor %}
-  </select>
-  <select id="monthSelect" class="form-select form-select-sm">
-    <option value="12">12 months</option>
-    <option value="6">6 months</option>
-    <option value="3">3 months</option>
-  </select>
-</div>
-<div class="position-relative">
-  <div id="chartSpinner" class="position-absolute top-50 start-50 translate-middle d-none">
-    <div class="spinner-border text-secondary" role="status"></div>
+<div class="row mt-5 g-3">
+  <div class="col-md-6">
+    <h2>Monthly Cash‑Flow vs Assets</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex gap-2 mb-2" style="max-width:420px;">
+          <select id="entitySelect" class="form-select form-select-sm">
+            <option value="overall">Overall performance</option>
+            {% for e in entities %}
+              <option value="{{ e.id }}">{{ e.entity_name }}</option>
+            {% endfor %}
+          </select>
+          <select id="monthSelect" class="form-select form-select-sm">
+            <option value="12">12 months</option>
+            <option value="6">6 months</option>
+            <option value="3">3 months</option>
+          </select>
+        </div>
+        <div class="position-relative">
+          <div id="chartSpinner" class="position-absolute top-50 start-50 translate-middle d-none">
+            <div class="spinner-border text-secondary" role="status"></div>
+          </div>
+          <div id="noDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
+          <canvas id="cashFlowAssetsChart" height="180" data-api-url="{% url 'dashboard:dashboard-data' %}"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
-  <div id="noDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
-  <canvas id="cashFlowAssetsChart" height="120" data-api-url="{% url 'dashboard:dashboard-data' %}"></canvas>
+  <div class="col-md-6">
+    <h2>Top 10 “Big‑Ticket” Entries (YTD)</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <select id="entitySelectTop" class="form-select form-select-sm mb-2">
+          <option value="overall">Overall performance</option>
+          {% for e in entities %}
+            <option value="{{ e.id }}">{{ e.entity_name }}</option>
+          {% endfor %}
+        </select>
+        <canvas id="topEntriesChart" height="180" data-api-url="{% url 'dashboard:top10-data' %}"></canvas>
+      </div>
+    </div>
+  </div>
 </div>
-
-<h2 class="mt-5">Top 10 “Big‑Ticket” Entries (YTD)</h2>
-<canvas id="topEntriesChart" height="120"></canvas>
 {% endblock %}
 
 {% block extra_js %}

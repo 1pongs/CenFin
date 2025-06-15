@@ -12,20 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
     data:{
       labels: [],
       datasets:[
-        {label:'Income', type:'bar', stack:'flow', backgroundColor:'rgba(25,135,84,0.7)', data:[]},
-        {label:'Expenses', type:'bar', stack:'flow', backgroundColor:'rgba(220,53,69,0.7)', data:[]},
-        {label:'Liquid', type:'line', yAxisID:'y1', borderColor:'orange', backgroundColor:'orange', data:[]},
-        {label:'Non-liquid', type:'line', yAxisID:'y1', borderColor:'blue', backgroundColor:'blue', data:[]},
-        {label:'Net Worth', type:'line', yAxisID:'y1', borderColor:'teal', backgroundColor:'teal', data:[]}
+        {label:'Income', type:'bar', stack:'cash', backgroundColor:'#28a745', data:[]},
+        {label:'Expenses', type:'bar', stack:'cash', backgroundColor:'#dc3545', data:[]},
+        {label:'Liquid', type:'line', yAxisID:'y2', borderWidth:2, tension:0.3, borderColor:'#ffc107', data:[]},
+        {label:'Asset', type:'line', yAxisID:'y2', borderWidth:2, borderDash:[6,3], borderColor:'#17a2b8', data:[]}
       ]
     },
     options:{
       responsive:true,
       interaction:{mode:'index', intersect:false},
       scales:{
-        x:{stacked:true},
-        y:{stacked:true, beginAtZero:true},
-        y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}}
+        y:{ stacked:true, beginAtZero:true },
+        y2:{ position:'right', grid:{drawOnChartArea:false} }
       },
       plugins:{
         tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label}: ${formatPeso(ctx.parsed.y)}` } }
@@ -56,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   flowChart.config.plugins.push(verticalLine);
 
   const ctx2 = document.getElementById('topEntriesChart');
+  const topUrl = ctx2.dataset.apiUrl;
   const labelPlugin = {
     id:'barLabel',
     afterDatasetsDraw(chart){
@@ -85,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         backgroundColor: bigTickets.map(r => {
           if(r.type==='income') return 'rgba(25,135,84,0.7)';
           if(r.type==='expense') return 'rgba(220,53,69,0.7)';
-          if(r.type==='asset') return 'rgba(13,110,253,0.7)';
+          if(r.type==='asset') return 'rgba(23,162,184,0.7)';
           return 'gray';
         })
       }]
@@ -108,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const noData = document.getElementById('noDataMsg');
   const cache = {};
   let debounceId = null;
+  let debounceTopId = null;
 
   async function fetchData(ent, months){
     const key = `${ent}|${months}`;
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }finally{
       spinner.classList.add('d-none');
     }
-    return {labels:[], datasets:{income:[], expenses:[], liquid:[], nonliquid:[], net_worth:[]}};
+    return {labels:[], datasets:{income:[], expenses:[], liquid:[], asset:[]}};
   }
 
     // Map dataset labels to API keys. Extend this map when a new dataset is
@@ -134,8 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'Income': 'income',
     'Expenses': 'expenses',
     'Liquid': 'liquid',
-    'Non-liquid': 'nonliquid',
-    'Net Worth': 'net_worth'
+    'Asset': 'asset'
   };
 
   // Update chart data in place using the mapping above. Any dataset coming from
@@ -149,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         usedKeys.add(apiKey);
         const values = payload.datasets[apiKey].map(Number);
         ds.data = ds.label === 'Expenses' ? values.map(v => -v) : values;
-      }else{
+      } else {
         console.warn(`Missing data for dataset '${ds.label}'`);
         ds.data = Array(chart.data.labels.length).fill(0);
       }
@@ -179,7 +178,44 @@ document.addEventListener('DOMContentLoaded', () => {
     debounceId = setTimeout(loadData, 200);
   }
 
+  async function fetchTopData(ent){
+    try{
+      const resp = await fetch(`${topUrl}?entity_id=${ent}`, {credentials:'same-origin'});
+      if(resp.ok) return await resp.json();
+    }catch(err){
+      console.error(err);
+    }
+    return {labels:[], amounts:[], types:[]};
+  }
+
+  function refreshTop10(chart, payload){
+    chart.data.labels = payload.labels || [];
+    const amounts = (payload.amounts || []).map(Number);
+    chart.data.datasets[0].data = amounts;
+    chart.data.datasets[0].backgroundColor = (payload.types || []).map(t=>{
+      if(t==='income') return 'rgba(40,167,69,0.7)';
+      if(t==='expense') return 'rgba(220,53,69,0.7)';
+      if(t==='asset') return 'rgba(23,162,184,0.7)';
+      return 'gray';
+    });
+    chart.update();
+  }
+
+  async function loadTop(){
+    const data = await fetchTopData(entitySelTop.value);
+    refreshTop10(ticketChart, data);
+  }
+
+  function debouncedTop(){
+    clearTimeout(debounceTopId);
+    debounceTopId = setTimeout(loadTop, 200);
+  }
+
   entitySel.addEventListener('change', debouncedLoad);
   monthSel.addEventListener('change', debouncedLoad);
+  const entitySelTop = document.getElementById('entitySelectTop');
+  entitySelTop.addEventListener('change', debouncedTop);
+
   loadData();
+  loadTop();
 });
