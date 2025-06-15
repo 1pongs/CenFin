@@ -135,34 +135,40 @@ document.addEventListener('DOMContentLoaded', () => {
     'Net Worth': 'net_worth'
   };
 
-  function updateChart(payload){
-    const ds = payload.datasets || {};
+  // Update chart data in place using the mapping above. Any dataset coming from
+  // the API that does not exist in the chart will be logged in the console.
+  function refreshChart(chart, payload){
+    chart.data.labels = payload.labels || [];
     const usedKeys = new Set();
-    flowChart.data.datasets.forEach(chartDs => {
-      const key = keyMap[chartDs.label];
-      if(key && Object.prototype.hasOwnProperty.call(ds, key)){
-        usedKeys.add(key);
-        const values = ds[key].map(Number);
-        chartDs.data = chartDs.label === 'Expenses' ? values.map(v => -v) : values;
+    chart.data.datasets.forEach(ds => {
+      const apiKey = keyMap[ds.label];
+      if(apiKey && payload.datasets && Array.isArray(payload.datasets[apiKey])){
+        usedKeys.add(apiKey);
+        const values = payload.datasets[apiKey].map(Number);
+        ds.data = ds.label === 'Expenses' ? values.map(v => -v) : values;
       }else{
-        console.warn(`Missing data for dataset '${chartDs.label}'`);
-        chartDs.data = Array(flowChart.data.labels.length).fill(0);
+        console.warn(`Missing data for dataset '${ds.label}'`);
+        ds.data = Array(chart.data.labels.length).fill(0);
       }
     });
-    Object.keys(ds).forEach(k => {
-      if(!usedKeys.has(k)) console.warn(`API dataset '${k}' has no matching chart dataset`);
-    });
-    if(flowChart.data.labels.length === 0){
+    // Warn about extra keys returned by the API that the chart has no dataset for
+    if(payload.datasets){
+      Object.keys(payload.datasets).forEach(k => {
+        if(!usedKeys.has(k)) console.warn(`API dataset '${k}' has no matching chart dataset`);
+      });
+    }
+
+    if(chart.data.labels.length === 0){
       noData.classList.remove('d-none');
     }else{
       noData.classList.add('d-none');
     }
-    flowChart.update();
+    chart.update();
   }
 
   async function loadData(){
     const data = await fetchData(entitySel.value, monthSel.value);
-    updateChart(data);
+    refreshChart(flowChart, data);
   }
 
   function debouncedLoad(){
