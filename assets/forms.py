@@ -67,7 +67,7 @@ class AssetForm(forms.Form):
             ),
         )
 
-def clean(self):
+    def clean(self):
         cleaned = super().clean()
         amt = cleaned.get("amount") or Decimal("0")
         acc = cleaned.get("account_source")
