@@ -17,6 +17,9 @@
       <th>Name</th>
       <th>Date Bought</th>
       <th class="text-end">Amount</th>
+      <th>Selling Date</th>
+      <th class="text-end">Price Sold</th>
+      <th class="text-end">Profit</th>
       <th>Status</th>
       <th></th>
     </tr>
@@ -27,6 +30,9 @@
       <td>{{ a.name }}</td>
       <td>{{ a.purchase_tx.date|date:"M d, Y" }}</td>
       <td class="text-end">{{ a.purchase_tx.amount|floatformat:2|intcomma }}</td>
+      <td>{% if a.selling_date %}{{ a.selling_date|date:"M d, Y" }}{% else %}&mdash;{% endif %}</td>
+      <td class="text-end">{% if a.price_sold %}{{ a.price_sold|floatformat:2|intcomma }}{% else %}&mdash;{% endif %}</td>
+      <td class="text-end">{% if a.profit %}{{ a.profit|floatformat:2|intcomma }}{% else %}&mdash;{% endif %}</td>
       <td>{% if a.sell_tx %}Sold{% else %}Owned{% endif %}</td>
       <td class="text-end">
         {% if not a.sell_tx %}
@@ -35,7 +41,7 @@
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="5" class="text-center">No assets.</td></tr>
+    <tr><td colspan="8" class="text-center">No assets.</td></tr>
     {% endfor %}
   </tbody>
 </table>

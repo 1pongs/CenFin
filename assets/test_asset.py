@@ -125,3 +125,52 @@ class AssetFormBalanceTest(TestCase):
         )
         form = AssetForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class AssetComputedFieldsTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u3", password="p")
+        self.acc_src = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.acc_dest = Account.objects.create(account_name="Invest", account_type="Others", user=self.user)
+        self.ent_src = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.ent_dest = Entity.objects.create(entity_name="Market", entity_type="outside", user=self.user)
+
+        self.buy_tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="Buy Cow",
+            transaction_type="buy asset",
+            amount=Decimal("600"),
+            account_source=self.acc_src,
+            account_destination=self.acc_dest,
+            entity_source=self.ent_src,
+            entity_destination=self.ent_dest,
+        )
+        self.asset = Asset.objects.create(name="Cow", purchase_tx=self.buy_tx, user=self.user)
+
+    def test_computed_fields_none_when_unsold(self):
+        self.assertIsNone(self.asset.selling_date)
+        self.assertIsNone(self.asset.price_sold)
+        self.assertIsNone(self.asset.profit)
+
+    def test_computed_fields_after_sale(self):
+        sale_date = timezone.now().date()
+        self.client.force_login(self.user)
+        self.client.post(
+            reverse("assets:sell", args=[self.asset.pk]),
+            {
+                "date": sale_date,
+                "sale_price": "1000",
+                "account_source": self.acc_dest.pk,
+                "account_destination": self.acc_src.pk,
+                "entity_source": self.ent_dest.pk,
+                "entity_destination": self.ent_src.pk,
+            },
+        )
+
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.selling_date, sale_date)
+        self.assertEqual(self.asset.price_sold, Decimal("1000"))
+        self.assertEqual(self.asset.profit, Decimal("400"))
