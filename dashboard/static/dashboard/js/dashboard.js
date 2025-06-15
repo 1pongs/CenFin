@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx1 = document.getElementById('cashFlowAssetsChart');
   const dataUrl = ctx1.dataset.apiUrl;
   const flowChart = new Chart(ctx1, {
+    plugins: [],
     data:{
       labels: [],
       datasets:[
@@ -50,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   };
+  flowChart.config.plugins = flowChart.config.plugins || [];
+  if(!Array.isArray(flowChart.config.plugins)) flowChart.config.plugins = [];
   flowChart.config.plugins.push(verticalLine);
 
   const ctx2 = document.getElementById('topEntriesChart');
