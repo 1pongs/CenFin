@@ -22,3 +22,11 @@ footer {
 /* Prevent navigating to edit pages when in bulk mode */
 #transaction-table.bulk-mode td:not(.select-col) a { pointer-events: none; }
 #transaction-table.bulk-mode .clickable-row { cursor: default; }
+
+/* Logo size within navbar */
+.navbar-logo {
+  height: 28px;        /* keep word-mark readable yet small */
+  width: auto;
+  object-fit: contain;
+  object-position: center;
+}
