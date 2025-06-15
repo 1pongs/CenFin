@@ -21,13 +21,18 @@ class AssetForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if user is not None:
-            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
-            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
-        super().__init__(*args, **kwargs)
+            acct_qs = Account.objects.filter(user=user, is_active=True)
+            ent_qs = Entity.objects.filter(user=user, is_active=True)
+            self.fields['account_source'].queryset = acct_qs
+            self.fields['account_destination'].queryset = acct_qs
+            self.fields['entity_source'].queryset = ent_qs
+            self.fields['entity_destination'].queryset = ent_qs
+
         self.helper = FormHelper()
         self.helper.form_tag = False
+        self.helper.form_method = "post"
+        self.helper.label_class = "fw-semibold"
+        self.helper.field_class = "mb-2"
         self.helper.layout = Layout(
             Row(
                 Column("name", css_class="col-md-6"),
@@ -39,13 +44,13 @@ class AssetForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
-                Column("account_source", css_class="col-md-6"),
-                Column("account_destination", css_class="col-md-6"),
+                Column("entity_source", css_class="col-md-6"),
+                Column("entity_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
-                Column("entity_source", css_class="col-md-6"),
-                Column("entity_destination", css_class="col-md-6"),
+                Column("account_source", css_class="col-md-6"),
+                Column("account_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",

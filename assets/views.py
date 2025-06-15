@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 # Create your views here.
@@ -42,7 +43,7 @@ class AssetCreateView(FormView):
     
     def form_valid(self, form):
         data = form.cleaned_data
-        tx = Transaction.objects.create(
+        tx = Transaction(
             user=self.request.user,
             date=data["date"],
             description=data["name"],
@@ -54,6 +55,12 @@ class AssetCreateView(FormView):
             entity_destination=data["entity_destination"],
             remarks=data["remarks"],
         )
+        try:
+            tx.full_clean()
+        except ValidationError as e:
+            form.add_error(None, e.message or e.messages)
+            return self.form_invalid(form)
+        tx.save()
         Asset.objects.create(name=data["name"], purchase_tx=tx, user=self.request.user)
         return super().form_valid(form)
 
