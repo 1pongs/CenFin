@@ -48,6 +48,60 @@ def get_entity_balances():
     )
 
 
+def get_entity_balance(entity_id, user=None):
+    """Return balance for a single entity."""
+    qs = Transaction.objects
+    if user is not None:
+        qs = qs.filter(user=user)
+    inflow = (
+        qs.filter(entity_destination_id=entity_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    outflow = (
+        qs.filter(entity_source_id=entity_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    return inflow - outflow
+
+
+def get_account_balance(account_id, user=None):
+    """Return balance for a single account."""
+    qs = Transaction.objects
+    if user is not None:
+        qs = qs.filter(user=user)
+    inflow = (
+        qs.filter(account_destination_id=account_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    outflow = (
+        qs.filter(account_source_id=account_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    return inflow - outflow
+
+
+def get_account_entity_balance(account_id, entity_id, user=None):
+    """Return balance for an account/entity pair."""
+    qs = Transaction.objects
+    if user is not None:
+        qs = qs.filter(user=user)
+    inflow = (
+        qs.filter(account_destination_id=account_id, entity_destination_id=entity_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    outflow = (
+        qs.filter(account_source_id=account_id, entity_source_id=entity_id)
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    return inflow - outflow
+
+
 def get_monthly_cash_flow(entity_id=None, months=12, drop_empty=False, user=None):
     """Return rolling cash-flow data for the given months filtered by user."""
     if months not in {3, 6, 12}:

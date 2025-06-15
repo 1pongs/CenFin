@@ -12,6 +12,7 @@
     <span class="visually-hidden">Loading...</span>
   </div>
 </div>
+<div id="balance-error" class="text-danger small d-none"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const accField = document.getElementById('id_account_source');
@@ -22,6 +23,22 @@
     const entBalanceField = document.getElementById('entity-balance-field');
     const accSpinner = document.getElementById('account-balance-spinner');
     const entSpinner = document.getElementById('entity-balance-spinner');
+    const errorDiv = document.getElementById('balance-error');
+    const form = document.querySelector('#form-container form');
+    const saveBtn = form ? form.querySelector('button[type="submit"],input[type="submit"]') : null;
+
+    function parseAmt(txt) {
+      const num = parseFloat(String(txt).replace(/[^0-9.-]/g, ''));
+      return isNaN(num) ? 0 : num;
+    }
+
+    function checkSaveState() {
+      const accBal = parseAmt(accBalanceField.textContent);
+      const entBal = parseAmt(entBalanceField.textContent);
+      const ok = accBal > 0 && entBal > 0;
+      if (saveBtn) saveBtn.disabled = !ok;
+      if (ok) errorDiv.classList.add('d-none');
+    }
 
      function insertFields() {
       if (accField) accField.insertAdjacentElement('afterend', accWrapper);
@@ -52,6 +69,7 @@
         accWrapper.classList.add('d-none');
       } finally {
         accSpinner.classList.add('d-none');
+        checkSaveState();
       }
     }
 
@@ -79,6 +97,7 @@
         entWrapper.classList.add('d-none');
       } finally {
         entSpinner.classList.add('d-none');
+        checkSaveState();
       }
     }
 
@@ -91,6 +110,7 @@
         accWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
       }
+      checkSaveState();
     }
 
     function updateEntity() {
@@ -102,11 +122,25 @@
         entBalanceField.textContent = '';
       }
       updatePair();
+      checkSaveState();
     }
 
     insertFields();
     updatePair();
     updateEntity();
+
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        const accBal = parseAmt(accBalanceField.textContent);
+        const entBal = parseAmt(entBalanceField.textContent);
+        if (accBal <= 0 || entBal <= 0) {
+          e.preventDefault();
+          errorDiv.textContent = 'Source balance is zero—cannot save transaction.';
+          errorDiv.classList.remove('d-none');
+          if (saveBtn) saveBtn.disabled = false;
+        }
+      });
+    }
 
     if (accField) accField.addEventListener('change', updatePair);
     if (entField) entField.addEventListener('change', updateEntity);

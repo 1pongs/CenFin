@@ -1,11 +1,16 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from decimal import Decimal
 from accounts.models import Account
 from entities.models import Entity
 from django.db.models import JSONField
 from django.core.exceptions import ValidationError
 from .constants import transaction_type_TX_MAP
+from cenfin_proj.utils import (
+    get_account_entity_balance,
+    get_entity_balance as util_entity_balance,
+)
 
 # Create your models here.
 
@@ -101,6 +106,14 @@ class Transaction(models.Model):
         self._populate_from_template()
         self._apply_defaults()
         super().clean()
+
+        acc_id = self.account_source_id
+        ent_id = self.entity_source_id
+        acc_balance = get_account_entity_balance(acc_id, ent_id, user=self.user) if acc_id and ent_id else Decimal("0")
+        ent_balance = util_entity_balance(ent_id, user=self.user) if ent_id else Decimal("0")
+
+        if acc_balance <= 0 or ent_balance <= 0:
+            raise ValidationError("Source balance is zero—cannot save transaction.")
 
     def save(self, *args, **kwargs):
         self._populate_from_template()

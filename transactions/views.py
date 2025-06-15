@@ -10,6 +10,11 @@ from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Sum
 from decimal import Decimal
 import json
+from cenfin_proj.utils import (
+    get_account_entity_balance,
+    get_entity_balance as util_entity_balance,
+    get_account_balance,
+)
 
 from .models import Transaction, TransactionTemplate
 from .forms import TransactionForm, TemplateForm
@@ -263,57 +268,19 @@ def pair_balance(request):
     if not account_id or not entity_id:
         return JsonResponse({"error": "missing parameters"}, status=400)
 
-    inflow = (
-        Transaction.objects.filter(
-            user=request.user,
-            account_destination_id=account_id,
-            entity_destination_id=entity_id,
-        ).aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-
-    outflow = (
-        Transaction.objects.filter(
-            user=request.user,
-            account_source_id=account_id,
-            entity_source_id=entity_id,
-        ).aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-
-    balance = inflow - outflow
+    balance = get_account_entity_balance(account_id, entity_id, user=request.user)
     return JsonResponse({"balance": str(balance), "currency": "PHP"})
 
 
 @require_GET
 def account_balance(request, pk):
     """Return balance for a single account."""
-    inflow = (
-        Transaction.objects.filter(user=request.user, account_destination_id=pk)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-    outflow = (
-        Transaction.objects.filter(user=request.user, account_source_id=pk)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-    bal = inflow - outflow
+    bal = get_account_balance(pk, user=request.user)
     return JsonResponse({"balance": str(bal), "currency": "PHP"})
 
 
 @require_GET
 def entity_balance(request, pk):
     """Return balance for a single entity."""
-    inflow = (
-        Transaction.objects.filter(user=request.user, entity_destination_id=pk)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-    outflow = (
-        Transaction.objects.filter(user=request.user, entity_source_id=pk)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-    bal = inflow - outflow
+    bal = util_entity_balance(pk, user=request.user)
     return JsonResponse({"balance": str(bal), "currency": "PHP"})
