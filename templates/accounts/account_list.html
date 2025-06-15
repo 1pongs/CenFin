@@ -10,6 +10,8 @@
 {% endblock %}
 
 {% block content %}
+{% url 'entities:list' as back_url %}
+{% include "includes/back_button.html" with url=back_url %}
 <h1 class="mb-4">Accounts</h1>
 <div class="row">
   <aside class="col-md-3 mb-4">
