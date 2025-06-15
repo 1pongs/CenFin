@@ -8,7 +8,7 @@ from entities.models import Entity
 from transactions.models import Transaction
 from django.contrib.auth import get_user_model
 from .models import Asset
-from .forms import AssetForm
+from .forms import AssetForm, SellAssetForm
 
 # Create your tests here.
 
@@ -174,3 +174,24 @@ class AssetComputedFieldsTest(TestCase):
         self.assertEqual(self.asset.selling_date, sale_date)
         self.assertEqual(self.asset.price_sold, Decimal("1000"))
         self.assertEqual(self.asset.profit, Decimal("400"))
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class OutsideAccountVisibilityTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="vis", password="p")
+        self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.outside = Account.objects.get(account_name="Outside", user=None)
+
+    def test_asset_form_includes_outside(self):
+        form = AssetForm(user=self.user)
+        qs = form.fields["account_source"].queryset
+        self.assertIn(self.outside, qs)
+        self.assertIn(self.outside, form.fields["account_destination"].queryset)
+
+    def test_sell_form_includes_outside(self):
+        form = SellAssetForm(user=self.user)
+        qs = form.fields["account_source"].queryset
+        self.assertIn(self.outside, qs)
+        self.assertIn(self.outside, form.fields["account_destination"].queryset)

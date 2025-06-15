@@ -4,6 +4,7 @@ from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 from accounts.models import Account
 from entities.models import Entity
+from django.db.models import Q
 from django.utils import timezone
 from decimal import Decimal
 
@@ -22,8 +23,12 @@ class AssetForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if user is not None:
-            acct_qs = Account.objects.filter(user=user, is_active=True)
-            ent_qs = Entity.objects.filter(user=user, is_active=True)
+            acct_qs = Account.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            ent_qs = Entity.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
             self.fields['account_source'].queryset = acct_qs
             self.fields['account_destination'].queryset = acct_qs
             self.fields['entity_source'].queryset = ent_qs
@@ -102,10 +107,16 @@ class SellAssetForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if user is not None:
-            self.fields['account_source'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['account_destination'].queryset = Account.objects.filter(user=user, is_active=True)
-            self.fields['entity_source'].queryset = Entity.objects.filter(user=user, is_active=True)
-            self.fields['entity_destination'].queryset = Entity.objects.filter(user=user, is_active=True)
+            acct_qs = Account.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            ent_qs = Entity.objects.filter(
+                Q(user=user) | Q(user__isnull=True), is_active=True
+            )
+            self.fields['account_source'].queryset = acct_qs
+            self.fields['account_destination'].queryset = acct_qs
+            self.fields['entity_source'].queryset = ent_qs
+            self.fields['entity_destination'].queryset = ent_qs
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(
