@@ -57,6 +57,14 @@ class TransactionForm(forms.ModelForm):
         for n in self._must_fill:
             self.fields[n].required = True
 
+         # Remove asset-related transaction types when using this form
+        if 'transaction_type' in self.fields:
+            disallowed = {'buy asset', 'sell asset'}
+            self.fields['transaction_type'].choices = [
+                c for c in self.fields['transaction_type'].choices
+                if c[0] not in disallowed
+            ]
+
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_method  = "post"
@@ -94,10 +102,18 @@ class TransactionForm(forms.ModelForm):
                     "cancel", "Cancel",
                     css_class="btn btn-outline-secondary",
                     onclick="history.back()",
+                ),
+                css_class="d-flex justify-content-end gap-2 mt-3",
             ),
-            css_class="d-flex justify-content-end gap-2 mt-3",
-        ),
-    )
+        )
+
+    def clean_transaction_type(self):
+        value = self.cleaned_data.get('transaction_type')
+        if value in {'buy asset', 'sell asset'}:
+            raise forms.ValidationError(
+                "Buy/Sell Asset transactions must be created from the Asset page."
+            )
+        return value
 
 # ---------------- Template Form ----------------
 class TemplateForm(forms.ModelForm):
