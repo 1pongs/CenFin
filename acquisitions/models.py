@@ -27,7 +27,7 @@ class Product(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="products", null=True)
 
     class Meta:
-        db_table = "products_product"
+        db_table = "acquisitions_acquisition"
 
     def __str__(self) -> str:
         return self.name
