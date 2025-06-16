@@ -62,7 +62,7 @@ INSTALLED_APPS = [
     'transactions',
     'accounts',
     'entities',
-    'assets',
+    'products',
     'users',
 ]
 CRISPY_ALLOWED_TEMPLATE_PACKS = {"bootstrap5"}

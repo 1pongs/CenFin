@@ -60,7 +60,7 @@ class TransactionForm(forms.ModelForm):
 
          # Remove asset-related transaction types when using this form
         if 'transaction_type' in self.fields:
-            disallowed = {'buy asset', 'sell asset'}
+            disallowed = {'buy product', 'sell product'}
             current_type = getattr(self.instance, 'transaction_type', None)
 
             if current_type in disallowed:
@@ -118,13 +118,13 @@ class TransactionForm(forms.ModelForm):
 
     def clean_transaction_type(self):
         value = self.cleaned_data.get('transaction_type')
-        disallowed = {'buy asset', 'sell asset'}
+        disallowed = {'buy product', 'sell product'}
         if value in disallowed:
             if self.instance and self.instance.pk and self.instance.transaction_type == value:
                 return value
-        if value in {'buy asset', 'sell asset'}:
+        if value in {'buy product', 'sell product'}:
             raise forms.ValidationError(
-                "Buy/Sell Asset transactions must be created from the Asset page."
+                "Buy/Sell Product transactions must be created from the Product page."
             )
         return value
     

@@ -9,7 +9,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 
-class AssetForm(forms.Form):
+class ProductForm(forms.Form):
     name = forms.CharField(max_length=255)
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     amount = forms.DecimalField(max_digits=12, decimal_places=2)
@@ -89,7 +89,7 @@ class AssetForm(forms.Form):
         return cleaned
 
 
-class SellAssetForm(forms.Form):
+class SellProductForm(forms.Form):
     date = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
         initial=lambda: timezone.now().date(),

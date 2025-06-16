@@ -7,8 +7,8 @@ from accounts.models import Account
 from entities.models import Entity
 from transactions.models import Transaction
 from django.contrib.auth import get_user_model
-from .models import Asset
-from .forms import AssetForm, SellAssetForm
+from .models import Product
+from .forms import ProductForm, SellProductForm
 
 # Create your tests here.
 
@@ -20,7 +20,7 @@ from .forms import AssetForm, SellAssetForm
         }
     }
 )
-class AssetTransactionAmountTest(TestCase):
+class ProductTransactionAmountTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="tester", password="pass")
@@ -33,7 +33,7 @@ class AssetTransactionAmountTest(TestCase):
         self.buy_tx = Transaction.objects.create(
             date=timezone.now().date(),
             description="Buy Piglet",
-            transaction_type="buy asset",
+            ttransaction_type="buy product",
             amount=Decimal("6000"),
             account_source=self.acc_src,
             account_destination=self.acc_dest,
@@ -41,11 +41,11 @@ class AssetTransactionAmountTest(TestCase):
             entity_destination=self.ent_dest,
             user=self.user,
         )
-        self.asset = Asset.objects.create(name="Piglet", purchase_tx=self.buy_tx, user=self.user)
+        self.product = Product.objects.create(name="Piglet", purchase_tx=self.buy_tx, user=self.user)
 
     def test_sell_transaction_amount_is_difference(self):
         response = self.client.post(
-            reverse("assets:sell", args=[self.asset.pk]),
+            reverse("products:sell", args=[self.product.pk]),
             {
                 "date": timezone.now().date(),
                 "sale_price": "10000",
@@ -57,8 +57,8 @@ class AssetTransactionAmountTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-        self.asset.refresh_from_db()
-        sell_tx = self.asset.sell_tx
+        self.product.refresh_from_db()
+        sell_tx = self.product.sell_tx
         self.assertIsNotNone(sell_tx)
         self.assertEqual(sell_tx.amount, Decimal("4000"))
 
@@ -69,7 +69,7 @@ class AssetTransactionAmountTest(TestCase):
 @override_settings(
     DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
 )
-class AssetFormBalanceTest(TestCase):
+class ProductFormBalanceTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u2", password="p")
@@ -80,7 +80,7 @@ class AssetFormBalanceTest(TestCase):
 
     def _form_data(self, **overrides):
         data = {
-            "name": "Asset",
+            "name": "Product",
             "date": timezone.now().date(),
             "amount": "50",
             "account_source": self.acc.pk,
@@ -92,7 +92,7 @@ class AssetFormBalanceTest(TestCase):
         return data
 
     def test_balance_validation(self):
-        form = AssetForm(data=self._form_data(amount="50"), user=self.user)
+        form = ProductForm(data=self._form_data(amount="50"), user=self.user)
         self.assertFalse(form.is_valid())
         self.assertIn("account_source", form.errors)
         self.assertIn("entity_source", form.errors)
@@ -109,7 +109,7 @@ class AssetFormBalanceTest(TestCase):
             entity_source=self.out_ent,
             entity_destination=self.ent,
         )
-        form = AssetForm(data=self._form_data(account_source=self.out_acc.pk, amount="50"), user=self.user)
+        form = ProductForm(data=self._form_data(account_source=self.out_acc.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
 
         Transaction.objects.create(
@@ -123,12 +123,12 @@ class AssetFormBalanceTest(TestCase):
             entity_source=self.out_ent,
             entity_destination=self.ent,
         )
-        form = AssetForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
+        form = ProductForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
-class AssetComputedFieldsTest(TestCase):
+class ProductComputedFieldsTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u3", password="p")
@@ -141,25 +141,25 @@ class AssetComputedFieldsTest(TestCase):
             user=self.user,
             date=timezone.now().date(),
             description="Buy Cow",
-            transaction_type="buy asset",
+            transaction_type="buy product",
             amount=Decimal("600"),
             account_source=self.acc_src,
             account_destination=self.acc_dest,
             entity_source=self.ent_src,
             entity_destination=self.ent_dest,
         )
-        self.asset = Asset.objects.create(name="Cow", purchase_tx=self.buy_tx, user=self.user)
+        self.product = Product.objects.create(name="Cow", purchase_tx=self.buy_tx, user=self.user)
 
     def test_computed_fields_none_when_unsold(self):
-        self.assertIsNone(self.asset.selling_date)
-        self.assertIsNone(self.asset.price_sold)
-        self.assertIsNone(self.asset.profit)
+        self.assertIsNone(self.product.selling_date)
+        self.assertIsNone(self.product.price_sold)
+        self.assertIsNone(self.product.profit)
 
     def test_computed_fields_after_sale(self):
         sale_date = timezone.now().date()
         self.client.force_login(self.user)
         self.client.post(
-            reverse("assets:sell", args=[self.asset.pk]),
+            reverse("products:sell", args=[self.product.pk]),
             {
                 "date": sale_date,
                 "sale_price": "1000",
@@ -170,10 +170,10 @@ class AssetComputedFieldsTest(TestCase):
             },
         )
 
-        self.asset.refresh_from_db()
-        self.assertEqual(self.asset.selling_date, sale_date)
-        self.assertEqual(self.asset.price_sold, Decimal("1000"))
-        self.assertEqual(self.asset.profit, Decimal("400"))
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.selling_date, sale_date)
+        self.assertEqual(self.product.price_sold, Decimal("1000"))
+        self.assertEqual(self.product.profit, Decimal("400"))
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -184,14 +184,14 @@ class OutsideAccountVisibilityTest(TestCase):
         self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.outside = Account.objects.get(account_name="Outside", user=None)
 
-    def test_asset_form_includes_outside(self):
-        form = AssetForm(user=self.user)
+    def test_product_form_includes_outside(self):
+        form = ProductForm(user=self.user)
         qs = form.fields["account_source"].queryset
         self.assertIn(self.outside, qs)
         self.assertIn(self.outside, form.fields["account_destination"].queryset)
 
     def test_sell_form_includes_outside(self):
-        form = SellAssetForm(user=self.user)
+        form = SellProductForm(user=self.user)
         qs = form.fields["account_source"].queryset
         self.assertIn(self.outside, qs)
         self.assertIn(self.outside, form.fields["account_destination"].queryset)

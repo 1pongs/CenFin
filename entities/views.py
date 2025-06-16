@@ -54,7 +54,7 @@ def get_entity_aggregate_rows(user):
             ),
             total_asset=Sum(
                 Case(
-                    When(transaction_type_destination="Buy Asset", then=F("amount")),
+                    When(transaction_type_destination="buy_product", then=F("amount")),
                     default=0,
                     output_field=DecimalField(),
                 )
@@ -112,7 +112,7 @@ def get_entity_aggregate_rows(user):
             ),
             total_asset=Sum(
                 Case(
-                    When(transaction_type_source="Sell Asset", then=-F("amount")),
+                    When(transaction_type_source="sell_product", then=-F("amount")),
                     default=0,
                     output_field=DecimalField(),
                 )

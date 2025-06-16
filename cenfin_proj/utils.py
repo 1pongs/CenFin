@@ -46,7 +46,7 @@ def get_entity_balances():
                 Sum(
                     "transaction_entity_source__amount",
                     filter=Q(
-                        transaction_entity_source__asset_type_source__iexact="liquid"
+                        transaction_entity_source__product_type_source__iexact="liquid"
                     ),
                 ),
                 Value(Decimal("0.00"), output_field=DecimalField()),
