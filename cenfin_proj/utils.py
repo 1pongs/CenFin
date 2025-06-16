@@ -34,11 +34,21 @@ def get_entity_balances():
         Entity.objects.active()
         .annotate(
             inflow=Coalesce(
-                Sum("transaction_entity_destination__amount"),
+                Sum(
+                    "transaction_entity_destination__amount",
+                    filter=Q(
+                        transaction_entity_destination__asset_type_destination__iexact="liquid"
+                    ),
+                ),
                 Value(Decimal("0.00"), output_field=DecimalField()),
             ),
             outflow=Coalesce(
-                Sum("transaction_entity_source__amount"),
+                Sum(
+                    "transaction_entity_source__amount",
+                    filter=Q(
+                        transaction_entity_source__asset_type_source__iexact="liquid"
+                    ),
+                ),
                 Value(Decimal("0.00"), output_field=DecimalField()),
             ),
         )
@@ -54,12 +64,18 @@ def get_entity_balance(entity_id, user=None):
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
-        qs.filter(entity_destination_id=entity_id)
+        qs.filter(
+            entity_destination_id=entity_id,
+            asset_type_destination__iexact="liquid",
+        )
         .aggregate(total=Sum("amount"))["total"]
         or Decimal("0")
     )
     outflow = (
-        qs.filter(entity_source_id=entity_id)
+        qs.filter(
+            entity_source_id=entity_id,
+            asset_type_source__iexact="liquid",
+        )
         .aggregate(total=Sum("amount"))["total"]
         or Decimal("0")
     )
@@ -92,12 +108,20 @@ def get_account_entity_balance(account_id, entity_id, user=None):
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
-        qs.filter(account_destination_id=account_id, entity_destination_id=entity_id)
+        qs.filter(
+            account_destination_id=account_id,
+            entity_destination_id=entity_id,
+            asset_type_destination__iexact="liquid",
+        )
         .aggregate(total=Sum("amount"))["total"]
         or Decimal("0")
     )
     outflow = (
-        qs.filter(account_source_id=account_id, entity_source_id=entity_id)
+        qs.filter(
+            account_source_id=account_id,
+            entity_source_id=entity_id,
+            asset_type_source__iexact="liquid",
+        )
         .aggregate(total=Sum("amount"))["total"]
         or Decimal("0")
     )

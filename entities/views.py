@@ -243,7 +243,9 @@ class EntityAccountDetailView(TemplateView):
         # incoming per account
         inflow = (
             Transaction.objects.filter(
-                user=self.request.user, entity_destination_id=entity_pk
+                user=self.request.user,
+                entity_destination_id=entity_pk,
+                asset_type_destination__iexact="liquid",
             )
             .values("account_destination_id", "account_destination__account_name")
             .annotate(total_in=Sum("amount"))
@@ -251,7 +253,9 @@ class EntityAccountDetailView(TemplateView):
         # outgoing per account
         outflow = (
             Transaction.objects.filter(
-                user=self.request.user, entity_source_id=entity_pk
+                user=self.request.user,
+                entity_source_id=entity_pk,
+                asset_type_source__iexact="liquid",
             )
             .values("account_source_id", "account_source__account_name")
             .annotate(total_out=Sum("amount"))
