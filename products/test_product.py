@@ -33,7 +33,7 @@ class ProductTransactionAmountTest(TestCase):
         self.buy_tx = Transaction.objects.create(
             date=timezone.now().date(),
             description="Buy Piglet",
-            ttransaction_type="buy product",
+            transaction_type="buy product",
             amount=Decimal("6000"),
             account_source=self.acc_src,
             account_destination=self.acc_dest,
