@@ -17,3 +17,20 @@ def attr(obj, name):
     if name == "status":
         return "Sold" if obj.sell_tx else "Owned"
     return getattr(obj, name)
+
+
+@register.filter
+def replace(value, args):
+    """Replace ``old`` with ``new`` in ``value``.
+
+    Usage::
+        {{ value|replace:"old,new" }}
+
+    ``old`` and ``new`` are separated by a comma to comply with
+    Django's single-argument filter syntax.
+    """
+    try:
+        old, new = args.split(",", 1)
+    except ValueError:
+        return value
+    return str(value).replace(old, new)

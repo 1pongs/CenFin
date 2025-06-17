@@ -5,7 +5,7 @@
       <h6 class="card-subtitle mb-2 text-muted">{{ acq.get_category_display }}</h6>
       <dl class="row mb-0">
         {% for field in field_list %}
-          <dt class="col-sm-5">{{ field|capfirst|replace:'_' ' ' }}</dt>
+          <dt class="col-sm-5">{{ field|capfirst|replace:"_, " }}</dt>
           <dd class="col-sm-7">
             {% with value=acq|attr:field %}
               {% if value %}{{ value }}{% else %}-{% endif %}
