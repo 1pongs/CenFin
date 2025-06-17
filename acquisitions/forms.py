@@ -16,6 +16,8 @@ class AcquisitionForm(forms.Form):
         ("stock_bond", "Stock/Bond"),
         ("property", "Property"),
         ("insurance", "Insurance"),
+        ("equipment", "Equipment"),
+        ("vehicle", "Vehicle"),
     ])
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     amount = forms.DecimalField(max_digits=12, decimal_places=2)
@@ -26,8 +28,16 @@ class AcquisitionForm(forms.Form):
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     # stock/bond
-    current_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
-    market = forms.CharField(max_length=100, required=False)
+    expected_lifespan_years = forms.IntegerField(required=False, label="Expected lifespan (yrs)")
+    location = forms.CharField(max_length=120, required=False)
+
+    # universal
+    target_selling_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+
+    # vehicle
+    mileage = forms.IntegerField(required=False, min_value=0, label="Mileage (km)")
+    plate_number = forms.CharField(max_length=20, required=False)
+    model_year = forms.IntegerField(required=False, label="Model Year")
 
     # property
     is_sellable = forms.BooleanField(required=False)
@@ -95,7 +105,8 @@ class AcquisitionForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
-                Column("location", css_class="col-md-12"),
+                Column("location", css_class="col-md-6"),
+                Column("target_selling_date", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -106,6 +117,12 @@ class AcquisitionForm(forms.Form):
             Row(
                 Column("maturity_date", css_class="col-md-6"),
                 Column("provider", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("mileage", css_class="col-md-4"),
+                Column("plate_number", css_class="col-md-4"),
+                Column("model_year", css_class="col-md-4"),
                 css_class="g-3",
             ),
             "remarks",
@@ -134,6 +151,18 @@ class AcquisitionForm(forms.Form):
         if ent and ent.entity_name != "Outside":
             if ent.current_balance() < amt:
                 self.add_error("entity_source", f"Insufficient funds in {ent}.")
+
+        cat = cleaned.get("category")
+        if cat in ("vehicle", "equipment"):
+            model_year = cleaned.get("model_year")
+            if model_year and model_year > timezone.now().year:
+                self.add_error("model_year", "Model year cannot be in the future")
+            mileage = cleaned.get("mileage")
+            if mileage is not None and mileage < 0:
+                self.add_error("mileage", "Mileage must be zero or positive")
+
+        if cat == "insurance" and cleaned.get("insurance_type") == "term":
+            cleaned["cash_value"] = 0
 
         return cleaned
 

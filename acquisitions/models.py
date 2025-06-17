@@ -13,12 +13,16 @@ class Acquisition(models.Model):
     CATEGORY_STOCK_BOND = "stock_bond"
     CATEGORY_PROPERTY = "property"
     CATEGORY_INSURANCE = "insurance"
+    CATEGORY_EQUIPMENT = "equipment"
+    CATEGORY_VEHICLE = "vehicle"
 
     CATEGORY_CHOICES = [
         (CATEGORY_PRODUCT, "Product"),
         (CATEGORY_STOCK_BOND, "Stock/Bond"),
         (CATEGORY_PROPERTY, "Property"),
         (CATEGORY_INSURANCE, "Insurance"),
+        (CATEGORY_EQUIPMENT, "Equipment"),
+        (CATEGORY_VEHICLE, "Vehicle"),
     ]
 
     INSURANCE_TYPE_CHOICES = [
@@ -48,9 +52,17 @@ class Acquisition(models.Model):
     market = models.CharField(max_length=100, blank=True)
 
     # property
-    is_sellable = models.BooleanField(null=True, blank=True)
+    is_sellable = models.BooleanField(default=False)
     expected_lifespan_years = models.IntegerField(null=True, blank=True)
-    location = models.CharField(max_length=255, blank=True)
+    location = models.CharField(max_length=120, blank=True)
+
+    # universal
+    target_selling_date = models.DateField(blank=True, null=True)
+
+    # vehicle-specific fields
+    mileage = models.PositiveIntegerField(null=True, blank=True)
+    plate_number = models.CharField(max_length=20, blank=True)
+    model_year = models.PositiveIntegerField(null=True, blank=True)
 
     # insurance
     insurance_type = models.CharField(max_length=10, choices=INSURANCE_TYPE_CHOICES, blank=True)

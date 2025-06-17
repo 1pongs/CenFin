@@ -16,6 +16,14 @@ from accounts.forms import AccountForm
 from entities.models import Entity
 from entities.forms import EntityForm
 
+CARD_FIELDS_BY_CATEGORY = {
+    "product":    ["date_bought", "amount", "target_selling_date", "status"],
+    "stock_bond": ["date_bought", "amount", "current_value", "market", "target_selling_date", "status"],
+    "property":   ["date_bought", "amount", "location", "expected_lifespan_years", "is_sellable", "status"],
+    "insurance":  ["date_bought", "amount", "insurance_type", "cash_value", "maturity_date", "provider", "status"],
+    "equipment":  ["date_bought", "amount", "location", "expected_lifespan_years", "is_sellable", "status"],
+    "vehicle":    ["date_bought", "amount", "model_year", "mileage", "plate_number", "is_sellable", "status"],
+}
 
 class AcquisitionListView(ListView):
     model = Acquisition
@@ -23,7 +31,29 @@ class AcquisitionListView(ListView):
     context_object_name = "acquisitions"
 
     def get_queryset(self):
-        return Acquisition.objects.select_related("purchase_tx", "sell_tx").filter(user=self.request.user)
+        qs = Acquisition.objects.select_related("purchase_tx", "sell_tx").filter(user=self.request.user)
+        cat = self.request.GET.get("category")
+        if cat:
+            qs = qs.filter(category=cat)
+        month = self.request.GET.get("month")
+        if month:
+            try:
+                y, m = map(int, month.split("-"))
+                qs = qs.filter(purchase_tx__date__year=y, purchase_tx__date__month=m)
+            except ValueError:
+                pass
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.now().date()
+        upcoming = today + timezone.timedelta(days=30)
+        ctx["urgent_qs"] = self.get_queryset().filter(target_selling_date__range=[today, upcoming], sell_tx__isnull=True)
+        ctx["current_category"] = self.request.GET.get("category", "")
+        ctx["current_month"] = self.request.GET.get("month", "")
+        ctx["form"] = AcquisitionForm(user=self.request.user)
+        ctx["CARD_FIELDS_BY_CATEGORY"] = CARD_FIELDS_BY_CATEGORY
+        return ctx
 
 
 class AcquisitionCreateView(FormView):
@@ -71,6 +101,10 @@ class AcquisitionCreateView(FormView):
             is_sellable=data.get("is_sellable"),
             expected_lifespan_years=data.get("expected_lifespan_years"),
             location=data.get("location", ""),
+            target_selling_date=data.get("target_selling_date"),
+            mileage=data.get("mileage"),
+            plate_number=data.get("plate_number", ""),
+            model_year=data.get("model_year"),
             insurance_type=data.get("insurance_type"),
             cash_value=data.get("cash_value"),
             maturity_date=data.get("maturity_date"),
@@ -116,6 +150,10 @@ class AcquisitionUpdateView(AcquisitionCreateView):
                 "is_sellable": self.object.is_sellable,
                 "expected_lifespan_years": self.object.expected_lifespan_years,
                 "location": self.object.location,
+                "target_selling_date": self.object.target_selling_date,
+                "mileage": self.object.mileage,
+                "plate_number": self.object.plate_number,
+                "model_year": self.object.model_year,
                 "insurance_type": self.object.insurance_type,
                 "cash_value": self.object.cash_value,
                 "maturity_date": self.object.maturity_date,
@@ -148,6 +186,10 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         acq.is_sellable = data.get("is_sellable")
         acq.expected_lifespan_years = data.get("expected_lifespan_years")
         acq.location = data.get("location", "")
+        acq.target_selling_date = data.get("target_selling_date")
+        acq.mileage = data.get("mileage")
+        acq.plate_number = data.get("plate_number", "")
+        acq.model_year = data.get("model_year")
         acq.insurance_type = data.get("insurance_type")
         acq.cash_value = data.get("cash_value")
         acq.maturity_date = data.get("maturity_date")
