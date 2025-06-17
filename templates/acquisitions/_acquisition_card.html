@@ -1,6 +1,6 @@
 {% load acquisition_tags humanize %}
 <div class="col">
-  <div class="card h-100 {% if urgent %}border-danger{% endif %}">
+  <div class="card h-100 cat-{{ acq.category }} {% if urgent %}border-danger{% endif %}">
     <div class="card-body clickable-card" data-bs-toggle="modal" data-bs-target="#acq{{ acq.pk }}Modal">
       <h6 class="card-subtitle text-muted small mb-1">{{ acq.get_category_display }}</h6>
       <h5 class="card-title mb-2">{{ acq.name }}</h5>
@@ -21,7 +21,15 @@
     </div>
     {% if not acq.sell_tx %}
     <div class="card-footer bg-transparent border-0 text-end">
-      <a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">Sell</a>
+      <a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">
+        {% if acq.category == 'insurance' %}
+          {% if acq.insurance_type == 'vul' %}Withdraw{% else %}Claim{% endif %}
+        {% elif acq.category == 'equipment' %}
+          Dispose
+        {% else %}
+          Sell
+        {% endif %}
+      </a>
     </div>
     {% endif %}
   </div>

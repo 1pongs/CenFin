@@ -37,3 +37,11 @@ footer {
   object-fit: contain;
   object-position: center;
 }
+
+/* Category card colors */
+.card.cat-property { background-color: #d1e7dd; }
+.card.cat-product { background-color: #cfe2ff; }
+.card.cat-insurance { background-color: #fff3cd; }
+.card.cat-equipment { background-color: #f8f9fa; }
+.card.cat-vehicle { background-color: #ffe5d0; }
+.card.cat-stock_bond { background-color: #e2d5f8; }
