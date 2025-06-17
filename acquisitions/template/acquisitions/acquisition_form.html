@@ -1,4 +1,3 @@
-{% extends "products/product_form.html" %}
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 {% block title %}New Acquisition · CENFIN{% endblock %}
@@ -8,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-{% url 'acquisitions:list' as back_url %}
+{% url 'acquisitions:acquisition-list' as back_url %}
 {% include "includes/back_button.html" with url=back_url %}
 <div id="form-container" class="container py-4">
   <div class="row justify-content-center">

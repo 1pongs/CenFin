@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Acquisition Detail · CENFIN{% endblock %}
+
+{% block content %}
+{% url 'acquisitions:acquisition-list' as back_url %}
+{% include "includes/back_button.html" with url=back_url %}
+<div class="container py-4" style="max-width: 700px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">{{ object.name }}</h1>
+    <div class="d-flex gap-2">
+      <a href="{% url 'acquisitions:acquisition-update' object.pk %}" class="btn btn-sm btn-primary">Edit</a>
+      <a href="{% url 'acquisitions:acquisition-delete' object.pk %}" class="btn btn-sm btn-danger">Delete</a>
+    </div>
+  </div>
+  <dl class="row">
+    <dt class="col-sm-4">Category</dt>
+    <dd class="col-sm-8">{{ object.get_category_display }}</dd>
+    <dt class="col-sm-4">Date Bought</dt>
+    <dd class="col-sm-8">{{ object.purchase_tx.date|date:"M d, Y" }}</dd>
+    <dt class="col-sm-4">Cost</dt>
+    <dd class="col-sm-8">{{ object.purchase_tx.amount|floatformat:2|intcomma }}</dd>
+    <dt class="col-sm-4">Current Value</dt>
+    <dd class="col-sm-8">{{ object.current_value|default_if_none:"-" }}</dd>
+    <dt class="col-sm-4">Selling Date</dt>
+    <dd class="col-sm-8">{% if object.selling_date %}{{ object.selling_date|date:"M d, Y" }}{% else %}-{% endif %}</dd>
+    <dt class="col-sm-4">Price Sold</dt>
+    <dd class="col-sm-8">{% if object.price_sold %}{{ object.price_sold|floatformat:2|intcomma }}{% else %}-{% endif %}</dd>
+    <dt class="col-sm-4">Profit</dt>
+    <dd class="col-sm-8">{% if object.profit %}{{ object.profit|floatformat:2|intcomma }}{% else %}-{% endif %}</dd>
+  </dl>
+</div>
+{% endblock %}

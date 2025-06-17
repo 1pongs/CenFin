@@ -10,6 +10,18 @@ from django.contrib.auth import get_user_model
 from .models import Acquisition
 from .forms import AcquisitionForm, SellAcquisitionForm
 
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class AcquisitionListViewTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="viewer", password="p")
+        self.client.force_login(self.user)
+
+    def test_list_view_uses_template(self):
+        resp = self.client.get(reverse("acquisitions:acquisition-list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, "acquisitions/acquisition_list.html")
 # Create your tests here.
 
 @override_settings(
