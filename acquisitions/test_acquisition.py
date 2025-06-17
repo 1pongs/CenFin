@@ -7,8 +7,8 @@ from accounts.models import Account
 from entities.models import Entity
 from transactions.models import Transaction
 from django.contrib.auth import get_user_model
-from .models import Product
-from .forms import ProductForm, SellProductForm
+from .models import Acquisition
+from .forms import AcquisitionForm, SellAcquisitionForm
 
 # Create your tests here.
 
@@ -20,7 +20,7 @@ from .forms import ProductForm, SellProductForm
         }
     }
 )
-class ProductTransactionAmountTest(TestCase):
+class AcquisitionTransactionAmountTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="tester", password="pass")
@@ -41,11 +41,11 @@ class ProductTransactionAmountTest(TestCase):
             entity_destination=self.ent_dest,
             user=self.user,
         )
-        self.product = Product.objects.create(name="Piglet", purchase_tx=self.buy_tx, user=self.user)
+        self.acquisition = Acquisition.objects.create(name="Piglet", category="product", purchase_tx=self.buy_tx, user=self.user)
 
     def test_sell_transaction_amount_is_difference(self):
         response = self.client.post(
-            reverse("products:sell", args=[self.product.pk]),
+            reverse("acquisitions:sell", args=[self.acquisition.pk]),
             {
                 "date": timezone.now().date(),
                 "sale_price": "10000",
@@ -57,8 +57,8 @@ class ProductTransactionAmountTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-        self.product.refresh_from_db()
-        sell_tx = self.product.sell_tx
+        self.acquisition.refresh_from_db()
+        sell_tx = self.acquisition.sell_tx
         self.assertIsNotNone(sell_tx)
         self.assertEqual(sell_tx.amount, Decimal("4000"))
 
@@ -69,7 +69,7 @@ class ProductTransactionAmountTest(TestCase):
 @override_settings(
     DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
 )
-class ProductFormBalanceTest(TestCase):
+class AcquisitionFormBalanceTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u2", password="p")
@@ -80,7 +80,8 @@ class ProductFormBalanceTest(TestCase):
 
     def _form_data(self, **overrides):
         data = {
-            "name": "Product",
+            "name": "Item",
+            "category": "product",
             "date": timezone.now().date(),
             "amount": "50",
             "account_source": self.acc.pk,
@@ -92,7 +93,7 @@ class ProductFormBalanceTest(TestCase):
         return data
 
     def test_balance_validation(self):
-        form = ProductForm(data=self._form_data(amount="50"), user=self.user)
+        form = AcquisitionForm(data=self._form_data(amount="50"), user=self.user)
         self.assertFalse(form.is_valid())
         self.assertIn("account_source", form.errors)
         self.assertIn("entity_source", form.errors)
@@ -109,7 +110,7 @@ class ProductFormBalanceTest(TestCase):
             entity_source=self.out_ent,
             entity_destination=self.ent,
         )
-        form = ProductForm(data=self._form_data(account_source=self.out_acc.pk, amount="50"), user=self.user)
+        form = AcquisitionForm(data=self._form_data(account_source=self.out_acc.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
 
         Transaction.objects.create(
@@ -123,12 +124,12 @@ class ProductFormBalanceTest(TestCase):
             entity_source=self.out_ent,
             entity_destination=self.ent,
         )
-        form = ProductForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
+        form = AcquisitionForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
-class ProductComputedFieldsTest(TestCase):
+class AcquisitionComputedFieldsTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u3", password="p")
@@ -148,18 +149,18 @@ class ProductComputedFieldsTest(TestCase):
             entity_source=self.ent_src,
             entity_destination=self.ent_dest,
         )
-        self.product = Product.objects.create(name="Cow", purchase_tx=self.buy_tx, user=self.user)
+        self.acquisition = Acquisition.objects.create(name="Cow", category="product", purchase_tx=self.buy_tx, user=self.user)
 
     def test_computed_fields_none_when_unsold(self):
-        self.assertIsNone(self.product.selling_date)
-        self.assertIsNone(self.product.price_sold)
-        self.assertIsNone(self.product.profit)
+        self.assertIsNone(self.acquisition.selling_date)
+        self.assertIsNone(self.acquisition.price_sold)
+        self.assertIsNone(self.acquisition.profit)
 
     def test_computed_fields_after_sale(self):
         sale_date = timezone.now().date()
         self.client.force_login(self.user)
         self.client.post(
-            reverse("products:sell", args=[self.product.pk]),
+            reverse("acquisitions:sell", args=[self.acquisition.pk]),
             {
                 "date": sale_date,
                 "sale_price": "1000",
@@ -170,10 +171,10 @@ class ProductComputedFieldsTest(TestCase):
             },
         )
 
-        self.product.refresh_from_db()
-        self.assertEqual(self.product.selling_date, sale_date)
-        self.assertEqual(self.product.price_sold, Decimal("1000"))
-        self.assertEqual(self.product.profit, Decimal("400"))
+        self.acquisition.refresh_from_db()
+        self.assertEqual(self.acquisition.selling_date, sale_date)
+        self.assertEqual(self.acquisition.price_sold, Decimal("1000"))
+        self.assertEqual(self.acquisition.profit, Decimal("400"))
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -184,14 +185,14 @@ class OutsideAccountVisibilityTest(TestCase):
         self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.outside = Account.objects.get(account_name="Outside", user=None)
 
-    def test_product_form_includes_outside(self):
-        form = ProductForm(user=self.user)
+    def test_acquisition_form_includes_outside(self):
+        form = AcquisitionForm(user=self.user)
         qs = form.fields["account_source"].queryset
         self.assertIn(self.outside, qs)
         self.assertIn(self.outside, form.fields["account_destination"].queryset)
 
     def test_sell_form_includes_outside(self):
-        form = SellProductForm(user=self.user)
+        form = SellAcquisitionForm(user=self.user)
         qs = form.fields["account_source"].queryset
         self.assertIn(self.outside, qs)
         self.assertIn(self.outside, form.fields["account_destination"].queryset)

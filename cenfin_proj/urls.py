@@ -31,7 +31,7 @@ urlpatterns = [
     path('api/create/template/', api_create_template, name='api_create_template'),
     path('transactions/', include('transactions.urls', namespace='transactions')),
     path('accounts/', include('accounts.urls', namespace='accounts')),
-    path('products/', include(('acquisitions.urls', 'acquisitions'), namespace='acquisitions')),
+    path('acquisitions/', include(('acquisitions.urls', 'acquisitions'), namespace='acquisitions')),
     path('entities/', include(('entities.urls', 'entities'), namespace='entities')),
     path('users/', include('users.urls', namespace='users')),
 ]

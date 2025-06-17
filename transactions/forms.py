@@ -124,7 +124,7 @@ class TransactionForm(forms.ModelForm):
                 return value
         if value in {'buy product', 'sell product'}:
             raise forms.ValidationError(
-                "Buy/Sell Product transactions must be created from the Product page."
+                "Buy/Sell Product transactions must be created from the Acquisition page."
             )
         return value
     

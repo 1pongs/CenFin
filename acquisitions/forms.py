@@ -9,8 +9,14 @@ from django.utils import timezone
 from decimal import Decimal
 
 
-class ProductForm(forms.Form):
+class AcquisitionForm(forms.Form):
     name = forms.CharField(max_length=255)
+    category = forms.ChoiceField(choices=[
+        ("product", "Product"),
+        ("stock_bond", "Stock/Bond"),
+        ("property", "Property"),
+        ("insurance", "Insurance"),
+    ])
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     amount = forms.DecimalField(max_digits=12, decimal_places=2)
     account_source = forms.ModelChoiceField(queryset=Account.objects.all())
@@ -18,6 +24,24 @@ class ProductForm(forms.Form):
     entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())
     entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all())
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
+
+    # stock/bond
+    current_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    market = forms.CharField(max_length=100, required=False)
+
+    # property
+    is_sellable = forms.BooleanField(required=False)
+    expected_lifespan_years = forms.IntegerField(required=False)
+    location = forms.CharField(max_length=255, required=False)
+
+    # insurance
+    insurance_type = forms.ChoiceField(
+        choices=[("vul", "VUL"), ("term", "Term"), ("whole", "Whole"), ("health", "Health")],
+        required=False,
+    )
+    cash_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    maturity_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    provider = forms.CharField(max_length=255, required=False)
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -42,10 +66,11 @@ class ProductForm(forms.Form):
         self.helper.layout = Layout(
             Row(
                 Column("name", css_class="col-md-6"),
-                Column("date", css_class="col-md-6"),
+                Column("category", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
+                Column("date", css_class="col-md-6"),
                 Column("amount", css_class="col-md-6"),
                 css_class="g-3",
             ),
@@ -57,6 +82,30 @@ class ProductForm(forms.Form):
             Row(
                 Column("account_source", css_class="col-md-6"),
                 Column("account_destination", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("current_value", css_class="col-md-6"),
+                Column("market", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("is_sellable", css_class="col-md-6"),
+                Column("expected_lifespan_years", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("location", css_class="col-md-12"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("insurance_type", css_class="col-md-6"),
+                Column("cash_value", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("maturity_date", css_class="col-md-6"),
+                Column("provider", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",
@@ -89,7 +138,7 @@ class ProductForm(forms.Form):
         return cleaned
 
 
-class SellProductForm(forms.Form):
+class SellAcquisitionForm(forms.Form):
     date = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
         initial=lambda: timezone.now().date(),
