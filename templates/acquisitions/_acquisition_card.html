@@ -1,15 +1,19 @@
-{% load acquisition_tags %}
+{% load acquisition_tags humanize %}
 <div class="col">
   <div class="card h-100 {% if urgent %}border-danger{% endif %}">
-    <div class="card-body">
-      <h5 class="card-title">{{ acq.name }}</h5>
-      <h6 class="card-subtitle mb-2 text-muted">{{ acq.get_category_display }}</h6>
-      <dl class="row mb-0">
-        {% for field in field_list %}
-          <dt class="col-sm-5">{{ field|capfirst|replace:"_, " }}</dt>
-          <dd class="col-sm-7">
+    <div class="card-body clickable-card" data-bs-toggle="modal" data-bs-target="#acq{{ acq.pk }}Modal">
+      <h6 class="card-subtitle text-muted small mb-1">{{ acq.get_category_display }}</h6>
+      <h5 class="card-title mb-2">{{ acq.name }}</h5>
+      <dl class="row small mb-0">
+        {% for field in summary_list %}
+          <dt class="col-5">{{ field|capfirst|replace:"_, " }}</dt>
+          <dd class="col-7">
             {% with value=acq|attr:field %}
-              {% if value %}{{ value }}{% else %}-{% endif %}
+              {% if field == 'location' %}
+                {% if value %}{{ value|city }}{% else %}-{% endif %}
+              {% else %}
+                {% if value %}{{ value }}{% else %}-{% endif %}
+              {% endif %}
             {% endwith %}
           </dd>
         {% endfor %}
@@ -20,5 +24,32 @@
       <a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">Sell</a>
     </div>
     {% endif %}
+  </div>
+
+  <div class="modal fade" id="acq{{ acq.pk }}Modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ acq.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="row mb-0">
+            {% for field in field_list %}
+              <dt class="col-5">{{ field|capfirst|replace:"_, " }}</dt>
+              <dd class="col-7">
+                {% with value=acq|attr:field %}
+                  {% if field == 'location' %}
+                    {% if value %}{{ value|city }}{% else %}-{% endif %}
+                  {% else %}
+                    {% if value %}{{ value }}{% else %}-{% endif %}
+                  {% endif %}
+                {% endwith %}
+              </dd>
+            {% endfor %}
+          </dl>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

@@ -8,7 +8,7 @@
   <a href="{% url 'acquisitions:acquisition-create' %}" class="btn btn-primary">
     <i class="bi bi-plus-lg me-1"></i>Add Acquisition
   </a>
-  <form method="get" class="ms-auto d-flex gap-2">
+  <form id="filter-form" method="get" class="ms-auto d-flex gap-2">
     <select name="category" class="form-select" style="max-width: 12rem;">
       <option value="">All Categories</option>
       {% for value,label in form.category.field.choices %}
@@ -16,24 +16,36 @@
       {% endfor %}
     </select>
     <input type="month" name="month" class="form-control" value="{{ current_month }}">
-    <button class="btn btn-outline-secondary">Filter</button>
   </form>
 </div>
 
 {% if urgent_qs %}
 <h4 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>Coming up for sale</h4>
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 mb-4">
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3 mb-4">
   {% for acq in urgent_qs %}
-    {% render_acquisition_card acq CARD_FIELDS_BY_CATEGORY|get_item:acq.category urgent=True %}
+    {% render_acquisition_card acq urgent=True %}
   {% endfor %}
 </div>
 {% endif %}
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3">
   {% for acq in acquisitions %}
-    {% render_acquisition_card acq CARD_FIELDS_BY_CATEGORY|get_item:acq.category %}
+    {% render_acquisition_card acq %}
   {% empty %}
     <p class="text-center">No acquisitions.</p>
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('filter-form');
+  if(form){
+    form.querySelectorAll('select,input').forEach(el => {
+      el.addEventListener('change', () => form.submit());
+    });
+  }
+});
+</script>
 {% endblock %}

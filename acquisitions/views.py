@@ -25,6 +25,16 @@ CARD_FIELDS_BY_CATEGORY = {
     "vehicle":    ["date_bought", "amount", "model_year", "mileage", "plate_number", "is_sellable", "status"],
 }
 
+# Short list of fields shown directly on the acquisition cards
+CARD_SUMMARY_FIELDS_BY_CATEGORY = {
+    "product":    ["date_bought", "amount", "status"],
+    "stock_bond": ["date_bought", "amount", "status"],
+    "property":   ["location", "date_bought", "amount", "status"],
+    "insurance":  ["date_bought", "amount", "status"],
+    "equipment":  ["location", "date_bought", "amount", "status"],
+    "vehicle":    ["date_bought", "amount", "status"],
+}
+
 class AcquisitionListView(ListView):
     model = Acquisition
     template_name = "acquisitions/acquisition_list.html"

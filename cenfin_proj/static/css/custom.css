@@ -14,6 +14,13 @@ footer {
   background-color: #f8f9fa;
 }
 
+.clickable-card {
+  cursor: pointer;
+}
+.clickable-card:hover {
+  background-color: #f8f9fa;
+}
+
 #cancel-bulk-button { margin-left: .5rem; }
 
 /* Hide the checkbox column in the transaction table by default */
