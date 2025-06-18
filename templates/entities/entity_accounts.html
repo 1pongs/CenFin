@@ -24,7 +24,11 @@
   {% for a in accounts %}
     <tr>
       <td>{{ a.name }}</td>            
-      <td class="text-end">{{ a.balance|floatformat:0|intcomma }}</td>
+      <td class="text-end">
+        <span class="amount-display" data-prefix="₱" data-decimals="0">
+          {{ a.balance|floatformat:0|intcomma }}
+        </span>
+      </td>
     </tr>
   {% empty %}
     <tr><td colspan="2" class="text-center">No accounts yet.</td></tr>
@@ -32,7 +36,11 @@
   {% if accounts %}
     <tr class="fw-bold">
       <td>Total</td>
-      <td class="text-end">{{ total_balance|floatformat:0|intcomma }}</td>
+      <td class="text-end">
+        <span class="amount-display" data-prefix="₱" data-decimals="0">
+          {{ total_balance|floatformat:0|intcomma }}
+        </span>
+      </td>
     </tr>
   {% endif %}
 </tbody>

@@ -34,7 +34,18 @@
         <div class="card-body">
           <h5 class="card-title mb-1">{{ e.the_name }}</h5>
           <div class="small text-muted mb-2">{{ e.the_type|title }}</div>
-          <div class="h5">{{ e.total_liquid|add:e.total_non_liquid|floatformat:0|intcomma }}</div>
+          <div class="h6">
+            Liquid:
+            <span class="amount-display" data-prefix="₱" data-decimals="0">
+              {{ e.total_liquid|floatformat:0|intcomma }}
+            </span>
+          </div>
+          <div class="h6">
+            Non-Liquid:
+            <span class="amount-display" data-prefix="₱" data-decimals="0">
+              {{ e.total_non_liquid|floatformat:0|intcomma }}
+            </span>
+          </div>
         </div>
         <div class="card-footer bg-transparent border-0 text-end">
           <a href="{% url 'entities:detail' e.the_entity_id %}" class="btn btn-sm btn-primary">View / Manage</a>

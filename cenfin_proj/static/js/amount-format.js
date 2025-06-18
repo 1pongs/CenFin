@@ -29,6 +29,19 @@ function attachFormatters() {
       formatInput(el);
     }
   });
+  
+  document.querySelectorAll('.amount-display').forEach(el => {
+    const raw = el.textContent.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+    if (raw === '') return;
+    const num = parseFloat(raw);
+    if (isNaN(num)) return;
+    const decimals = el.dataset.decimals ? parseInt(el.dataset.decimals, 10) : (raw.includes('.') ? 2 : 0);
+    const prefix = el.dataset.prefix || '';
+    el.textContent = prefix + num.toLocaleString('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  });
 }
 
 if (document.readyState !== 'loading') {

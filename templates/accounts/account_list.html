@@ -32,7 +32,10 @@
   </aside>
   <div class="col-md-9">
     <div class="text-end fw-bold mb-2">
-      Total Balance: ₱{{ total_balance|floatformat:2|intcomma }}
+      Total Balance:
+      <span class="amount-display" data-prefix="₱" data-decimals="2">
+        {{ total_balance|floatformat:2|intcomma }}
+      </span>
     </div>
 
     {% for a in accounts %}
@@ -48,7 +51,9 @@
             <small class="text-muted">{{ a.account_type }}</small>
           </div>
           <div class="ms-auto fw-bold">
-            ₱{{ a.net_total|floatformat:2|intcomma }}
+            <span class="amount-display" data-prefix="₱" data-decimals="2">
+              {{ a.net_total|floatformat:2|intcomma }}
+            </span>
           </div>
         </div>
       </div>

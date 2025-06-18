@@ -103,7 +103,11 @@
           <td>{{ txn.get_transaction_type_display }}</td>
           <td>{{ txn.account_source }}</td>
           <td>{{ txn.account_destination }}</td>
-          <td class="text-end">{{ txn.amount|floatformat:2|intcomma }}</td>
+          <td class="text-end">
+            <span class="amount-display" data-prefix="₱" data-decimals="2">
+              {{ txn.amount|floatformat:2|intcomma }}
+            </span>
+          </td>
         </tr>
         {% empty %}
         <tr><td colspan="7" class="text-center text-muted">No transactions found.</td></tr>

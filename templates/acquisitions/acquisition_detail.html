@@ -19,15 +19,15 @@
     <dt class="col-sm-4">Date Bought</dt>
     <dd class="col-sm-8">{{ object.purchase_tx.date|date:"M d, Y" }}</dd>
     <dt class="col-sm-4">Cost</dt>
-    <dd class="col-sm-8">{{ object.purchase_tx.amount|floatformat:2|intcomma }}</dd>
+    <dd class="col-sm-8"><span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.purchase_tx.amount|floatformat:2|intcomma }}</span></dd>
     <dt class="col-sm-4">Current Value</dt>
     <dd class="col-sm-8">{{ object.current_value|default_if_none:"-" }}</dd>
     <dt class="col-sm-4">Selling Date</dt>
     <dd class="col-sm-8">{% if object.selling_date %}{{ object.selling_date|date:"M d, Y" }}{% else %}-{% endif %}</dd>
     <dt class="col-sm-4">Price Sold</dt>
-    <dd class="col-sm-8">{% if object.price_sold %}{{ object.price_sold|floatformat:2|intcomma }}{% else %}-{% endif %}</dd>
+    <dd class="col-sm-8">{% if object.price_sold %}<span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.price_sold|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
     <dt class="col-sm-4">Profit</dt>
-    <dd class="col-sm-8">{% if object.profit %}{{ object.profit|floatformat:2|intcomma }}{% else %}-{% endif %}</dd>
+    <dd class="col-sm-8">{% if object.profit %}<span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.profit|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
   </dl>
 </div>
 {% endblock %}
