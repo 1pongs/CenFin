@@ -2,11 +2,11 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, V
 from django.utils import timezone
 from datetime import timedelta
 
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, QueryDict
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.db.models import Sum
 from decimal import Decimal
 import json
@@ -16,7 +16,7 @@ from cenfin_proj.utils import (
     get_account_balance,
 )
 
-from .models import Transaction, TransactionTemplate
+from .models import Transaction, TransactionTemplate, CategoryTag
 from .forms import TransactionForm, TemplateForm
 from accounts.forms import AccountForm
 from entities.forms import EntityForm
@@ -307,3 +307,59 @@ def entity_balance(request, pk):
     """Return balance for a single entity."""
     bal = util_entity_balance(pk, user=request.user)
     return JsonResponse({"balance": str(bal), "currency": "PHP"})
+
+
+@require_GET
+def tag_list(request):
+    tx_type = request.GET.get("transaction_type")
+    tags = CategoryTag.objects.filter(user=request.user)
+    if tx_type:
+        tags = tags.filter(transaction_type=tx_type)
+    data = [{"id": t.pk, "name": t.name} for t in tags.order_by("name")]
+    return JsonResponse(data, safe=False)
+
+
+@require_POST
+def tag_create(request):
+    name = request.POST.get("name", "").strip()
+    tx_type = request.POST.get("transaction_type")
+    if not name:
+        return JsonResponse({"error": "name"}, status=400)
+    tag, _ = CategoryTag.objects.get_or_create(
+        user=request.user,
+        transaction_type=tx_type,
+        name=name,
+    )
+    return JsonResponse({"id": tag.pk, "name": tag.name})
+
+
+@require_http_methods(["PATCH"])
+def tag_update(request, pk):
+    tag = get_object_or_404(CategoryTag, pk=pk, user=request.user)
+    data = QueryDict(request.body)
+    name = data.get("name", "").strip()
+    if name:
+        tag.name = name
+        tag.save(update_fields=["name"])
+    return JsonResponse({"id": tag.pk, "name": tag.name})
+
+
+@require_http_methods(["DELETE"])
+def tag_delete(request, pk):
+    tag = get_object_or_404(CategoryTag, pk=pk, user=request.user)
+    tag.delete()
+    return JsonResponse({"status": "deleted"})
+
+
+@require_http_methods(["GET", "POST"])
+def tags(request):
+    if request.method == "POST":
+        return tag_create(request)
+    return tag_list(request)
+
+
+@require_http_methods(["PATCH", "DELETE"])
+def tag_detail(request, pk):
+    if request.method == "PATCH":
+        return tag_update(request, pk)
+    return tag_delete(request, pk)

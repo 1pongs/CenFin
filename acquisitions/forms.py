@@ -24,7 +24,11 @@ class AcquisitionForm(forms.Form):
         ]
     )
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
-    amount = forms.DecimalField(max_digits=12, decimal_places=2)
+    amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
     account_source = forms.ModelChoiceField(queryset=Account.objects.all())
     account_destination = forms.ModelChoiceField(queryset=Account.objects.all())
     entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())
@@ -32,7 +36,12 @@ class AcquisitionForm(forms.Form):
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     # stock/bond
-    current_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    current_value = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
     market = forms.CharField(max_length=100, required=False)
     expected_lifespan_years = forms.IntegerField(
         required=False, label="Expected lifespan (yrs)"
@@ -64,7 +73,12 @@ class AcquisitionForm(forms.Form):
         ],
         required=False,
     )
-    cash_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    cash_value = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
     maturity_date = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}), required=False
     )
@@ -215,7 +229,11 @@ class SellAcquisitionForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}),
         initial=lambda: timezone.now().date(),
     )
-    sale_price = forms.DecimalField(max_digits=12, decimal_places=2)
+    sale_price = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
     account_source = forms.ModelChoiceField(queryset=Account.objects.all())
     account_destination = forms.ModelChoiceField(queryset=Account.objects.all())
     entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())

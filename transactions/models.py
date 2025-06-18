@@ -6,7 +6,7 @@ from accounts.models import Account
 from entities.models import Entity
 from django.db.models import JSONField
 from django.core.exceptions import ValidationError
-from .constants import transaction_type_TX_MAP
+from .constants import transaction_type_TX_MAP, TXN_TYPE_CHOICES
 from cenfin_proj.utils import (
     get_account_entity_balance,
     get_entity_balance as util_entity_balance,
@@ -18,6 +18,19 @@ class TransactionTemplate(models.Model):
     name = models.CharField(max_length=60, unique=True)
     autopop_map = models.JSONField(default=dict, blank=True, null=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transaction_templates", null=True)
+
+    def __str__(self):
+        return self.name
+    
+class CategoryTag(models.Model):
+    """User-defined tag for categorizing transactions."""
+    name = models.CharField(max_length=60)
+    transaction_type = models.CharField(max_length=20, choices=TXN_TYPE_CHOICES, blank=True, null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="category_tags")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("name", "transaction_type", "user")
 
     def __str__(self):
         return self.name
@@ -79,6 +92,7 @@ class Transaction(models.Model):
     asset_type_destination = models.CharField(max_length=20, editable=False, blank=True, null=True)
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    categories = models.ManyToManyField(CategoryTag, related_name="transactions", blank=True)
     remarks = models.TextField(blank=True, null=True)
 
     def _populate_from_template(self):

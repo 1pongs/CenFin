@@ -15,4 +15,6 @@ urlpatterns = [
     path("templates/<int:pk>/delete/", views.TemplateDeleteView.as_view(), name="template_delete"),
     path('bulk-action/', views.bulk_action, name='bulk_action'),
     path('pair-balance/', views.pair_balance, name='pair_balance'),
+    path('tags/', views.tags, name='tags'),
+    path('tags/<int:pk>/', views.tag_detail, name='tag_detail'),
 ]

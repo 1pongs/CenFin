@@ -6,7 +6,7 @@ from crispy_forms.layout    import Layout, Row, Column, Submit, Button, Field
 from crispy_forms.bootstrap import FormActions
 from .constants import TXN_TYPE_CHOICES
 
-from .models import Transaction, TransactionTemplate
+from .models import Transaction, TransactionTemplate, CategoryTag
 from accounts.models import Account
 from entities.models import Entity
 from entities.utils import ensure_fixed_entities
@@ -22,6 +22,7 @@ class TransactionForm(forms.ModelForm):
         "account_source", "account_destination",
         "entity_source", "entity_destination",
     ]
+    category_names = forms.CharField(label="Category", required=False)
     
     class Meta:
         model = Transaction
@@ -35,6 +36,7 @@ class TransactionForm(forms.ModelForm):
         widgets = {
             "date":    forms.DateInput(attrs={"type": "date"}),
             "remarks": forms.Textarea(attrs={"rows": 3}),
+            "amount":  forms.TextInput(attrs={"inputmode": "decimal"}),
         }
 
         
@@ -42,10 +44,17 @@ class TransactionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.user = user
 
          # mark amount field for live comma formatting
         css = self.fields['amount'].widget.attrs.get('class', '')
         self.fields['amount'].widget.attrs['class'] = f"{css} amount-input".strip()
+        self.fields['category_names'].widget.attrs['class'] = 'tag-input form-control'
+
+        if self.instance.pk:
+            self.initial['category_names'] = ','.join(
+                t.name for t in self.instance.categories.all()
+            )
 
         if user is not None:
             account_qs = Account.objects.filter(
@@ -114,6 +123,10 @@ class TransactionForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
+                Column("category_names", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
                 Column("amount",           css_class="col-md-6"),
                 css_class="g-3",
             ),
@@ -176,6 +189,23 @@ class TransactionForm(forms.ModelForm):
                 self.add_error("entity_source", f"Insufficient funds in {ent}.")
 
         return cleaned
+    
+    def save(self, commit=True):
+        transaction = super().save(commit=False)
+        if commit:
+            transaction.save()
+        names = [n.strip() for n in (self.cleaned_data.get("category_names") or "").split(",") if n.strip()]
+        tags = []
+        tx_type = transaction.transaction_type
+        for name in names:
+            tag, _ = CategoryTag.objects.get_or_create(user=self.user, transaction_type=tx_type, name=name)
+            tags.append(tag)
+        if commit:
+            transaction.categories.set(tags)
+        else:
+            transaction.save()
+            transaction.categories.set(tags)
+        return transaction
 
 # ---------------- Template Form ----------------
 class TemplateForm(forms.ModelForm):
@@ -189,7 +219,10 @@ class TemplateForm(forms.ModelForm):
         required=False,
     )
     amount = forms.DecimalField(
-        max_digits=12, decimal_places=2, required=False
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
     )
     account_source = forms.ModelChoiceField(
         queryset=Account.objects.all(), required=False
@@ -211,13 +244,16 @@ class TemplateForm(forms.ModelForm):
     class Meta:
         model = TransactionTemplate
         fields = [
-            "name",             
+            "name",
             "date", "description",
             "transaction_type", "amount",
             "account_source", "account_destination",
             "entity_source", "entity_destination",
             "remarks",
         ]
+        widgets = {
+            "amount": forms.TextInput(attrs={"inputmode": "decimal"}),
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
