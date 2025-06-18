@@ -163,6 +163,47 @@
       e.target.reset();
     }
   });
+
+  // ---- auto-lock Outside fields ----
+  const txTypeSel = document.getElementById('id_transaction_type');
+  const accSrc = document.getElementById('id_account_source');
+  const accDest = document.getElementById('id_account_destination');
+  const entSrc = document.getElementById('id_entity_source');
+  const entDest = document.getElementById('id_entity_destination');
+
+  function outsideValues(select) {
+    const opt = Array.from(select.options).find(o => o.text === 'Outside');
+    return opt ? opt.value : '';
+  }
+
+  function toggleOutside() {
+    const type = txTypeSel.value;
+    const accVal = outsideValues(accSrc);
+    const entVal = outsideValues(entSrc);
+    if (type === 'income') {
+      accSrc.value = accVal;
+      entSrc.value = entVal;
+      accSrc.disabled = true;
+      entSrc.disabled = true;
+      accDest.disabled = false;
+      entDest.disabled = false;
+    } else if (type === 'expense') {
+      accDest.value = accVal;
+      entDest.value = entVal;
+      accDest.disabled = true;
+      entDest.disabled = true;
+      accSrc.disabled = false;
+      entSrc.disabled = false;
+    } else {
+      accSrc.disabled = false;
+      entSrc.disabled = false;
+      accDest.disabled = false;
+      entDest.disabled = false;
+    }
+  }
+
+  txTypeSel.addEventListener('change', toggleOutside);
+  document.addEventListener('DOMContentLoaded', toggleOutside);
 </script>
 
 {% endblock %}

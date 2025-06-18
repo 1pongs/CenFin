@@ -9,6 +9,8 @@ from .constants import TXN_TYPE_CHOICES
 from .models import Transaction, TransactionTemplate
 from accounts.models import Account
 from entities.models import Entity
+from entities.utils import ensure_fixed_entities
+from accounts.utils import ensure_outside_account
 
 #TransactionTemplate
 
@@ -58,8 +60,8 @@ class TransactionForm(forms.ModelForm):
         for n in self._must_fill:
             self.fields[n].required = True
 
-        outside_account = Account.objects.filter(account_name="Outside", user__isnull=True).first()
-        outside_entity  = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
+        outside_entity, _ = ensure_fixed_entities()
+        outside_account = ensure_outside_account()
         tx_type = (self.data.get("transaction_type")
                    or self.initial.get("transaction_type")
                    or getattr(self.instance, "transaction_type", None))
@@ -148,8 +150,8 @@ class TransactionForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         amt = cleaned.get("amount") or Decimal("0")
-        outside_account = Account.objects.filter(account_name="Outside", user__isnull=True).first()
-        outside_entity  = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
+        outside_entity, _ = ensure_fixed_entities()
+        outside_account = ensure_outside_account()
         tx_type = cleaned.get("transaction_type")
 
         if tx_type == "income" and outside_account and outside_entity:
@@ -218,6 +220,14 @@ class TemplateForm(forms.ModelForm):
         show_actions = kwargs.pop('show_actions', True)
         super().__init__(*args, **kwargs)
 
+        outside_entity, _ = ensure_fixed_entities()
+        outside_account = ensure_outside_account()
+        tx_type = (
+            self.data.get("transaction_type")
+            or self.initial.get("transaction_type")
+            or getattr(self.instance, "transaction_type", None)
+        )
+
         if user is not None:
             account_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -241,6 +251,17 @@ class TemplateForm(forms.ModelForm):
                         self.initial[field_name] = obj
                 else:
                     self.initial[field_name] = value
+
+        if tx_type == "income":
+            self.fields["account_source"].initial = outside_account
+            self.fields["entity_source"].initial = outside_entity
+            self.fields["account_source"].disabled = True
+            self.fields["entity_source"].disabled = True
+        elif tx_type == "expense":
+            self.fields["account_destination"].initial = outside_account
+            self.fields["entity_destination"].initial = outside_entity
+            self.fields["account_destination"].disabled = True
+            self.fields["entity_destination"].disabled = True
 
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -286,6 +307,19 @@ class TemplateForm(forms.ModelForm):
             )
 
         self.helper.layout = Layout(*layout_fields)
+
+    def clean(self):
+        cleaned = super().clean()
+        tx_type = cleaned.get("transaction_type")
+        outside_entity, _ = ensure_fixed_entities()
+        outside_account = ensure_outside_account()
+        if tx_type == "income":
+            cleaned["account_source"] = outside_account
+            cleaned["entity_source"] = outside_entity
+        elif tx_type == "expense":
+            cleaned["account_destination"] = outside_account
+            cleaned["entity_destination"] = outside_entity
+        return cleaned
 
     def save(self, commit=True):
         template = super().save(commit=False)

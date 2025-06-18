@@ -133,6 +133,9 @@ class TransactionCreateView(CreateView):
         context['templates_json'] = json.dumps(templates_json_dict)
         context['quick_account_form'] = AccountForm(show_actions=False)
         context['quick_entity_form'] = EntityForm(show_actions=False)
+        context['selected_txn_type'] = (
+            self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
+        )
         return context
 
     def form_valid(self, form):
@@ -167,6 +170,9 @@ class TransactionUpdateView(UpdateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        context['selected_txn_type'] = (
+            self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
+        )
         return context
 
     def form_valid(self, form):
@@ -209,6 +215,9 @@ class TemplateCreateView(TemplateDropdownMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         ctx['quick_account_form'] = AccountForm(show_actions=False)
         ctx['quick_entity_form'] = EntityForm(show_actions=False)
+        ctx['selected_txn_type'] = (
+            self.request.POST.get('transaction_type') or ctx['form'].initial.get('transaction_type')
+        )
         return ctx
 
     def form_valid(self, form):
@@ -232,6 +241,9 @@ class TemplateUpdateView(TemplateDropdownMixin, UpdateView):
         ctx = super().get_context_data(**kwargs)
         ctx['quick_account_form'] = AccountForm(show_actions=False)
         ctx['quick_entity_form'] = EntityForm(show_actions=False)
+        ctx['selected_txn_type'] = (
+            self.request.POST.get('transaction_type') or ctx['form'].initial.get('transaction_type')
+        )
         return ctx
 
     def get_queryset(self):
