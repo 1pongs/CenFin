@@ -55,18 +55,22 @@ class Transaction(models.Model):
     description = models.CharField(max_length=255, null=True, blank=True,)
 
     account_source = models.ForeignKey(
-        Account, on_delete=models.SET_NULL,
+        Account,
+        on_delete=models.SET_NULL,
         related_name='transaction_as_source',
         null=True,
         blank=True,
-        limit_choices_to={'is_active':True},
+        limit_choices_to={'is_active': True},
+        db_index=True,
     )
     account_destination = models.ForeignKey(
-        Account, on_delete=models.SET_NULL,
+        Account,
+        on_delete=models.SET_NULL,
         related_name='transaction_as_destination',
         null=True,
         blank=True,
-        limit_choices_to={'is_active':True},
+        limit_choices_to={'is_active': True},
+        db_index=True,
     )
 
     entity_source = models.ForeignKey(
@@ -94,6 +98,12 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     categories = models.ManyToManyField(CategoryTag, related_name="transactions", blank=True)
     remarks = models.TextField(blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["account_source"]),
+            models.Index(fields=["account_destination"]),
+        ]
 
     def _populate_from_template(self):
         """Apply defaults from the selected template."""

@@ -19,17 +19,8 @@ def account_list(request):
     qs = (
         Account.objects.active()
         .filter(user=request.user, is_visible=True)
-        .annotate(
-            dest_total=Coalesce(
-                Sum("transaction_as_destination__amount"),
-                Value(Decimal("0.00"), output_field=DecimalField()),
-            ),
-            src_total=Coalesce(
-                Sum("transaction_as_source__amount"),
-                Value(Decimal("0.00"), output_field=DecimalField()),
-            ),
-        )
-        .annotate(net_total=F("dest_total") - F("src_total"))
+        .with_current_balance()
+        .annotate(net_total=F("current_balance"))
     )
 
     search = request.GET.get("q", "").strip()

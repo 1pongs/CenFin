@@ -1,11 +1,51 @@
 from django.db import models
 from django.conf import settings
+from django.db.models.functions import Coalesce
 
 # Create your models here.
 
 class AccountQuerySet(models.QuerySet):
     def active(self):
         return self.filter(is_active=True)
+    
+def with_current_balance(self):
+        """Annotate accounts with their current balance."""
+        from decimal import Decimal
+        from django.db.models import (
+            Sum,
+            Case,
+            When,
+            F,
+            DecimalField,
+            Value,
+            Q,
+            OuterRef,
+            Subquery,
+        )
+
+        from transactions.models import Transaction
+
+        inflow_sq = (
+            Transaction.objects.filter(account_destination_id=OuterRef("pk"))
+            .values("account_destination_id")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+
+        outflow_sq = (
+            Transaction.objects.filter(account_source_id=OuterRef("pk"))
+            .values("account_source_id")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+
+        return (
+            self.annotate(
+                inflow=Coalesce(Subquery(inflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
+                outflow=Coalesce(Subquery(outflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
+            )
+            .annotate(current_balance=F("inflow") - F("outflow"))
+        )
 
 class Account(models.Model):
     account_type_choices = [
@@ -30,22 +70,17 @@ class Account(models.Model):
     def __str__(self):
         return self.account_name
 
-    def current_balance(self):
-        """Return current balance for this account."""
-        from django.db.models import Sum
+    def get_current_balance(self):
+        """Return the current balance for this account."""
         from decimal import Decimal
-        from transactions.models import Transaction
+        
+        val = (
+            Account.objects.filter(pk=self.pk)
+            .with_current_balance()
+            .values_list("current_balance", flat=True)
+            .first()
+        )
+        return val or Decimal("0")
 
-        inflow = (
-            Transaction.objects.filter(account_destination=self)
-            .aggregate(total=Sum("amount"))
-            .get("total")
-            or Decimal("0")
-        )
-        outflow = (
-            Transaction.objects.filter(account_source=self)
-            .aggregate(total=Sum("amount"))
-            .get("total")
-            or Decimal("0")
-        )
-        return inflow - outflow
+    def current_balance(self):
+        return self.get_current_balance()

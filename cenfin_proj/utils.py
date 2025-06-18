@@ -11,21 +11,7 @@ from entities.models import Entity
 
 def get_account_balances():
     """Return active accounts annotated with their current balance."""
-    return (
-        Account.objects.active()
-        .annotate(
-            inflow=Coalesce(
-                Sum("transaction_as_destination__amount"),
-                Value(Decimal("0.00"), output_field=DecimalField()),
-            ),
-            outflow=Coalesce(
-                Sum("transaction_as_source__amount"),
-                Value(Decimal("0.00"), output_field=DecimalField()),
-            ),
-        )
-        .annotate(balance=F("inflow") - F("outflow"))
-        .order_by("account_name")
-    )
+    return Account.objects.active().with_current_balance().order_by("account_name")
 
 
 def get_entity_balances():
@@ -84,21 +70,15 @@ def get_entity_balance(entity_id, user=None):
 
 def get_account_balance(account_id, user=None):
     """Return balance for a single account."""
-    from transactions.models import Transaction
-    qs = Transaction.objects
+    qs = Account.objects.filter(pk=account_id)
     if user is not None:
         qs = qs.filter(user=user)
-    inflow = (
-        qs.filter(account_destination_id=account_id)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
+    bal = (
+        qs.with_current_balance()
+        .values_list("current_balance", flat=True)
+        .first()
     )
-    outflow = (
-        qs.filter(account_source_id=account_id)
-        .aggregate(total=Sum("amount"))["total"]
-        or Decimal("0")
-    )
-    return inflow - outflow
+    return bal or Decimal("0")
 
 
 def get_account_entity_balance(account_id, entity_id, user=None):
