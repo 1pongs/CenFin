@@ -10,6 +10,7 @@ from collections import defaultdict
 
 
 from entities.models import Entity
+from acquisitions.models import Acquisition
 from .forms import EntityForm
 from transactions.models import Transaction
 
@@ -230,8 +231,8 @@ class EntityListView(TemplateView):
 # ---------------------------------------------------------------------------
 
 
-class EntityAccountDetailView(TemplateView):
-    template_name = "entities/entity_accounts.html"
+class EntityDetailView(TemplateView):
+    template_name = "entities/entity_detail.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -239,6 +240,11 @@ class EntityAccountDetailView(TemplateView):
 
         entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
         ctx["entity"] = entity
+
+        acqs = Acquisition.objects.select_related("purchase_tx", "sell_tx").filter(
+            user=self.request.user, purchase_tx__entity_destination=entity
+        )
+        ctx["acquisitions"] = acqs
 
         # incoming per account
         inflow = (

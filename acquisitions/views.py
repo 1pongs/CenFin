@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import TemplateView, FormView, ListView, DetailView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib import messages
@@ -74,6 +74,13 @@ class AcquisitionCreateView(FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
+        ent_id = self.request.GET.get("entity")
+        if ent_id:
+            try:
+                ent = Entity.objects.get(pk=ent_id, user=self.request.user)
+                kwargs["locked_entity"] = ent
+            except Entity.DoesNotExist:
+                pass
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -122,6 +129,16 @@ class AcquisitionCreateView(FormView):
             user=self.request.user,
         )
         return super().form_valid(form)
+
+    def get_success_url(self):
+        ent_id = self.request.GET.get("entity")
+        if ent_id:
+            try:
+                Entity.objects.get(pk=ent_id, user=self.request.user)
+                return reverse("entities:detail", args=[ent_id])
+            except Entity.DoesNotExist:
+                pass
+        return super().get_success_url()
 
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")

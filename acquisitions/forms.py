@@ -55,6 +55,7 @@ class AcquisitionForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        self.locked_entity = kwargs.pop('locked_entity', None)
         super().__init__(*args, **kwargs)
         if user is not None:
             acct_qs = Account.objects.filter(
@@ -68,6 +69,9 @@ class AcquisitionForm(forms.Form):
             self.fields['entity_source'].queryset = ent_qs
             self.fields['entity_destination'].queryset = ent_qs
 
+        if self.locked_entity is not None:
+            self.fields['entity_destination'].initial = self.locked_entity
+            self.fields['entity_destination'].disabled = True
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_method = "post"
@@ -163,6 +167,9 @@ class AcquisitionForm(forms.Form):
 
         if cat == "insurance" and cleaned.get("insurance_type") == "term":
             cleaned["cash_value"] = 0
+
+        if self.locked_entity is not None:
+            cleaned["entity_destination"] = self.locked_entity
 
         return cleaned
 
