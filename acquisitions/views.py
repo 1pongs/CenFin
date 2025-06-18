@@ -4,6 +4,7 @@ from django.urls import reverse_lazy, reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib import messages
+from django.db.models import Q
 
 
 # Create your views here.
@@ -63,6 +64,15 @@ class AcquisitionListView(ListView):
         ctx["current_month"] = self.request.GET.get("month", "")
         ctx["form"] = AcquisitionForm(user=self.request.user)
         ctx["CARD_FIELDS_BY_CATEGORY"] = CARD_FIELDS_BY_CATEGORY
+        ctx["entities"] = (
+            Entity.objects.filter(
+                Q(user=self.request.user) | Q(user__isnull=True),
+                is_active=True,
+                is_visible=True,
+            )
+            .exclude(entity_name="Outside")
+            .order_by("entity_name")
+        )
         return ctx
 
 

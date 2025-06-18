@@ -9,8 +9,8 @@ class EntityQuerySet(models.QuerySet):
 
 class Entity(models.Model):
     entities_type_choices = [
-        ('account', 'Account'),
-        ('investment', 'Investment'),
+        ('free fund', 'Free Fund'),
+        ('investment fund', 'Investment Fund'),
         ('emergency Fund','Emergency Fund'),
         ('business Fund','Business Fund'),
         ('retirement Fund', 'Retirement Fund'),

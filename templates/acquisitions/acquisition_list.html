@@ -5,9 +5,9 @@
 {% block content %}
 <h1 class="mb-4">Acquisitions</h1>
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <a href="{% url 'acquisitions:acquisition-create' %}" class="btn btn-primary">
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAcqModal">
     <i class="bi bi-plus-lg me-1"></i>Add Acquisition
-  </a>
+  </button>
   <form id="filter-form" method="get" class="ms-auto d-flex gap-2">
     <select name="category" class="form-select" style="max-width: 12rem;">
       <option value="">All Categories</option>
@@ -17,6 +17,31 @@
     </select>
     <input type="month" name="month" class="form-control" value="{{ current_month }}">
   </form>
+</div>
+
+<!-- Entity selection modal -->
+<div class="modal fade" id="addAcqModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="get" action="{% url 'acquisitions:acquisition-create' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Entity</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <select name="entity" class="form-select" required>
+            {% for ent in entities %}
+              <option value="{{ ent.pk }}">{{ ent.entity_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 {% if urgent_qs %}
