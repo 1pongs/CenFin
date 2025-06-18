@@ -69,7 +69,10 @@ def get_entity_aggregate_rows(user):
             ),
             total_non_liquid=Sum(
                 Case(
-                    When(asset_type_destination="Non-Liquid", then=F("amount")),
+                    When(
+                        asset_type_destination__in=["Non-Liquid", "non-liquid", "non_liquid"],
+                        then=F("amount"),
+                    ),
                     default=0,
                     output_field=DecimalField(),
                 )
@@ -127,7 +130,10 @@ def get_entity_aggregate_rows(user):
             ),
             total_non_liquid=Sum(
                 Case(
-                    When(asset_type_source="Non-Liquid", then=-F("amount")),
+                    When(
+                        asset_type_source__in=["Non-Liquid", "non-liquid", "non_liquid"],
+                        then=-F("amount"),
+                    ),
                     default=0,
                     output_field=DecimalField(),
                 )

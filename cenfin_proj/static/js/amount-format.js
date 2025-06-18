@@ -1,16 +1,26 @@
 function formatInput(el) {
-  const raw = el.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
+  const start = el.selectionStart;
+  const before = el.value;
+  const raw = before.replace(/,/g, '').replace(/[^0-9.]/g, '');
+  
   if (raw === '') {
     el.dataset.raw = '';
     el.value = '';
     return;
   }
+
   const parts = raw.split('.');
   const intPart = parts[0];
   const decPart = parts[1] ? parts[1].slice(0, 2) : '';
-  const formatted = Number(intPart).toLocaleString('en-US') + (decPart ? '.' + decPart : '');
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const formatted = formattedInt + (decPart ? '.' + decPart : '');
+
   el.value = formatted;
   el.dataset.raw = intPart + (decPart ? '.' + decPart : '');
+
+  const diff = formatted.length - before.length;
+  const newPos = start + diff;
+  el.setSelectionRange(newPos, newPos);
 }
 
 function attachFormatters() {
