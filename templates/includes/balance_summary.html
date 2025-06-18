@@ -32,6 +32,12 @@
       return isNaN(num) ? 0 : num;
     }
 
+    function isOutside(select) {
+      if (!select) return false;
+      const opt = select.options[select.selectedIndex];
+      return opt && opt.text.trim() === 'Outside';
+    }
+
     function checkSaveState() {
       const accBal = parseAmt(accBalanceField.textContent);
       const entBal = parseAmt(entBalanceField.textContent);
@@ -104,7 +110,10 @@
     function updatePair() {
       const acc = accField && accField.value;
       const ent = entField && entField.value;
-      if (acc && ent) {
+      if (isOutside(accField) || isOutside(entField)) {
+        accWrapper.classList.add('d-none');
+        accBalanceField.textContent = '';
+      } else if (acc && ent) {
         fetchPairBalance(acc, ent);
       } else {
         accWrapper.classList.add('d-none');
@@ -115,7 +124,10 @@
 
     function updateEntity() {
       const ent = entField && entField.value;
-      if (ent) {
+      if (isOutside(entField)) {
+        entWrapper.classList.add('d-none');
+        entBalanceField.textContent = '';
+      } else if (ent) {
         fetchEntityBalance(ent);
       } else {
         entWrapper.classList.add('d-none');
