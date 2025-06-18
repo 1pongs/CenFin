@@ -57,6 +57,11 @@ class AcquisitionForm(forms.Form):
         user = kwargs.pop('user', None)
         self.locked_entity = kwargs.pop('locked_entity', None)
         super().__init__(*args, **kwargs)
+
+        for fld in ['amount', 'current_value', 'cash_value']:
+            if fld in self.fields:
+                css = self.fields[fld].widget.attrs.get('class', '')
+                self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
         if user is not None:
             acct_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -205,6 +210,9 @@ class SellAcquisitionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        css = self.fields['sale_price'].widget.attrs.get('class', '')
+        self.fields['sale_price'].widget.attrs['class'] = f"{css} amount-input".strip()
         if user is not None:
             acct_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True

@@ -36,7 +36,9 @@
     </div>
   </div>
 </div>
+{% if show_balance_summary %}
 {% include "includes/balance_summary.html" %}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -81,6 +83,22 @@
       document.getElementById('id_remarks').value = defaults.remarks;
     }
   });
+
+  function toggleBalanceSummary() {
+    const typeSel = document.getElementById('id_transaction_type');
+    if (!typeSel) return;
+    const hide = typeSel.value === 'income' || typeSel.value.startsWith('sell');
+    ['account-balance-wrapper','entity-balance-wrapper','balance-error'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (hide) el.classList.add('d-none');
+        else if (el.textContent.trim() !== '' || !el.id.includes('error')) el.classList.remove('d-none');
+      }
+    });
+  }
+
+  document.getElementById('id_transaction_type').addEventListener('change', toggleBalanceSummary);
+  document.addEventListener('DOMContentLoaded', toggleBalanceSummary);
 </script>
 
 {% endblock %}

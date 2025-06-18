@@ -43,6 +43,10 @@ class TransactionForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+         # mark amount field for live comma formatting
+        css = self.fields['amount'].widget.attrs.get('class', '')
+        self.fields['amount'].widget.attrs['class'] = f"{css} amount-input".strip()
+
         if user is not None:
             account_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -79,7 +83,7 @@ class TransactionForm(forms.ModelForm):
 
          # Remove asset-related transaction types when using this form
         if 'transaction_type' in self.fields:
-            disallowed = {'buy product', 'sell product'}
+            disallowed = {'buy product', 'sell product', 'buy property', 'sell property'}
             current_type = getattr(self.instance, 'transaction_type', None)
 
             if current_type in disallowed:
@@ -137,11 +141,11 @@ class TransactionForm(forms.ModelForm):
 
     def clean_transaction_type(self):
         value = self.cleaned_data.get('transaction_type')
-        disallowed = {'buy product', 'sell product'}
+        disallowed = {'buy product', 'sell product', 'buy property', 'sell property'}
         if value in disallowed:
             if self.instance and self.instance.pk and self.instance.transaction_type == value:
                 return value
-        if value in {'buy product', 'sell product'}:
+        if value in {'buy product', 'sell product', 'buy property', 'sell property'}:
             raise forms.ValidationError(
                 "Buy/Sell Product transactions must be created from the Acquisition page."
             )
@@ -219,6 +223,9 @@ class TemplateForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         show_actions = kwargs.pop('show_actions', True)
         super().__init__(*args, **kwargs)
+
+        css = self.fields['amount'].widget.attrs.get('class', '')
+        self.fields['amount'].widget.attrs['class'] = f"{css} amount-input".strip()
 
         outside_entity, _ = ensure_fixed_entities()
         outside_account = ensure_outside_account()

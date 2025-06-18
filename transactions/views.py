@@ -136,6 +136,8 @@ class TransactionCreateView(CreateView):
         context['selected_txn_type'] = (
             self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
         )
+        tx_type = context['selected_txn_type'] or ''
+        context['show_balance_summary'] = not (tx_type == 'income' or tx_type.startswith('sell'))
         return context
 
     def form_valid(self, form):
@@ -173,6 +175,8 @@ class TransactionUpdateView(UpdateView):
         context['selected_txn_type'] = (
             self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
         )
+        tx_type = context['selected_txn_type'] or ''
+        context['show_balance_summary'] = not (tx_type == 'income' or tx_type.startswith('sell'))
         return context
 
     def form_valid(self, form):

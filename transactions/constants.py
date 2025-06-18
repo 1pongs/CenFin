@@ -5,8 +5,6 @@ transaction_type_TX_MAP = {
     "transfer": ("transfer", "transfer", "liquid",    "liquid"),
     "buy_product":("transfer", "buy_product","liquid",    "non_liquid"),
     "sell_product":("buy_product","transfer","non_liquid","liquid"),
-    "buy_property": ("expense", "outside", "liquid", "outside"),
-    "sell_property": ("expense", "outside", "liquid", "outside"),
 }
 
 TXN_TYPE_CHOICES = (("","---------"),)+ tuple((key, key.replace('_', ' ').title())

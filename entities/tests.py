@@ -76,7 +76,8 @@ class AccountHiddenListTest(TestCase):
         self.user = User.objects.create_user(username="y", password="p")
         self.client.force_login(self.user)
         Entity.objects.create(entity_name="Mine", entity_type="others", user=self.user)
-        self.account_ent = Entity.objects.get(entity_name="Account", user=None)
+        from entities.utils import ensure_fixed_entities
+        _, self.account_ent = ensure_fixed_entities()
 
     def test_account_not_in_list(self):
         resp = self.client.get(reverse("entities:list"))

@@ -35,8 +35,6 @@ class Transaction(models.Model):
         ('expense', 'Expense'),
         ('buy product', 'Buy Product'),
         ('sell product', 'Sell Product'),
-        ('buy property', 'Buy Property'),
-        ('sell property', 'Sell Property'),
         ('transfer', 'Transfer'),
     ]
 

@@ -46,11 +46,11 @@ class TransactionFormAssetTypeTest(TestCase):
         self.assertNotIn("buy product", choices)
         self.assertNotIn("sell prodcuct", choices)
 
-    def test_property_types_included(self):
+    def test_property_types_removed(self):
         form = TransactionForm(user=self.user)
         choices = [c[0] for c in form.fields["transaction_type"].choices]
-        self.assertIn("buy property", choices)
-        self.assertIn("sell property", choices)
+        self.assertNotIn("buy property", choices)
+        self.assertNotIn("sell property", choices)
 
 
 @override_settings(
