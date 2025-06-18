@@ -201,7 +201,10 @@ class EntityListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        rows = [r for r in get_entity_aggregate_rows(self.request.user) if r["the_name"] != "Outside"]
+        rows = [
+            r for r in get_entity_aggregate_rows(self.request.user)
+            if r["the_name"] not in {"Outside", "Account"}
+        ]
 
         params = self.request.GET
         search = params.get("q", "").strip()

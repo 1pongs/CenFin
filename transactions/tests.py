@@ -76,7 +76,7 @@ class TransactionFormBalanceTest(TestCase):
         return data
 
     def test_insufficient_balance_shows_errors(self):
-        form = TransactionForm(data=self._form_data(amount="50"), user=self.user)
+        form = TransactionForm(data=self._form_data(transaction_type="transfer", amount="50"), user=self.user)
         self.assertFalse(form.is_valid())
         self.assertIn("account_source", form.errors)
         self.assertIn("entity_source", form.errors)
@@ -110,3 +110,28 @@ class TransactionFormBalanceTest(TestCase):
         )
         form = TransactionForm(data=self._form_data(entity_source=self.out_ent.pk, amount="50"), user=self.user)
         self.assertTrue(form.is_valid())
+
+    def test_income_auto_sets_outside(self):
+        data = self._form_data(transaction_type="income")
+        form = TransactionForm(data=data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["account_source"].account_name, "Outside")
+        self.assertEqual(form.cleaned_data["entity_source"].entity_name, "Outside")
+
+    def test_expense_auto_sets_outside(self):
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("100"),
+            account_source=self.out_acc,
+            account_destination=self.acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        data = self._form_data(transaction_type="expense")
+        form = TransactionForm(data=data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["account_destination"].account_name, "Outside")
+        self.assertEqual(form.cleaned_data["entity_destination"].entity_name, "Outside")

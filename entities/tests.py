@@ -68,3 +68,18 @@ class OutsideHiddenListTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         names = [e["the_name"] for e in resp.context["entities"]]
         self.assertNotIn("Outside", names)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class AccountHiddenListTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="y", password="p")
+        self.client.force_login(self.user)
+        Entity.objects.create(entity_name="Mine", entity_type="others", user=self.user)
+        self.account_ent = Entity.objects.get(entity_name="Account", user=None)
+
+    def test_account_not_in_list(self):
+        resp = self.client.get(reverse("entities:list"))
+        self.assertEqual(resp.status_code, 200)
+        names = [e["the_name"] for e in resp.context["entities"]]
+        self.assertNotIn("Account", names)

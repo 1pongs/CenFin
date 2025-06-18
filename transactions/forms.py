@@ -58,6 +58,23 @@ class TransactionForm(forms.ModelForm):
         for n in self._must_fill:
             self.fields[n].required = True
 
+        outside_account = Account.objects.filter(account_name="Outside", user__isnull=True).first()
+        outside_entity  = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
+        tx_type = (self.data.get("transaction_type")
+                   or self.initial.get("transaction_type")
+                   or getattr(self.instance, "transaction_type", None))
+
+        if tx_type == "income" and outside_account and outside_entity:
+            self.fields["account_source"].initial = outside_account
+            self.fields["entity_source"].initial  = outside_entity
+            self.fields["account_source"].disabled = True
+            self.fields["entity_source"].disabled  = True
+        if tx_type == "expense" and outside_account and outside_entity:
+            self.fields["account_destination"].initial = outside_account
+            self.fields["entity_destination"].initial  = outside_entity
+            self.fields["account_destination"].disabled = True
+            self.fields["entity_destination"].disabled  = True
+
          # Remove asset-related transaction types when using this form
         if 'transaction_type' in self.fields:
             disallowed = {'buy product', 'sell product'}
@@ -131,6 +148,16 @@ class TransactionForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         amt = cleaned.get("amount") or Decimal("0")
+        outside_account = Account.objects.filter(account_name="Outside", user__isnull=True).first()
+        outside_entity  = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
+        tx_type = cleaned.get("transaction_type")
+
+        if tx_type == "income" and outside_account and outside_entity:
+            cleaned["account_source"] = outside_account
+            cleaned["entity_source"] = outside_entity
+        if tx_type == "expense" and outside_account and outside_entity:
+            cleaned["account_destination"] = outside_account
+            cleaned["entity_destination"] = outside_entity
         acc = cleaned.get("account_source")
         ent = cleaned.get("entity_source")
 
