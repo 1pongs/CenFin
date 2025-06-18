@@ -1,24 +1,28 @@
-from django import forms
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Row, Column, Submit, Button
+from decimal import Decimal
+
 from crispy_forms.bootstrap import FormActions
-from accounts.models import Account
-from entities.models import Entity
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Button, Column, Layout, Row, Submit
+from django import forms
 from django.db.models import Q
 from django.utils import timezone
-from decimal import Decimal
+
+from accounts.models import Account
+from entities.models import Entity
 
 
 class AcquisitionForm(forms.Form):
     name = forms.CharField(max_length=255)
-    category = forms.ChoiceField(choices=[
-        ("product", "Product"),
-        ("stock_bond", "Stock/Bond"),
-        ("property", "Property"),
-        ("insurance", "Insurance"),
-        ("equipment", "Equipment"),
-        ("vehicle", "Vehicle"),
-    ])
+    category = forms.ChoiceField(
+        choices=[
+            ("product", "Product"),
+            ("stock_bond", "Stock/Bond"),
+            ("property", "Property"),
+            ("insurance", "Insurance"),
+            ("equipment", "Equipment"),
+            ("vehicle", "Vehicle"),
+        ]
+    )
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     amount = forms.DecimalField(max_digits=12, decimal_places=2)
     account_source = forms.ModelChoiceField(queryset=Account.objects.all())
@@ -28,11 +32,17 @@ class AcquisitionForm(forms.Form):
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     # stock/bond
-    expected_lifespan_years = forms.IntegerField(required=False, label="Expected lifespan (yrs)")
+    current_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    market = forms.CharField(max_length=100, required=False)
+    expected_lifespan_years = forms.IntegerField(
+        required=False, label="Expected lifespan (yrs)"
+    )
     location = forms.CharField(max_length=120, required=False)
 
     # universal
-    target_selling_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    target_selling_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}), required=False
+    )
 
     # vehicle
     mileage = forms.IntegerField(required=False, min_value=0, label="Mileage (km)")
@@ -46,22 +56,29 @@ class AcquisitionForm(forms.Form):
 
     # insurance
     insurance_type = forms.ChoiceField(
-        choices=[("vul", "VUL"), ("term", "Term"), ("whole", "Whole"), ("health", "Health")],
+        choices=[
+            ("vul", "VUL"),
+            ("term", "Term"),
+            ("whole", "Whole"),
+            ("health", "Health"),
+        ],
         required=False,
     )
     cash_value = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
-    maturity_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    maturity_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}), required=False
+    )
     provider = forms.CharField(max_length=255, required=False)
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        self.locked_entity = kwargs.pop('locked_entity', None)
+        user = kwargs.pop("user", None)
+        self.locked_entity = kwargs.pop("locked_entity", None)
         super().__init__(*args, **kwargs)
 
-        for fld in ['amount', 'current_value', 'cash_value']:
+        for fld in ["amount", "current_value", "cash_value"]:
             if fld in self.fields:
-                css = self.fields[fld].widget.attrs.get('class', '')
-                self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
+                css = self.fields[fld].widget.attrs.get("class", "")
+                self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
         if user is not None:
             acct_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -69,10 +86,10 @@ class AcquisitionForm(forms.Form):
             ent_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
             )
-            self.fields['account_source'].queryset = acct_qs
-            self.fields['account_destination'].queryset = acct_qs
-            self.fields['entity_source'].queryset = ent_qs
-            self.fields['entity_destination'].queryset = ent_qs
+            self.fields["account_source"].queryset = acct_qs
+            self.fields["account_destination"].queryset = acct_qs
+            self.fields["entity_source"].queryset = ent_qs
+            self.fields["entity_destination"].queryset = ent_qs
 
         # always lock destination to the special Outside account
         try:
@@ -86,8 +103,8 @@ class AcquisitionForm(forms.Form):
             self.outside_account = None
 
         if self.locked_entity is not None:
-            self.fields['entity_destination'].initial = self.locked_entity
-            self.fields['entity_destination'].disabled = True
+            self.fields["entity_destination"].initial = self.locked_entity
+            self.fields["entity_destination"].disabled = True
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_method = "post"
@@ -203,16 +220,14 @@ class SellAcquisitionForm(forms.Form):
     account_destination = forms.ModelChoiceField(queryset=Account.objects.all())
     entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())
     entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all())
-    remarks = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 3}), required=False
-    )
+    remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
-        css = self.fields['sale_price'].widget.attrs.get('class', '')
-        self.fields['sale_price'].widget.attrs['class'] = f"{css} amount-input".strip()
+        css = self.fields["sale_price"].widget.attrs.get("class", "")
+        self.fields["sale_price"].widget.attrs["class"] = f"{css} amount-input".strip()
         if user is not None:
             acct_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -220,10 +235,10 @@ class SellAcquisitionForm(forms.Form):
             ent_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
             )
-            self.fields['account_source'].queryset = acct_qs
-            self.fields['account_destination'].queryset = acct_qs
-            self.fields['entity_source'].queryset = ent_qs
-            self.fields['entity_destination'].queryset = ent_qs
+            self.fields["account_source"].queryset = acct_qs
+            self.fields["account_destination"].queryset = acct_qs
+            self.fields["entity_source"].queryset = ent_qs
+            self.fields["entity_destination"].queryset = ent_qs
         try:
             self.outside_account = Account.objects.get(
                 account_name="Outside", user__isnull=True
@@ -269,4 +284,3 @@ class SellAcquisitionForm(forms.Form):
         if self.outside_account is not None:
             cleaned["account_source"] = self.outside_account
         return cleaned
-    
