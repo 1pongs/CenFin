@@ -240,3 +240,41 @@ class AcquisitionFormValidationTest(TestCase):
         }, user=self.user)
         form.is_valid()
         self.assertEqual(form.cleaned_data.get('cash_value'), 0)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class OutsideAutoLockTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="lock", password="p")
+        self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.dest = Account.objects.create(account_name="Dest", account_type="Cash", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.out_acc = Account.objects.get(account_name="Outside", user=None)
+        self.out_ent = Entity.objects.get(entity_name="Outside", user=None)
+
+    def test_buy_form_forces_outside_destination(self):
+        form = AcquisitionForm(data={
+            "name": "Thing",
+            "category": "product",
+            "date": timezone.now().date(),
+            "amount": "10",
+            "account_source": self.out_acc.pk,
+            "account_destination": self.dest.pk,
+            "entity_source": self.out_ent.pk,
+            "entity_destination": self.ent.pk,
+        }, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["account_destination"], self.out_acc)
+
+    def test_sell_form_forces_outside_source(self):
+        form = SellAcquisitionForm(data={
+            "date": timezone.now().date(),
+            "sale_price": "5",
+            "account_source": self.dest.pk,
+            "account_destination": self.cash.pk,
+            "entity_source": self.ent.pk,
+            "entity_destination": self.ent.pk,
+        }, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["account_source"], self.out_acc)

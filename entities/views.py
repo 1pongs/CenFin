@@ -201,7 +201,7 @@ class EntityListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        rows = get_entity_aggregate_rows(self.request.user)
+        rows = [r for r in get_entity_aggregate_rows(self.request.user) if r["the_name"] != "Outside"]
 
         params = self.request.GET
         search = params.get("q", "").strip()

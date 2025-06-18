@@ -264,9 +264,14 @@ def sell_acquisition(request, pk):
         
             return redirect("acquisitions:acquisition-list")
     else:
+        try:
+            outside_acc = Account.objects.get(account_name="Outside", user__isnull=True)
+            src_id = outside_acc.pk
+        except Account.DoesNotExist:
+            src_id = None
         initial = {
             "date": timezone.now().date(),
-            "account_source": acquisition.purchase_tx.account_destination_id,
+            "account_source": src_id,
             "account_destination": acquisition.purchase_tx.account_source_id,
             "entity_source": acquisition.purchase_tx.entity_destination_id,
             "entity_destination": acquisition.purchase_tx.entity_source_id,

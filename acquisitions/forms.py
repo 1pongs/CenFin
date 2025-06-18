@@ -69,6 +69,17 @@ class AcquisitionForm(forms.Form):
             self.fields['entity_source'].queryset = ent_qs
             self.fields['entity_destination'].queryset = ent_qs
 
+        # always lock destination to the special Outside account
+        try:
+            self.outside_account = Account.objects.get(
+                account_name="Outside", user__isnull=True
+            )
+            self.fields["account_destination"].initial = self.outside_account
+            self.fields["account_destination"].disabled = True
+            self.fields["account_destination"].required = False
+        except Account.DoesNotExist:
+            self.outside_account = None
+
         if self.locked_entity is not None:
             self.fields['entity_destination'].initial = self.locked_entity
             self.fields['entity_destination'].disabled = True
@@ -171,6 +182,9 @@ class AcquisitionForm(forms.Form):
         if self.locked_entity is not None:
             cleaned["entity_destination"] = self.locked_entity
 
+        if self.outside_account is not None:
+            cleaned["account_destination"] = self.outside_account
+
         return cleaned
 
 
@@ -202,6 +216,15 @@ class SellAcquisitionForm(forms.Form):
             self.fields['account_destination'].queryset = acct_qs
             self.fields['entity_source'].queryset = ent_qs
             self.fields['entity_destination'].queryset = ent_qs
+        try:
+            self.outside_account = Account.objects.get(
+                account_name="Outside", user__isnull=True
+            )
+            self.fields["account_source"].initial = self.outside_account
+            self.fields["account_source"].disabled = True
+            self.fields["account_source"].required = False
+        except Account.DoesNotExist:
+            self.outside_account = None
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(
@@ -232,3 +255,10 @@ class SellAcquisitionForm(forms.Form):
                 css_class="d-flex justify-content-end gap-2 mt-3",
             ),
         )
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.outside_account is not None:
+            cleaned["account_source"] = self.outside_account
+        return cleaned
+    

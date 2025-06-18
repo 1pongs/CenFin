@@ -53,3 +53,18 @@ class EntitySoftDeleteTest(TestCase):
         self.assertRedirects(resp, reverse("entities:archived"))
         self.ent.refresh_from_db()
         self.assertTrue(self.ent.is_active)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class OutsideHiddenListTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="x", password="p")
+        self.client.force_login(self.user)
+        Entity.objects.create(entity_name="Mine", entity_type="others", user=self.user)
+        self.outside = Entity.objects.get(entity_name="Outside", user=None)
+
+    def test_outside_not_in_list(self):
+        resp = self.client.get(reverse("entities:list"))
+        self.assertEqual(resp.status_code, 200)
+        names = [e["the_name"] for e in resp.context["entities"]]
+        self.assertNotIn("Outside", names)
