@@ -93,6 +93,9 @@ class AcquisitionCreateView(FormView):
                 kwargs["locked_entity"] = ent
             except Entity.DoesNotExist:
                 pass
+        cat = self.request.GET.get("category")
+        if cat:
+            kwargs.setdefault("initial", {})["category"] = cat
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -135,6 +138,7 @@ class AcquisitionCreateView(FormView):
             plate_number=data.get("plate_number", ""),
             model_year=data.get("model_year"),
             insurance_type=data.get("insurance_type"),
+            sum_assured_amount=data.get("sum_assured_amount"),
             cash_value=data.get("cash_value"),
             maturity_date=data.get("maturity_date"),
             provider=data.get("provider", ""),
@@ -194,6 +198,7 @@ class AcquisitionUpdateView(AcquisitionCreateView):
                 "plate_number": self.object.plate_number,
                 "model_year": self.object.model_year,
                 "insurance_type": self.object.insurance_type,
+                "sum_assured_amount": self.object.sum_assured_amount,
                 "cash_value": self.object.cash_value,
                 "maturity_date": self.object.maturity_date,
                 "provider": self.object.provider,
@@ -230,6 +235,7 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         acq.plate_number = data.get("plate_number", "")
         acq.model_year = data.get("model_year")
         acq.insurance_type = data.get("insurance_type")
+        acq.sum_assured_amount = data.get("sum_assured_amount")
         acq.cash_value = data.get("cash_value")
         acq.maturity_date = data.get("maturity_date")
         acq.provider = data.get("provider", "")

@@ -20,6 +20,14 @@
   <a href="{% url 'acquisitions:acquisition-create' %}?entity={{ entity.pk }}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg me-1"></i>Add Acquisition
   </a>
+<button
+    class="btn btn-outline-primary btn-sm ms-2"
+    hx-get="{% url 'acquisitions:acquisition-create' %}?category=insurance&entity={{ entity.pk }}"
+    hx-target="#modal"
+    hx-trigger="click"
+  >
+    Subscribe Insurance Policy
+  </button>
 </div>
 
 <h4 class="mt-4">Acquisitions</h4>

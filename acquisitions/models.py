@@ -66,6 +66,7 @@ class Acquisition(models.Model):
 
     # insurance
     insurance_type = models.CharField(max_length=10, choices=INSURANCE_TYPE_CHOICES, blank=True)
+    sum_assured_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     cash_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     maturity_date = models.DateField(null=True, blank=True)
     provider = models.CharField(max_length=255, blank=True)

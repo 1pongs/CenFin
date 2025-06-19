@@ -19,6 +19,7 @@ class AcquisitionAdmin(admin.ModelAdmin):
             form.base_fields.pop('location', None)
         if cat != 'insurance':
             form.base_fields.pop('insurance_type', None)
+            form.base_fields.pop('sum_assured_amount', None)
             form.base_fields.pop('cash_value', None)
             form.base_fields.pop('maturity_date', None)
             form.base_fields.pop('provider', None)

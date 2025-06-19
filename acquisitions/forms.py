@@ -27,12 +27,13 @@ class AcquisitionForm(forms.Form):
     amount = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
+        required=False,
         widget=forms.TextInput(attrs={"inputmode": "decimal"}),
     )
-    account_source = forms.ModelChoiceField(queryset=Account.objects.all())
-    account_destination = forms.ModelChoiceField(queryset=Account.objects.all())
-    entity_source = forms.ModelChoiceField(queryset=Entity.objects.all())
-    entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all())
+    account_source = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
+    account_destination = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
+    entity_source = forms.ModelChoiceField(queryset=Entity.objects.all(), required=False)
+    entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all(), required=False)
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     # stock/bond
@@ -73,6 +74,12 @@ class AcquisitionForm(forms.Form):
         ],
         required=False,
     )
+    sum_assured_amount = forms.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        required=False,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
     cash_value = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -89,7 +96,7 @@ class AcquisitionForm(forms.Form):
         self.locked_entity = kwargs.pop("locked_entity", None)
         super().__init__(*args, **kwargs)
 
-        for fld in ["amount", "current_value", "cash_value"]:
+        for fld in ["amount", "current_value", "cash_value", "sum_assured_amount"]:
             if fld in self.fields:
                 css = self.fields[fld].widget.attrs.get("class", "")
                 self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
@@ -166,7 +173,11 @@ class AcquisitionForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
+                Column("sum_assured_amount", css_class="col-md-6"),
                 Column("maturity_date", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
                 Column("provider", css_class="col-md-6"),
                 css_class="g-3",
             ),
@@ -212,8 +223,11 @@ class AcquisitionForm(forms.Form):
             if mileage is not None and mileage < 0:
                 self.add_error("mileage", "Mileage must be zero or positive")
 
-        if cat == "insurance" and cleaned.get("insurance_type") == "term":
-            cleaned["cash_value"] = 0
+        if cat == "insurance":
+            if not cleaned.get("sum_assured_amount"):
+                self.add_error("sum_assured_amount", "This field is required.")
+            if cleaned.get("insurance_type") == "term":
+                cleaned["cash_value"] = 0
 
         if self.locked_entity is not None:
             cleaned["entity_destination"] = self.locked_entity

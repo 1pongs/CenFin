@@ -236,7 +236,8 @@ class AcquisitionFormValidationTest(TestCase):
             'account_destination': Account.objects.create(account_name="A2", account_type="Cash", user=self.user).pk,
             'entity_source': Entity.objects.create(entity_name="E3", entity_type="outside", user=self.user).pk,
             'entity_destination': Entity.objects.create(entity_name="E4", entity_type="outside", user=self.user).pk,
-            'cash_value': '1000'
+            'cash_value': '1000',
+            'sum_assured_amount': '5000'
         }, user=self.user)
         form.is_valid()
         self.assertEqual(form.cleaned_data.get('cash_value'), 0)
