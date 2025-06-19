@@ -46,8 +46,8 @@ class Transaction(models.Model):
     TRANSACTION_TYPE_CHOICES = [
         ('income', 'Income'),
         ('expense', 'Expense'),
-        ('buy product', 'Buy Product'),
-        ('sell product', 'Sell Product'),
+        ('buy acquisition', 'Buy Acquisition'),
+        ('sell acquisition', 'Sell Acquisition'),
         ('transfer', 'Transfer'),
     ]
 

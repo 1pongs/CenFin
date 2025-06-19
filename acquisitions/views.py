@@ -5,6 +5,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.db.models import Q
+from django.db import transaction
+from decimal import Decimal
 
 
 # Create your views here.
@@ -105,7 +107,7 @@ class AcquisitionCreateView(FormView):
             user=self.request.user,
             date=data["date"],
             description=data["name"],
-            transaction_type="buy product",
+            transaction_type="buy acquisition",
             amount=data["amount"],
             account_source=data["account_source"],
             account_destination=data["account_destination"],
@@ -256,21 +258,35 @@ def sell_acquisition(request, pk):
         if form.is_valid():
             data = form.cleaned_data
             buy_tx = acquisition.purchase_tx
-            diff = data["sale_price"] - (buy_tx.amount or 0)
-            sell_tx = Transaction.objects.create(
-                user=request.user,
-                date=data["date"],
-                description=f"Sell {acquisition.name}",
-                transaction_type="sell product",
-                amount=diff,
-                 account_source=data["account_source"],
-                account_destination=data["account_destination"],
-                entity_source=data["entity_source"],
-                entity_destination=data["entity_destination"],
-                remarks=data["remarks"],
-            )
-            acquisition.sell_tx = sell_tx
-            acquisition.save()
+            capital_cost = buy_tx.amount or Decimal("0")
+            profit_amt = data["sale_price"] - capital_cost
+            with transaction.atomic():
+                profit_tx = Transaction.objects.create(
+                    user=request.user,
+                    date=data["date"],
+                    description=f"Sell {acquisition.name} \u2014 profit",
+                    transaction_type="sell acquisition",
+                    amount=profit_amt,
+                    account_source=data["account_source"],
+                    account_destination=data["account_destination"],
+                    entity_source=data["entity_source"],
+                    entity_destination=data["entity_destination"],
+                    remarks=data["remarks"],
+                )
+                Transaction.objects.create(
+                    user=request.user,
+                    date=data["date"],
+                    description=f"Sell {acquisition.name} \u2014 capital return",
+                    transaction_type="transfer",
+                    amount=capital_cost,
+                    account_source=data["account_source"],
+                    account_destination=data["account_destination"],
+                    entity_source=data["entity_source"],
+                    entity_destination=data["entity_destination"],
+                    remarks=data["remarks"],
+                )
+                acquisition.sell_tx = profit_tx
+                acquisition.save()
         
             return redirect("acquisitions:acquisition-list")
     else:

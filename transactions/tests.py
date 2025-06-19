@@ -26,7 +26,7 @@ class TransactionFormAssetTypeTest(TestCase):
             user=self.user,
             date=timezone.now().date(),
             description="test",
-            transaction_type="buy product",
+            transaction_type="buy acquisition",
             amount=Decimal("10"),
             account_source=self.acc,
             account_destination=self.acc,
@@ -38,13 +38,13 @@ class TransactionFormAssetTypeTest(TestCase):
         form = TransactionForm(instance=self.tx, user=self.user)
         field = form.fields["transaction_type"]
         self.assertTrue(field.disabled)
-        self.assertEqual(field.choices, [("buy product", "Buy Product")])
+        self.assertEqual(field.choices, [("buy acquisition", "Buy Acquisition")])
 
     def test_new_form_excludes_asset_types(self):
         form = TransactionForm(user=self.user)
         choices = [c[0] for c in form.fields["transaction_type"].choices]
-        self.assertNotIn("buy product", choices)
-        self.assertNotIn("sell prodcuct", choices)
+        self.assertNotIn("buy acquisition", choices)
+        self.assertNotIn("sell acquisition", choices)
 
     def test_property_types_removed(self):
         form = TransactionForm(user=self.user)

@@ -45,7 +45,7 @@ class AcquisitionTransactionAmountTest(TestCase):
         self.buy_tx = Transaction.objects.create(
             date=timezone.now().date(),
             description="Buy Piglet",
-            transaction_type="buy product",
+            transaction_type="buy acquisition",
             amount=Decimal("6000"),
             account_source=self.acc_src,
             account_destination=self.acc_dest,
@@ -74,8 +74,8 @@ class AcquisitionTransactionAmountTest(TestCase):
         self.assertIsNotNone(sell_tx)
         self.assertEqual(sell_tx.amount, Decimal("4000"))
 
-        # only buy and sell transactions should exist
-        self.assertEqual(Transaction.objects.count(), 2)
+        #buy transaction plus two sale-related transactions should exist
+        self.assertEqual(Transaction.objects.count(), 3)
 
 
 @override_settings(
@@ -154,7 +154,7 @@ class AcquisitionComputedFieldsTest(TestCase):
             user=self.user,
             date=timezone.now().date(),
             description="Buy Cow",
-            transaction_type="buy product",
+            transaction_type="buy acquisition",
             amount=Decimal("600"),
             account_source=self.acc_src,
             account_destination=self.acc_dest,

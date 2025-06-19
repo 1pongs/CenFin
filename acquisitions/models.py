@@ -81,6 +81,11 @@ class Acquisition(models.Model):
         return f"{self.name} ({cat})" if cat else self.name
 
     @property
+    def capital_cost(self):
+        """Purchase price of the acquisition."""
+        return self.purchase_tx.amount or Decimal("0")  
+    
+    @property
     def selling_date(self):
         """Return the date the acquisition was sold, if any."""
         if self.sell_tx:
