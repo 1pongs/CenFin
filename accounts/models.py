@@ -8,7 +8,7 @@ class AccountQuerySet(models.QuerySet):
     def active(self):
         return self.filter(is_active=True)
     
-def with_current_balance(self):
+    def with_current_balance(self):
         """Annotate accounts with their current balance."""
         from decimal import Decimal
         from django.db.models import (
@@ -43,9 +43,19 @@ def with_current_balance(self):
             self.annotate(
                 inflow=Coalesce(Subquery(inflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
                 outflow=Coalesce(Subquery(outflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
-            )
-            .annotate(current_balance=F("inflow") - F("outflow"))
+            ).annotate(current_balance=F("inflow") - F("outflow"))
         )
+
+class AccountManager(models.Manager):
+    def get_queryset(self):
+        return AccountQuerySet(self.model, using=self._db)
+
+    def active(self):
+        return self.get_queryset().active()
+
+    def with_current_balance(self):
+        return self.get_queryset().with_current_balance()
+
 
 class Account(models.Model):
     account_type_choices = [
@@ -61,7 +71,7 @@ class Account(models.Model):
     is_visible = models.BooleanField(default=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
 
-    objects=AccountQuerySet.as_manager()
+    objects = AccountManager()
 
     def delete(self, *args, **kwargs):
         self.is_active=False
