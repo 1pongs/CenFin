@@ -89,6 +89,11 @@ class TransactionForm(forms.ModelForm):
             self.fields["entity_destination"].initial  = outside_entity
             self.fields["account_destination"].disabled = True
             self.fields["entity_destination"].disabled  = True
+        if tx_type == "premium_payment" and outside_account and outside_entity:
+            self.fields["account_destination"].initial = outside_account
+            self.fields["entity_destination"].initial  = outside_entity
+            self.fields["account_destination"].disabled = True
+            self.fields["entity_destination"].disabled  = True
 
          # Remove asset-related transaction types when using this form
         if 'transaction_type' in self.fields:
@@ -175,6 +180,9 @@ class TransactionForm(forms.ModelForm):
             cleaned["account_source"] = outside_account
             cleaned["entity_source"] = outside_entity
         if tx_type == "expense" and outside_account and outside_entity:
+            cleaned["account_destination"] = outside_account
+            cleaned["entity_destination"] = outside_entity
+        if tx_type == "premium_payment" and outside_account and outside_entity:
             cleaned["account_destination"] = outside_account
             cleaned["entity_destination"] = outside_entity
         acc = cleaned.get("account_source")
@@ -305,6 +313,11 @@ class TemplateForm(forms.ModelForm):
             self.fields["entity_destination"].initial = outside_entity
             self.fields["account_destination"].disabled = True
             self.fields["entity_destination"].disabled = True
+        elif tx_type == "premium_payment":
+            self.fields["account_destination"].initial = outside_account
+            self.fields["entity_destination"].initial = outside_entity
+            self.fields["account_destination"].disabled = True
+            self.fields["entity_destination"].disabled = True
 
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -360,6 +373,9 @@ class TemplateForm(forms.ModelForm):
             cleaned["account_source"] = outside_account
             cleaned["entity_source"] = outside_entity
         elif tx_type == "expense":
+            cleaned["account_destination"] = outside_account
+            cleaned["entity_destination"] = outside_entity
+        elif tx_type == "premium_payment":
             cleaned["account_destination"] = outside_account
             cleaned["entity_destination"] = outside_entity
         return cleaned

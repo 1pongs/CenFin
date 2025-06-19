@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h2>New Insurance Policy</h2>
+<form method="post">
+  {% csrf_token %}
+  {% crispy form %}
+</form>
+{% endblock %}

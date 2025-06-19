@@ -2,6 +2,7 @@ transaction_type_TX_MAP = {
     # tx                tsrc        tdest       assetsrc   assetdest
     "income":   ("outside",  "income",   "outside",   "liquid"),
     "expense":  ("expense",  "outside",  "liquid",    "outside"),
+    "premium_payment": ("expense", "outside", "liquid", "outside"),
     "transfer": ("transfer", "transfer", "liquid",    "liquid"),
     "buy_acquisition":("transfer", "buy_acquisition","liquid",    "non_liquid"),
     "sell_acquisition":("buy_acquisition","transfer","non_liquid","liquid"),
