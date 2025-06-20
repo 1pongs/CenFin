@@ -6,8 +6,13 @@ from django.utils.decorators import method_decorator
 
 from acquisitions.models import Acquisition
 from entities.models import Entity
-from .models import Insurance
+from .models import Insurance, PremiumPayment
 from .forms import InsuranceForm
+from transactions.forms import TransactionForm
+from transactions.models import Transaction
+from accounts.models import Account
+from decimal import Decimal
+from django.shortcuts import get_object_or_404, render, redirect
 
 
 @method_decorator(login_required, name="dispatch")
@@ -38,6 +43,7 @@ class InsuranceCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        form.instance.status = "inactive"
         return super().form_valid(form)
     
     def get_success_url(self):
@@ -88,3 +94,35 @@ def acquisition_options(request, entity_id, category):
         .order_by("name")
     )
     return JsonResponse(list(acqs), safe=False)
+
+
+@login_required
+def pay_premium(request, pk):
+    insurance = get_object_or_404(Insurance, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = TransactionForm(request.POST, user=request.user)
+        if form.is_valid():
+            tx = form.save(commit=False)
+            tx.user = request.user
+            tx.save()
+            PremiumPayment.objects.create(
+                insurance=insurance,
+                date=tx.date,
+                amount=tx.amount or Decimal("0"),
+                note=tx.description or "",
+                transaction=tx,
+            )
+            if insurance.status != "active":
+                insurance.status = "active"
+                insurance.save(update_fields=["status"])
+            return redirect("entities:detail", pk=insurance.entity_id)
+    else:
+        initial = {
+            "transaction_type": "premium_payment",
+            "entity_source": insurance.entity_id,
+        }
+        acc = Account.objects.active().filter(user=request.user).first()
+        if acc:
+            initial["account_source"] = acc.pk
+        form = TransactionForm(initial=initial, user=request.user)
+    return render(request, "insurance/pay_premium_form.html", {"form": form, "insurance": insurance})

@@ -41,6 +41,11 @@ class Insurance(models.Model):
         ("monthly", "Monthly"),
     ]
 
+    STATUS_CHOICES = [
+        ("inactive", "Inactive"),
+        ("active", "Active"),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -66,6 +71,7 @@ class Insurance(models.Model):
     acquisition = models.ForeignKey(
         'acquisitions.Acquisition', on_delete=models.CASCADE, null=True, blank=True, related_name='insurances'
     )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
 
     objects = InsuranceQuerySet.as_manager()
 
@@ -100,6 +106,13 @@ class PremiumPayment(models.Model):
     date = models.DateField()
     amount = models.DecimalField(max_digits=18, decimal_places=2)
     note = models.CharField(max_length=255, blank=True)
+    transaction = models.ForeignKey(
+        'transactions.Transaction',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='premium_payments',
+    )
 
     class Meta:
         db_table = "insurance_premiumpayment"

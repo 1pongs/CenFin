@@ -34,6 +34,30 @@
   {% endfor %}
 </div>
 
+<h4 class="mt-4">Insurance Policies</h4>
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3 mb-4">
+  {% for ins in insurances %}
+    <div class="col">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted small mb-1">{{ ins.get_insurance_type_display }}</h6>
+          <h5 class="card-title mb-2">{{ ins.policy_owner|default:ins.person_insured }}</h5>
+          <dl class="row small mb-0">
+            <dt class="col-5">Status</dt>
+            <dd class="col-7">{{ ins.get_status_display }}</dd>
+          </dl>
+        </div>
+        <div class="card-footer bg-transparent border-0 text-end">
+          <a href="#" class="btn btn-sm btn-success">Withdraw</a>
+          <a href="{% url 'insurance:pay-premium' ins.pk %}" class="btn btn-sm btn-primary ms-2">Pay Premium</a>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="text-center">No insurance policies.</p>
+  {% endfor %}
+</div>
+
 <h4 class="mt-4">Accounts</h4>
 <table class="table table-bordered mt-2">
   <thead>
@@ -67,7 +91,7 @@
 
 <!-- Insurance wizard modal -->
 <div class="modal fade" id="insModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Subscribe Insurance Policy</h5>
@@ -83,7 +107,7 @@
             <option value="travel">Travel Insurance</option>
           </select>
           <div class="text-end mt-3">
-            <button type="button" class="btn btn-primary" id="insNext">Next</button>
+            <button type="button" class="btn btn-primary" id="insNext">Continue</button>
           </div>
         </div>
         <div id="ins-step2" style="display:none;">
@@ -98,7 +122,6 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-secondary" id="insBack" style="display:none;">Back</button>
         <button type="submit" form="insForm" class="btn btn-primary" id="insSubmit" style="display:none;">Save</button>
       </div>

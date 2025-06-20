@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+{% url 'entities:detail' insurance.entity_id as back_url %}
+{% include "includes/back_button.html" with url=back_url %}
+<h2 class="mb-3">Pay Premium for {{ insurance }}</h2>
+<form method="post">
+  {% csrf_token %}
+  {% crispy form %}
+</form>
+{% endblock %}
