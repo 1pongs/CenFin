@@ -4,7 +4,7 @@ from .models import Insurance, PremiumPayment
 
 @admin.register(Insurance)
 class InsuranceAdmin(admin.ModelAdmin):
-    list_display = ("name", "insurance_type", "sum_assured")
+    list_display = ("insurance_type", "policy_owner", "sum_assured")
 
 
 @admin.register(PremiumPayment)

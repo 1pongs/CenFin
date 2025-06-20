@@ -73,7 +73,9 @@ class Insurance(models.Model):
         db_table = "insurance_insurance"
 
     def __str__(self) -> str:  # pragma: no cover - simple repr
-        return self.name
+        label = self.get_insurance_type_display()
+        owner = self.policy_owner or self.person_insured
+        return f"{label} for {owner}" if owner else label
 
     def get_absolute_url(self):
         from django.urls import reverse

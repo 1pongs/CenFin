@@ -15,7 +15,7 @@ class InsuranceForm(forms.ModelForm):
             "insurance_type",
             "sum_assured",
             "premium_mode",
-            "monthly_premium",
+            "premium_amount",
             "unit_balance",
             "unit_value",
             "valuation_date",
@@ -25,14 +25,14 @@ class InsuranceForm(forms.ModelForm):
         widgets = {
             "valuation_date": forms.DateInput(attrs={"type": "date"}),
             "sum_assured": forms.TextInput(attrs={"inputmode": "decimal"}),
-            "monthly_premium": forms.TextInput(attrs={"inputmode": "decimal"}),
+            "premium_amount": forms.TextInput(attrs={"inputmode": "decimal"}),
             "unit_balance": forms.TextInput(attrs={"inputmode": "decimal"}),
             "unit_value": forms.TextInput(attrs={"inputmode": "decimal"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for fld in ["sum_assured", "monthly_premium", "unit_balance", "unit_value"]:
+        for fld in ["sum_assured", "premium_amount", "unit_balance", "unit_value"]:
             if fld in self.fields:
                 css = self.fields[fld].widget.attrs.get("class", "")
                 self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
@@ -43,8 +43,8 @@ class InsuranceForm(forms.ModelForm):
         self.helper.form_tag = False
         self.helper.layout = Layout(
             Row(
-                Column("name", css_class="col-md-6"),
                 Column("insurance_type", css_class="col-md-6"),
+                Column("premium_mode", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -54,6 +54,7 @@ class InsuranceForm(forms.ModelForm):
             ),
             Row(
                 Column("sum_assured", css_class="col-md-6"),
+                Column("premium_amount", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Div(
