@@ -44,17 +44,47 @@ class AcquisitionListView(ListView):
     context_object_name = "acquisitions"
 
     def get_queryset(self):
-        qs = Acquisition.objects.select_related("purchase_tx", "sell_tx").filter(user=self.request.user)
+        qs = (
+            Acquisition.objects.select_related("purchase_tx", "sell_tx")
+            .filter(user=self.request.user)
+        )
+
         cat = self.request.GET.get("category")
         if cat:
             qs = qs.filter(category=cat)
-        month = self.request.GET.get("month")
-        if month:
+
+        status = self.request.GET.get("status")
+        if status == "active":
+            qs = qs.filter(sell_tx__isnull=True)
+        elif status == "not_active":
+            qs = qs.filter(sell_tx__isnull=False)
+
+        start = self.request.GET.get("start")
+        end = self.request.GET.get("end")
+        if start:
             try:
-                y, m = map(int, month.split("-"))
-                qs = qs.filter(purchase_tx__date__year=y, purchase_tx__date__month=m)
+                start_date = timezone.datetime.fromisoformat(start).date()
+                qs = qs.filter(purchase_tx__date__gte=start_date)
             except ValueError:
                 pass
+        if end:
+            try:
+                end_date = timezone.datetime.fromisoformat(end).date()
+                qs = qs.filter(purchase_tx__date__lte=end_date)
+            except ValueError:
+                pass
+
+        ent = self.request.GET.get("entity")
+        if ent:
+            qs = qs.filter(purchase_tx__entity_destination_id=ent)
+
+        sort = self.request.GET.get("sort", "name")
+        if sort == "balance":
+            qs = qs.order_by("-purchase_tx__amount")
+        elif sort == "date":
+            qs = qs.order_by("-purchase_tx__date")
+        else:
+            qs = qs.order_by("name")
         return qs
 
     def get_context_data(self, **kwargs):
@@ -63,7 +93,12 @@ class AcquisitionListView(ListView):
         upcoming = today + timezone.timedelta(days=30)
         ctx["urgent_qs"] = self.get_queryset().filter(target_selling_date__range=[today, upcoming], sell_tx__isnull=True)
         ctx["current_category"] = self.request.GET.get("category", "")
-        ctx["current_month"] = self.request.GET.get("month", "")
+        ctx["status"] = self.request.GET.get("status", "")
+        ctx["start"] = self.request.GET.get("start", "")
+        ctx["end"] = self.request.GET.get("end", "")
+        ctx["sort"] = self.request.GET.get("sort", "name")
+        ctx["entity_id"] = self.request.GET.get("entity", "")
+        ctx["form"] = AcquisitionForm(user=self.request.user)
         ctx["form"] = AcquisitionForm(user=self.request.user)
         ctx["CARD_FIELDS_BY_CATEGORY"] = CARD_FIELDS_BY_CATEGORY
         ctx["entities"] = (

@@ -1,25 +1,90 @@
 {% extends "base.html" %}
-{% load humanize dict_extras acquisition_tags %}
+{% load static humanize dict_extras acquisition_tags %}
 {% block title %}Acquisitions · CENFIN{% endblock %}
-
+{% block extra_css %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{% static 'css/accounts.css' %}">
+{% endblock %}
 {% block content %}
+{% url 'entities:list' as back_url %}
+{% include "includes/back_button.html" with url=back_url %}
 <h1 class="mb-4">Acquisitions</h1>
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAcqModal">
-    <i class="bi bi-plus-lg me-1"></i>Add Acquisition
-  </button>
-  <form id="filter-form" method="get" class="ms-auto d-flex gap-2">
-    <select name="category" class="form-select" style="max-width: 12rem;">
-      <option value="">All Categories</option>
-      {% for value,label in form.category.field.choices %}
-      <option value="{{ value }}" {% if value == current_category %}selected{% endif %}>{{ label }}</option>
+<div class="row">
+  <div class="col-lg-8 mb-4">
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link{% if not current_category %} active{% endif %}" href="?{% if status %}status={{ status }}&{% endif %}{% if start %}start={{ start }}&{% endif %}{% if end %}end={{ end }}&{% endif %}{% if entity_id %}entity={{ entity_id }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}category=">All</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="?category=product{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="?category=stock_bond{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Stock &amp; Bond</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="?category=property{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Property</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="?category=vehicle{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Vehicle</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="?category=equipment{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Equipment</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="?category=insurance{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Insurance</a>
+      </li>
+    </ul>
+
+    {% if urgent_qs %}
+    <h5 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>Coming up for sale</h5>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3 mb-4">
+      {% for acq in urgent_qs %}
+        {% render_acquisition_card acq urgent=True %}
       {% endfor %}
-    </select>
-    <input type="month" name="month" class="form-control" value="{{ current_month }}">
-  </form>
+    </div>
+    {% endif %}
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
+      {% for acq in acquisitions %}
+        {% render_acquisition_card acq %}
+      {% empty %}
+        <p class="text-center">No acquisitions.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside class="col-lg-4">
+    <div class="p-3 sidebar rounded">
+      <button type="button" class="btn btn-success w-100 mb-3" data-bs-toggle="modal" data-bs-target="#addAcqModal">
+        <i class="bi bi-plus-lg me-1"></i>Add
+      </button>
+      <form id="filter-form" method="get">
+        <select name="status" class="form-select mb-2">
+          <option value="">All Status</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="not_active" {% if status == 'not_active' %}selected{% endif %}>Not Active</option>
+        </select>
+        <div class="d-flex gap-2 mb-2">
+          <input type="date" name="start" value="{{ start }}" class="form-control">
+          <input type="date" name="end" value="{{ end }}" class="form-control">
+        </div>
+        <select name="entity" class="form-select mb-2">
+          <option value="">All Entities</option>
+          {% for ent in entities %}
+            <option value="{{ ent.pk }}" {% if entity_id|default:''|stringformat:'s' == ent.pk|stringformat:'s' %}selected{% endif %}>{{ ent.entity_name }}</option>
+          {% endfor %}
+        </select>
+        <select name="sort" class="form-select mb-2">
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+          <option value="balance" {% if sort == 'balance' %}selected{% endif %}>Sort by Balance</option>
+          <option value="date" {% if sort == 'date' %}selected{% endif %}>Sort by Date</option>
+        </select>
+        <input type="hidden" name="category" value="{{ current_category }}">
+      </form>
+    </div>
+  </aside>
 </div>
 
-<!-- Entity selection modal -->
 <div class="modal fade" id="addAcqModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -43,34 +108,16 @@
     </div>
   </div>
 </div>
-
-{% if urgent_qs %}
-<h4 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>Coming up for sale</h4>
-<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3 mb-4">
-  {% for acq in urgent_qs %}
-    {% render_acquisition_card acq urgent=True %}
-  {% endfor %}
-</div>
-{% endif %}
-
-<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3">
-  {% for acq in acquisitions %}
-    {% render_acquisition_card acq %}
-  {% empty %}
-    <p class="text-center">No acquisitions.</p>
-  {% endfor %}
-</div>
 {% endblock %}
-
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('filter-form');
-  if(form){
-    form.querySelectorAll('select,input').forEach(el => {
-      el.addEventListener('change', () => form.submit());
-    });
-  }
-});
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('filter-form');
+    if(form){
+      form.querySelectorAll('select,input').forEach(el => {
+        el.addEventListener('change', () => form.submit());
+      });
+    }
+  });
 </script>
 {% endblock %}
