@@ -47,7 +47,8 @@ class Insurance(models.Model):
         related_name="insurances",
         null=True,
     )
-    name = models.CharField(max_length=255)
+    policy_owner = models.CharField(max_length=255, blank=True)
+    person_insured = models.CharField(max_length=255, blank=True)
     insurance_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     sum_assured = models.DecimalField(max_digits=18, decimal_places=2)
     premium_mode = models.CharField(max_length=20, choices=MODE_CHOICES)
@@ -59,6 +60,12 @@ class Insurance(models.Model):
         max_digits=18, decimal_places=6, null=True, blank=True
     )
     valuation_date = models.DateField(null=True, blank=True)
+    entity = models.ForeignKey(
+        'entities.Entity', on_delete=models.CASCADE, null=True, blank=True, related_name='insurances'
+    )
+    acquisition = models.ForeignKey(
+        'acquisitions.Acquisition', on_delete=models.CASCADE, null=True, blank=True, related_name='insurances'
+    )
 
     objects = InsuranceQuerySet.as_manager()
 

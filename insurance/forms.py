@@ -1,7 +1,8 @@
 from decimal import Decimal
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Row, Column, FormActions, Submit, Button, Div
+from crispy_forms.layout import Layout, Row, Column, Submit, Button, Div
+from crispy_forms.bootstrap import FormActions
 from .models import Insurance
 
 
@@ -9,29 +10,35 @@ class InsuranceForm(forms.ModelForm):
     class Meta:
         model = Insurance
         fields = [
-            "name",
+            "policy_owner",
+            "person_insured",
             "insurance_type",
             "sum_assured",
             "premium_mode",
-            "premium_amount",
+            "monthly_premium",
             "unit_balance",
             "unit_value",
             "valuation_date",
+            "entity",
+            "acquisition",
         ]
         widgets = {
             "valuation_date": forms.DateInput(attrs={"type": "date"}),
             "sum_assured": forms.TextInput(attrs={"inputmode": "decimal"}),
-            "premium_amount": forms.TextInput(attrs={"inputmode": "decimal"}),
+            "monthly_premium": forms.TextInput(attrs={"inputmode": "decimal"}),
             "unit_balance": forms.TextInput(attrs={"inputmode": "decimal"}),
             "unit_value": forms.TextInput(attrs={"inputmode": "decimal"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for fld in ["sum_assured", "premium_amount", "unit_balance", "unit_value"]:
+        for fld in ["sum_assured", "monthly_premium", "unit_balance", "unit_value"]:
             if fld in self.fields:
                 css = self.fields[fld].widget.attrs.get("class", "")
                 self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
+        for fld in ["entity", "acquisition"]:
+            if fld in self.fields:
+                self.fields[fld].widget = forms.HiddenInput()
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(
@@ -41,9 +48,12 @@ class InsuranceForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("sum_assured", css_class="col-md-4"),
-                Column("premium_mode", css_class="col-md-4"),
-                Column("premium_amount", css_class="col-md-4"),
+                Column("policy_owner", css_class="col-md-6"),
+                Column("person_insured", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("sum_assured", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Div(

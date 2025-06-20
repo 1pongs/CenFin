@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from entities.models import Entity
 from acquisitions.models import Acquisition
+from insurance.forms import InsuranceForm
 from .forms import EntityForm
 from transactions.models import Transaction
 
@@ -299,6 +300,8 @@ class EntityDetailView(TemplateView):
             (row for row in rows if row["the_entity_id"] == entity_pk), None
         )
 
+        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk})
+        
         return ctx
 
 

@@ -33,5 +33,6 @@ urlpatterns = [
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('acquisitions/', include(('acquisitions.urls', 'acquisitions'), namespace='acquisitions')),
     path('entities/', include(('entities.urls', 'entities'), namespace='entities')),
+    path('insurance/', include(('insurance.urls', 'insurance'), namespace='insurance')),
     path('users/', include('users.urls', namespace='users')),
 ]

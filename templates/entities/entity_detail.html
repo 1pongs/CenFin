@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize acquisition_tags %}
+{% load humanize acquisition_tags crispy_forms_tags %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -20,14 +20,9 @@
   <a href="{% url 'acquisitions:acquisition-create' %}?entity={{ entity.pk }}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg me-1"></i>Add Acquisition
   </a>
-<button
-    class="btn btn-outline-primary btn-sm ms-2"
-    hx-get="{% url 'acquisitions:acquisition-create' %}?category=insurance&entity={{ entity.pk }}"
-    hx-target="#modal"
-    hx-trigger="click"
-  >
-    Subscribe Insurance Policy
-  </button>
+<button type="button" class="btn btn-outline-primary btn-sm ms-2" id="showInsWizard" data-bs-toggle="modal" data-bs-target="#insModal">
+  Subscribe Insurance Policy
+</button>
 </div>
 
 <h4 class="mt-4">Acquisitions</h4>
@@ -69,4 +64,101 @@
   {% endif %}
   </tbody>
 </table>
+
+<!-- Insurance wizard modal -->
+<div class="modal fade" id="insModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Subscribe Insurance Policy</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ins-step1">
+          <label class="form-label">Select Category</label>
+          <select id="insCategory" class="form-select">
+            <option value="personal">Personal Insurance</option>
+            <option value="property">Property Insurance</option>
+            <option value="vehicle">Vehicle Insurance</option>
+            <option value="travel">Travel Insurance</option>
+          </select>
+          <div class="text-end mt-3">
+            <button type="button" class="btn btn-primary" id="insNext">Next</button>
+          </div>
+        </div>
+        <div id="ins-step2" style="display:none;">
+          <div class="mb-3" id="acqSelectGroup" style="display:none;">
+            <label class="form-label">Select Acquisition</label>
+            <select id="acqSelect" class="form-select"></select>
+          </div>
+          <form id="insForm" method="post" action="{% url 'insurance:create' %}" data-entity="{{ entity.pk }}">
+            {% csrf_token %}
+            {{ insurance_form|crispy }}
+          </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" id="insBack" style="display:none;">Back</button>
+        <button type="submit" form="insForm" class="btn btn-primary" id="insSubmit" style="display:none;">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('insModal');
+  if(!modal) return;
+  const catSel = document.getElementById('insCategory');
+  const acqGroup = document.getElementById('acqSelectGroup');
+  const acqSelect = document.getElementById('acqSelect');
+  const step1 = document.getElementById('ins-step1');
+  const step2 = document.getElementById('ins-step2');
+  const nextBtn = document.getElementById('insNext');
+  const backBtn = document.getElementById('insBack');
+  const submitBtn = document.getElementById('insSubmit');
+  const form = document.getElementById('insForm');
+
+  nextBtn.addEventListener('click', async () => {
+    const cat = catSel.value;
+    form.querySelector('#id_entity').value = form.dataset.entity;
+    if(cat === 'property' || cat === 'vehicle'){
+      const resp = await fetch(`/insurance/api/acquisitions/${form.dataset.entity}/${cat}/`);
+      if(resp.ok){
+        const data = await resp.json();
+        acqSelect.innerHTML = '';
+        data.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.name;
+          acqSelect.appendChild(opt);
+        });
+        form.querySelector('#id_acquisition').value = acqSelect.value;
+      }
+      acqGroup.style.display = '';
+      acqSelect.addEventListener('change', () => {
+        form.querySelector('#id_acquisition').value = acqSelect.value;
+      });
+    } else {
+      acqGroup.style.display = 'none';
+      acqSelect.innerHTML = '';
+      form.querySelector('#id_acquisition').value = '';
+    }
+    step1.style.display = 'none';
+    step2.style.display = '';
+    backBtn.style.display = '';
+    submitBtn.style.display = '';
+  });
+
+  backBtn.addEventListener('click', () => {
+    step1.style.display = '';
+    step2.style.display = 'none';
+    backBtn.style.display = 'none';
+    submitBtn.style.display = 'none';
+  });
+});
+</script>
 {% endblock %}
