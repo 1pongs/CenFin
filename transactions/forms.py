@@ -67,8 +67,12 @@ class TransactionForm(forms.ModelForm):
             self.fields['account_source'].queryset = account_qs
             self.fields['account_destination'].queryset = account_qs
             self.fields['entity_source'].queryset = entity_qs
-            self.fields['entity_destination'].queryset = entity_qs            
-            self.fields['template'].queryset = TransactionTemplate.objects.filter(user=user)
+            self.fields['entity_destination'].queryset = entity_qs
+
+            if 'template' in self.fields:
+                self.fields['template'].queryset = (
+                    TransactionTemplate.objects.filter(user=user)
+                )
 
         for n in self._must_fill:
             self.fields[n].required = True

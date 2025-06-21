@@ -208,32 +208,57 @@ class EntityListView(TemplateView):
     template_name = "entities/entity_list.html"
 
     def get_context_data(self, **kwargs):
+        from django.db.models import Q
+        from cenfin_proj.utils import get_entity_balances
+
         ctx = super().get_context_data(**kwargs)
-        rows = [
-            r for r in get_entity_aggregate_rows(self.request.user)
-            if r["the_name"] not in {"Outside", "Account"}
-        ]
+
+        qs = get_entity_balances().filter(
+            Q(user=self.request.user) | Q(entity_name="Account")
+        ).exclude(entity_type="outside")
+
+        # respect visibility except for the hard-coded Account entity
+        qs = qs.filter(Q(is_visible=True) | Q(entity_name="Account"))
 
         params = self.request.GET
         search = params.get("q", "").strip()
         if search:
-            rows = [
-                r
-                for r in rows
-                if search.lower() in r["the_name"].lower()
-                or search.lower() in r["the_type"].lower()
-            ]
+            qs = qs.filter(
+                Q(entity_name__icontains=search)
+                | Q(entity_type__icontains=search)
+            )
 
         fund_type = params.get("fund_type", "").strip()
         if fund_type:
-            rows = [r for r in rows if r["the_type"] == fund_type]
+            qs = qs.filter(entity_type=fund_type)
 
-        rows = sorted(rows, key=lambda x: x["the_name"])
+        status = params.get("status", "")
+        if status == "active":
+            qs = qs.filter(is_active=True)
+        elif status == "inactive":
+            qs = qs.filter(is_active=False)
 
-        ctx["entities"] = rows
+        sort = params.get("sort", "name")
+        if sort == "balance":
+            qs = qs.order_by("-balance", "entity_name")
+        elif sort == "date":
+            qs = qs.order_by("-pk")
+        else:
+            qs = qs.order_by("entity_name")
+
+        ctx["entities"] = qs
         ctx["search"] = search
         ctx["fund_type"] = fund_type
-        ctx["fund_types"] = Entity.entities_type_choices
+        ctx["status"] = status
+        ctx["sort"] = sort
+        ctx["start"] = params.get("start", "")
+        ctx["end"] = params.get("end", "")
+        ctx["fund_types"] = [
+            (val, label)
+            for val, label in Entity.entities_type_choices
+            if val != "outside"
+        ]
+        ctx["current_type"] = fund_type
         return ctx
 
 
