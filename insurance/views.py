@@ -7,7 +7,7 @@ from django.utils.decorators import method_decorator
 from acquisitions.models import Acquisition
 from entities.models import Entity
 from .models import Insurance, PremiumPayment
-from .forms import InsuranceForm
+from .forms import InsuranceForm, PremiumPaymentForm
 from transactions.forms import TransactionForm
 from transactions.models import Transaction
 from accounts.models import Account
@@ -100,7 +100,7 @@ def acquisition_options(request, entity_id, category):
 def pay_premium(request, pk):
     insurance = get_object_or_404(Insurance, pk=pk, user=request.user)
     if request.method == "POST":
-        form = TransactionForm(request.POST, user=request.user)
+        form = PremiumPaymentForm(request.POST, user=request.user)
         if form.is_valid():
             tx = form.save(commit=False)
             tx.user = request.user
@@ -124,5 +124,5 @@ def pay_premium(request, pk):
         acc = Account.objects.active().filter(user=request.user).first()
         if acc:
             initial["account_source"] = acc.pk
-        form = TransactionForm(initial=initial, user=request.user)
+        form = PremiumPaymentForm(initial=initial, user=request.user)
     return render(request, "insurance/pay_premium_form.html", {"form": form, "insurance": insurance})
