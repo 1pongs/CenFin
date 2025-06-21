@@ -193,7 +193,7 @@ class TransactionForm(forms.ModelForm):
         ent = cleaned.get("entity_source")
 
         if acc and acc.account_name != "Outside":
-            if acc.current_balance() < amt:
+            if acc.get_current_balance() < amt:
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if ent and ent.entity_name != "Outside":
