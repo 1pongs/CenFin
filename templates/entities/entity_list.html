@@ -10,7 +10,12 @@
 {% block content %}
 {% url 'dashboard:dashboard' as back_url %}
 {% include "includes/back_button.html" with url=back_url %}
-<h1 class="mb-4">Entities</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Entities</h1>
+  <a href="{% url 'accounts:list' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-wallet2 me-1"></i>Accounts
+  </a>
+</div>
 <div class="row">
   <div class="col-lg-8 mb-4">
     <ul class="nav nav-tabs mb-3">
@@ -68,6 +73,7 @@
           <option value="date" {% if sort == 'date' %}selected{% endif %}>Sort by Date</option>
         </select>
         <input type="hidden" name="fund_type" value="{{ current_type }}">
+        <a href="?{% if current_type %}fund_type={{ current_type }}{% endif %}" class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
       </form>
     </div>
   </aside>

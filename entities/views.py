@@ -4,6 +4,8 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.utils import timezone
+from datetime import date, timedelta
 
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField
 from collections import defaultdict
@@ -233,10 +235,41 @@ class EntityListView(TemplateView):
             qs = qs.filter(entity_type=fund_type)
 
         status = params.get("status", "")
-        if status == "active":
-            qs = qs.filter(is_active=True)
-        elif status == "inactive":
-            qs = qs.filter(is_active=False)
+        if status in {"active", "inactive"}:
+            since = timezone.now().date() - timedelta(days=30)
+            tx_qs = Transaction.objects.filter(user=self.request.user, date__gte=since)
+            active_ids = set(tx_qs.values_list("entity_source_id", flat=True)) | set(
+                tx_qs.values_list("entity_destination_id", flat=True)
+            )
+            if status == "active":
+                qs = qs.filter(pk__in=active_ids)
+            else:
+                qs = qs.exclude(pk__in=active_ids)
+
+        start_param = params.get("start", "").strip()
+        end_param = params.get("end", "").strip()
+        start_date = end_date = None
+        if start_param:
+            try:
+                start_date = date.fromisoformat(start_param)
+            except ValueError:
+                pass
+        if end_param:
+            try:
+                end_date = date.fromisoformat(end_param)
+            except ValueError:
+                pass
+        if start_date or end_date:
+            tx_filter = {"user": self.request.user}
+            if start_date:
+                tx_filter["date__gte"] = start_date
+            if end_date:
+                tx_filter["date__lte"] = end_date
+            tx_qs = Transaction.objects.filter(**tx_filter)
+            ids = set(tx_qs.values_list("entity_source_id", flat=True)) | set(
+                tx_qs.values_list("entity_destination_id", flat=True)
+            )
+            qs = qs.filter(pk__in=ids)
 
         sort = params.get("sort", "name")
         if sort == "balance":
@@ -260,8 +293,8 @@ class EntityListView(TemplateView):
         ctx["fund_type"] = fund_type
         ctx["status"] = status
         ctx["sort"] = sort
-        ctx["start"] = params.get("start", "")
-        ctx["end"] = params.get("end", "")
+        ctx["start"] = start_param
+        ctx["end"] = end_param
         ctx["fund_types"] = [
             (val, label)
             for val, label in Entity.entities_type_choices
@@ -406,29 +439,44 @@ class EntityAccountsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        params = self.request.GET
         entity_pk = self.kwargs["pk"]
         entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
         ctx["entity"] = entity
 
-        inflow = (
-            Transaction.objects.filter(
-                user=self.request.user,
-                entity_destination_id=entity_pk,
-                asset_type_destination__iexact="liquid",
-            )
-            .values("account_destination_id", "account_destination__account_name")
-            .annotate(total_in=Sum("amount"))
-        )
-        outflow = (
-            Transaction.objects.filter(
-                user=self.request.user,
-                entity_source_id=entity_pk,
-                asset_type_source__iexact="liquid",
-            )
-            .values("account_source_id", "account_source__account_name")
-            .annotate(total_out=Sum("amount"))
-        )
+        start_str = params.get("start", "").strip()
+        end_str = params.get("end", "").strip()
+        start_date = end_date = None
+        if start_str:
+            try:
+                start_date = date.fromisoformat(start_str)
+            except ValueError:
+                pass
+        if end_str:
+            try:
+                end_date = date.fromisoformat(end_str)
+            except ValueError:
+                pass
 
+        inflow = Transaction.objects.filter(
+            user=self.request.user,
+            entity_destination_id=entity_pk,
+            asset_type_destination__iexact="liquid",
+        )
+        outflow = Transaction.objects.filter(
+            user=self.request.user,
+            entity_source_id=entity_pk,
+            asset_type_source__iexact="liquid",
+        )
+        if start_date:
+            inflow = inflow.filter(date__gte=start_date)
+            outflow = outflow.filter(date__gte=start_date)
+        if end_date:
+            inflow = inflow.filter(date__lte=end_date)
+            outflow = outflow.filter(date__lte=end_date)
+
+        inflow = inflow.values("account_destination_id", "account_destination__account_name").annotate(total_in=Sum("amount"))
+        outflow = outflow.values("account_source_id", "account_source__account_name").annotate(total_out=Sum("amount"))
         balances = {}
         for row in inflow:
             acc_pk = row["account_destination_id"]
@@ -444,8 +492,29 @@ class EntityAccountsView(TemplateView):
                 entry["name"] = name
             entry["balance"] -= row["total_out"]
 
-        ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
-        ctx["total_balance"] = sum(b["balance"] for b in balances.values())
+        results = list(balances.values())
+
+        q = params.get("q", "").strip().lower()
+        if q:
+            results = [r for r in results if q in r["name"].lower()]
+
+        sort = params.get("sort", "name")
+        if sort == "name_desc":
+            results.sort(key=lambda x: x["name"], reverse=True)
+        elif sort == "bal_high":
+            results.sort(key=lambda x: x["balance"], reverse=True)
+        elif sort == "bal_low":
+            results.sort(key=lambda x: x["balance"])
+        else:
+            results.sort(key=lambda x: x["name"])
+
+        ctx["accounts"] = results
+        ctx["total_balance"] = sum(b["balance"] for b in results)
+        ctx["search"] = params.get("q", "")
+        ctx["start"] = start_str
+        ctx["end"] = end_str
+        ctx["sort"] = sort
+        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk})
 
         return ctx
 

@@ -80,6 +80,7 @@
           <option value="date" {% if sort == 'date' %}selected{% endif %}>Sort by Date</option>
         </select>
         <input type="hidden" name="category" value="{{ current_category }}">
+        <a href="?{% if current_category %}category={{ current_category }}{% endif %}" class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
       </form>
     </div>
   </aside>
