@@ -21,41 +21,65 @@
 </div>
 
 <ul class="nav nav-tabs my-3">
-  <li class="nav-item"><a class="nav-link active" href="#">Accounts</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=product">Products</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=stock_bond">Stock &amp; Bond</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=property">Property</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=vehicle">Vehicle</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=equipment">Equipment</a></li>
-  <li class="nav-item"><a class="nav-link" href="{% url 'entities:detail' entity.pk %}?category=insurance">Insurance</a></li>
+  <li class="nav-item">
+    <a class="nav-link{% if not current_category %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}">Accounts</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=product">Products</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=stock_bond">Stock &amp; Bond</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=property">Property</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=vehicle">Vehicle</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment">Equipment</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance">Insurance</a>
+  </li>
 </ul>
 
 <div class="row">
   <div class="col-lg-8 mb-4">
-    <div class="text-end fw-bold mb-2">
-      Total Balance:
-      <span class="amount-display" data-prefix="₱" data-decimals="0">{{ total_balance|floatformat:0|intcomma }}</span>
-    </div>
-    {% for a in accounts %}
-      <div class="card shadow-sm rounded-lg mb-3 p-3">
-        <div class="d-flex align-items-center">
-          <div class="me-3 icon-box flex-shrink-0">
-            <i class="bi bi-wallet2 fs-3 text-primary"></i>
-          </div>
-          <div class="flex-grow-1">
-            <div class="fw-semibold">
-              <a href="{% url 'accounts:edit' a.id %}" class="text-decoration-none">{{ a.name }}</a>
+    {% if not current_category %}
+      <div class="text-end fw-bold mb-2">
+        Total Balance:
+        <span class="amount-display" data-prefix="₱" data-decimals="0">{{ total_balance|floatformat:0|intcomma }}</span>
+      </div>
+      {% for a in accounts %}
+        <div class="card shadow-sm rounded-lg mb-3 p-3">
+          <div class="d-flex align-items-center">
+            <div class="me-3 icon-box flex-shrink-0">
+              <i class="bi bi-wallet2 fs-3 text-primary"></i>
             </div>
-            <small class="text-muted">{{ a.type }}</small>
-          </div>
-          <div class="ms-auto fw-bold">
-            <span class="amount-display" data-prefix="₱" data-decimals="0">{{ a.balance|floatformat:0|intcomma }}</span>
+            <div class="flex-grow-1">
+              <div class="fw-semibold">
+                <a href="{% url 'accounts:edit' a.id %}" class="text-decoration-none">{{ a.name }}</a>
+              </div>
+              <small class="text-muted">{{ a.type }}</small>
+            </div>
+            <div class="ms-auto fw-bold">
+              <span class="amount-display" data-prefix="₱" data-decimals="0">{{ a.balance|floatformat:0|intcomma }}</span>
+            </div>
           </div>
         </div>
+      {% empty %}
+        <p>No accounts yet.</p>
+      {% endfor %}
+    {% else %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
+        {% for acq in acquisitions %}
+          {% render_acquisition_card acq %}
+        {% empty %}
+          <p class="text-center">No acquisitions.</p>
+        {% endfor %}  
       </div>
-    {% empty %}
-      <p>No accounts yet.</p>
-    {% endfor %}
+     {% endif %}
   </div>
   <aside class="col-lg-4">
     <div class="p-3 sidebar rounded">

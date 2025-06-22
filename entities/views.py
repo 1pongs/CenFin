@@ -445,6 +445,16 @@ class EntityAccountsView(TemplateView):
         entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
         ctx["entity"] = entity
 
+        category = params.get("category", "").strip()
+        acqs = (
+            Acquisition.objects.select_related("purchase_tx", "sell_tx")
+            .filter(user=self.request.user, purchase_tx__entity_destination=entity)
+        )
+        if category:
+            acqs = acqs.filter(category=category)
+        ctx["current_category"] = category
+        ctx["acquisitions"] = acqs
+        
         start_str = params.get("start", "").strip()
         end_str = params.get("end", "").strip()
         start_date = end_date = None
