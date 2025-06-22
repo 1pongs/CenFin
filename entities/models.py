@@ -11,12 +11,12 @@ class Entity(models.Model):
     entities_type_choices = [
         ('free fund', 'Free Fund'),
         ('investment fund', 'Investment Fund'),
-        ('emergency Fund','Emergency Fund'),
-        ('business Fund','Business Fund'),
-        ('retirement Fund', 'Retirement Fund'),
-        ('educational Fund', 'Educational Fund'),
+        ('emergency fund', 'Emergency Fund'),
+        ('business fund', 'Business Fund'),
+        ('retirement fund', 'Retirement Fund'),
+        ('educational fund', 'Educational Fund'),
         ('outside', 'Outside'),
-        ('others', 'Others'),
+        ('personal fund', 'Personal Fund'),
     ]
     entity_name = models.CharField(max_length=100)
     entity_type = models.CharField(max_length=50, choices=entities_type_choices)

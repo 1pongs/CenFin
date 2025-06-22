@@ -86,7 +86,7 @@ class AcquisitionFormBalanceTest(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="u2", password="p")
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = Account.objects.create(account_name="Outside", account_type="Outside", user=self.user)
         self.out_ent = Entity.objects.create(entity_name="Outside", entity_type="outside", user=self.user)
 
@@ -250,7 +250,7 @@ class OutsideAutoLockTest(TestCase):
         self.user = User.objects.create_user(username="lock", password="p")
         self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.dest = Account.objects.create(account_name="Dest", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = Account.objects.get(account_name="Outside", user=None)
         self.out_ent = Entity.objects.get(entity_name="Outside", user=None)
 

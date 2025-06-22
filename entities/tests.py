@@ -60,13 +60,13 @@ class OutsideHiddenListTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="x", password="p")
         self.client.force_login(self.user)
-        Entity.objects.create(entity_name="Mine", entity_type="others", user=self.user)
+        Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
         self.outside = Entity.objects.get(entity_name="Outside", user=None)
 
     def test_outside_not_in_list(self):
         resp = self.client.get(reverse("entities:list"))
         self.assertEqual(resp.status_code, 200)
-        names = [e["the_name"] for e in resp.context["entities"]]
+        names = [e.entity_name for e in resp.context["entities"]]
         self.assertNotIn("Outside", names)
 
 
@@ -75,12 +75,12 @@ class AccountHiddenListTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="y", password="p")
         self.client.force_login(self.user)
-        Entity.objects.create(entity_name="Mine", entity_type="others", user=self.user)
+        Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
         from entities.utils import ensure_fixed_entities
         _, self.account_ent = ensure_fixed_entities()
 
     def test_account_not_in_list(self):
         resp = self.client.get(reverse("entities:list"))
         self.assertEqual(resp.status_code, 200)
-        names = [e["the_name"] for e in resp.context["entities"]]
+        names = [e.entity_name for e in resp.context["entities"]]
         self.assertNotIn("Account", names)

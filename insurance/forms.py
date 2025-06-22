@@ -130,14 +130,6 @@ class PremiumPaymentForm(TransactionForm):
             )
             self.fields["entity_source"].queryset = ent_qs
 
-            # format labels with balances
-            self.fields["account_source"].label_from_instance = (
-                lambda obj: f"{obj.account_name} (₱ {obj.current_balance:,.2f})"
-            )
-            self.fields["entity_source"].label_from_instance = (
-                lambda obj: f"{obj.entity_name} (₱ {obj.balance:,.2f})"
-            )
-
         # rebuild layout without template field
         self.helper.layout = Layout(
             Row(Column("description", css_class="col-md-6"), css_class="g-3"),

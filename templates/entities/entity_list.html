@@ -27,20 +27,18 @@
   <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
       {% for e in entities %}
         <div class="col">
-          <div class="card h-100">
+          <a href="{% url 'entities:accounts' e.pk %}" class="card h-100 text-reset text-decoration-none">
             <div class="card-body">
               <span class="badge text-bg-secondary mb-2">{{ e.get_entity_type_display }}</span>
               <h5 class="card-title mb-2">{{ e.entity_name }}</h5>
-              <p class="h6 mb-0">Balance:
-                <span class="amount-display" data-prefix="₱" data-decimals="0">{{ e.balance|floatformat:0|intcomma }}</span>
+              <p class="mb-1 small">Liquid:
+                <span class="amount-display" data-prefix="₱" data-decimals="0">{{ e.liquid_total|floatformat:0|intcomma }}</span>
+              </p>
+              <p class="mb-0 small">Non-Liquid:
+                <span class="amount-display" data-prefix="₱" data-decimals="0">{{ e.non_liquid_total|floatformat:0|intcomma }}</span>
               </p>
             </div>
-            <div class="card-footer bg-transparent border-0 text-end">
-              <a href="{% url 'entities:detail' e.pk %}" class="btn btn-sm btn-primary">View</a>
-              <a href="{% url 'entities:edit' e.pk %}" class="btn btn-sm btn-outline-primary ms-2">Edit</a>
-              <a href="{% url 'entities:delete' e.pk %}" class="btn btn-sm btn-danger ms-2">Delete</a>
-            </div>
-          </div>
+           </a>
         </div>
       {% empty %}
         <p class="text-center">No entities.</p>

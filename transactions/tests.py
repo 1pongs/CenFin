@@ -61,7 +61,7 @@ class TransactionFormBalanceTest(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="t", password="p")
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = Account.objects.create(account_name="Outside", account_type="Outside", user=self.user)
         self.out_ent = Entity.objects.create(entity_name="Outside", entity_type="outside", user=self.user)
 
@@ -147,7 +147,7 @@ class OutsideEnforcedTest(TestCase):
         self.user = User.objects.create_user(username="z", password="p")
         self.client.force_login(self.user)
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = ensure_outside_account()
         self.out_ent, _ = ensure_fixed_entities()
 
@@ -199,7 +199,7 @@ class TemplateOutsideEnforcedTest(TestCase):
         self.user = User.objects.create_user(username="q", password="p")
         self.client.force_login(self.user)
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="others", user=self.user)
+        self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = ensure_outside_account()
         self.out_ent, _ = ensure_fixed_entities()
 

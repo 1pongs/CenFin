@@ -213,12 +213,12 @@ class EntityListView(TemplateView):
 
         ctx = super().get_context_data(**kwargs)
 
-        qs = get_entity_balances().filter(
-            Q(user=self.request.user) | Q(entity_name="Account")
-        ).exclude(entity_type="outside")
-
-        # respect visibility except for the hard-coded Account entity
-        qs = qs.filter(Q(is_visible=True) | Q(entity_name="Account"))
+        qs = (
+            get_entity_balances()
+            .filter(user=self.request.user)
+            .exclude(entity_type="outside")
+            .filter(is_visible=True)
+        )
 
         params = self.request.GET
         search = params.get("q", "").strip()
@@ -245,6 +245,15 @@ class EntityListView(TemplateView):
             qs = qs.order_by("-pk")
         else:
             qs = qs.order_by("entity_name")
+
+        totals_map = {
+            row["the_entity_id"]: row
+            for row in get_entity_aggregate_rows(self.request.user)
+        }
+        for ent in qs:
+            data = totals_map.get(ent.pk, {})
+            ent.liquid_total = data.get("total_liquid", 0)
+            ent.non_liquid_total = data.get("total_non_liquid", 0)
 
         ctx["entities"] = qs
         ctx["search"] = search
@@ -391,6 +400,54 @@ class EntityRestoreView(View):
         messages.success(request, "Entity restored.")
         return redirect(reverse("entities:archived"))
 
+class EntityAccountsView(TemplateView):
+    """Display accounts associated with an entity."""
+    template_name = "entities/entity_accounts.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        entity_pk = self.kwargs["pk"]
+        entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
+        ctx["entity"] = entity
+
+        inflow = (
+            Transaction.objects.filter(
+                user=self.request.user,
+                entity_destination_id=entity_pk,
+                asset_type_destination__iexact="liquid",
+            )
+            .values("account_destination_id", "account_destination__account_name")
+            .annotate(total_in=Sum("amount"))
+        )
+        outflow = (
+            Transaction.objects.filter(
+                user=self.request.user,
+                entity_source_id=entity_pk,
+                asset_type_source__iexact="liquid",
+            )
+            .values("account_source_id", "account_source__account_name")
+            .annotate(total_out=Sum("amount"))
+        )
+
+        balances = {}
+        for row in inflow:
+            acc_pk = row["account_destination_id"]
+            balances[acc_pk] = {
+                "name": row["account_destination__account_name"],
+                "balance": row["total_in"],
+            }
+        for row in outflow:
+            acc_pk = row["account_source_id"]
+            name = row.get("account_source__account_name", "")
+            entry = balances.setdefault(acc_pk, {"name": name, "balance": 0})
+            if not entry["name"]:
+                entry["name"] = name
+            entry["balance"] -= row["total_out"]
+
+        ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
+        ctx["total_balance"] = sum(b["balance"] for b in balances.values())
+
+        return ctx
 
 @require_POST
 def api_create_entity(request):
