@@ -371,7 +371,7 @@ class EntityDetailView(TemplateView):
 
         ctx["insurances"] = Insurance.objects.filter(entity=entity, user=self.request.user)
 
-        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk})
+        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
         
         return ctx
 
@@ -544,7 +544,7 @@ class EntityAccountsView(TemplateView):
         ctx["start"] = start_str
         ctx["end"] = end_str
         ctx["sort"] = sort
-        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk})
+        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
 
         return ctx
 

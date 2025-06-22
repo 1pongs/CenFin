@@ -35,7 +35,16 @@ class InsuranceForm(forms.ModelForm):
             "unit_value": forms.TextInput(attrs={"inputmode": "decimal"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, show_actions=True, **kwargs):
+        """Initialize form and optionally hide action buttons.
+
+        Parameters
+        ----------
+        show_actions : bool, optional
+            If ``False`` the layout will omit the ``FormActions`` section.  This
+            is useful when the form is embedded inside a modal that provides its
+            own buttons.
+        """
         super().__init__(*args, **kwargs)
         for fld in ["sum_assured", "premium_amount", "unit_balance", "unit_value"]:
             if fld in self.fields:
@@ -46,7 +55,7 @@ class InsuranceForm(forms.ModelForm):
                 self.fields[fld].widget = forms.HiddenInput()
         self.helper = FormHelper()
         self.helper.form_tag = False
-        self.helper.layout = Layout(
+        layout_items = [
             Row(
                 Column("insurance_type", css_class="col-md-6"),
                 Column("premium_mode", css_class="col-md-6"),
@@ -71,17 +80,22 @@ class InsuranceForm(forms.ModelForm):
                 ),
                 css_id="vul-fields",
             ),
-            FormActions(
-                Submit("save", "Save", css_class="btn btn-primary"),
-                Button(
-                    "cancel",
-                    "Cancel",
-                    css_class="btn btn-outline-secondary",
-                    onclick="history.back()",
-                ),
-                css_class="d-flex justify-content-end gap-2 mt-3",
-            ),
-        )
+            ]
+        if show_actions:
+            layout_items.append(
+                FormActions(
+                    Submit("save", "Save", css_class="btn btn-primary"),
+                    Button(
+                        "cancel",
+                        "Cancel",
+                        css_class="btn btn-outline-secondary",
+                        onclick="history.back()",
+                    ),
+                    css_class="d-flex justify-content-end gap-2 mt-3",
+                )
+            )
+
+        self.helper.layout = Layout(*layout_items)
 
 
 class PremiumPaymentForm(TransactionForm):
