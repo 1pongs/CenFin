@@ -16,11 +16,56 @@
         <div class="card-body">
           <form method="post" novalidate>
             {% csrf_token %}
-            {% crispy form %}
+            <div class="row g-2">
+              <div class="col-md-6">{{ form.policy_owner|as_crispy_field }}</div>
+              <div class="col-md-6">{{ form.person_insured|as_crispy_field }}</div>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-md-6">{{ form.insurance_type|as_crispy_field }}</div>
+              <div class="col-md-6">{{ form.sum_assured|as_crispy_field }}</div>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-md-4">{{ form.premium_mode|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.premium_amount|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.valuation_date|as_crispy_field }}</div>
+            </div>
+
+            <div id="vul-fields" class="row g-2">
+              <div class="col-md-4">{{ form.unit_balance|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.unit_value|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.entity|as_crispy_field }}</div>
+            </div>
+
+            {{ form.acquisition }}
+
+            <div class="d-flex justify-content-end gap-2 sticky-bottom bg-white pt-3 mt-3 border-top">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <a href="{{ back_url }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
           </form>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const typeSel = document.getElementById('id_insurance_type');
+  const vulRow = document.getElementById('vul-fields');
+  if (!typeSel || !vulRow) return;
+
+  function toggleVul() {
+    vulRow.style.display = typeSel.value === 'vul' ? '' : 'none';
+  }
+
+  typeSel.addEventListener('change', toggleVul);
+  toggleVul();
+});
+</script>
 {% endblock %}

@@ -50,37 +50,47 @@ class InsuranceForm(forms.ModelForm):
             if fld in self.fields:
                 css = self.fields[fld].widget.attrs.get("class", "")
                 self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
+        for name, field in self.fields.items():
+            w = field.widget
+            if isinstance(w, forms.Select):
+                base = w.attrs.get("class", "form-select")
+                w.attrs["class"] = f"{base} form-select-sm"
+            elif not isinstance(w, forms.HiddenInput):
+                base = w.attrs.get("class", "form-control")
+                w.attrs["class"] = f"{base} form-control-sm"
         for fld in ["entity", "acquisition"]:
             if fld in self.fields:
                 self.fields[fld].widget = forms.HiddenInput()
         self.helper = FormHelper()
         self.helper.form_tag = False
+        self.helper.label_class = "fw-semibold"
+        self.helper.field_class = "mb-2"
         layout_items = [
-            Row(
-                Column("insurance_type", css_class="col-md-6"),
-                Column("premium_mode", css_class="col-md-6"),
-                css_class="g-3",
-            ),
             Row(
                 Column("policy_owner", css_class="col-md-6"),
                 Column("person_insured", css_class="col-md-6"),
-                css_class="g-3",
+                css_class="g-2",
             ),
             Row(
+                Column("insurance_type", css_class="col-md-6"),
                 Column("sum_assured", css_class="col-md-6"),
+                css_class="g-2",
+            ),
+            Row(
+                Column("premium_mode", css_class="col-md-6"),
                 Column("premium_amount", css_class="col-md-6"),
-                css_class="g-3",
+                css_class="g-2",
             ),
             Div(
                 Row(
                     Column("unit_balance", css_class="col-md-4"),
                     Column("unit_value", css_class="col-md-4"),
                     Column("valuation_date", css_class="col-md-4"),
-                    css_class="g-3",
+                    css_class="g-2",
                 ),
                 css_id="vul-fields",
             ),
-            ]
+        ]
         if show_actions:
             layout_items.append(
                 FormActions(
