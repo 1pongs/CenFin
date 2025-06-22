@@ -194,6 +194,18 @@ document.addEventListener('DOMContentLoaded', () => {
     backBtn.style.display = 'none';
     submitBtn.style.display = 'none';
   });
+
+  modal.addEventListener('hidden.bs.modal', () => {
+    step1.style.display = '';
+    step2.style.display = 'none';
+    backBtn.style.display = 'none';
+    submitBtn.style.display = 'none';
+    form.reset();
+    acqGroup.style.display = 'none';
+    acqSelect.innerHTML = '';
+    const acqField = form.querySelector('#id_acquisition');
+    if(acqField) acqField.value = '';
+  });
 });
 </script>
 <script>
