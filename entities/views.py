@@ -475,22 +475,41 @@ class EntityAccountsView(TemplateView):
             inflow = inflow.filter(date__lte=end_date)
             outflow = outflow.filter(date__lte=end_date)
 
-        inflow = inflow.values("account_destination_id", "account_destination__account_name").annotate(total_in=Sum("amount"))
-        outflow = outflow.values("account_source_id", "account_source__account_name").annotate(total_out=Sum("amount"))
+        inflow = inflow.values(
+            "account_destination_id",
+            "account_destination__account_name",
+        ).annotate(total_in=Sum("amount"))
+        outflow = outflow.values(
+            "account_source_id",
+            "account_source__account_name",
+        ).annotate(total_out=Sum("amount"))
+
         balances = {}
         for row in inflow:
             acc_pk = row["account_destination_id"]
             balances[acc_pk] = {
+                "id": acc_pk,
                 "name": row["account_destination__account_name"],
                 "balance": row["total_in"],
             }
         for row in outflow:
             acc_pk = row["account_source_id"]
             name = row.get("account_source__account_name", "")
-            entry = balances.setdefault(acc_pk, {"name": name, "balance": 0})
+            entry = balances.setdefault(
+                acc_pk, {"id": acc_pk, "name": name, "balance": 0}
+            )
             if not entry["name"]:
                 entry["name"] = name
             entry["balance"] -= row["total_out"]
+
+        # add account type information
+        account_map = {
+            acc.id: acc
+            for acc in Account.objects.filter(id__in=balances.keys())
+        }
+        for pk, data in balances.items():
+            acc = account_map.get(pk)
+            data["type"] = getattr(acc, "account_type", "") if acc else ""
 
         results = list(balances.values())
 
