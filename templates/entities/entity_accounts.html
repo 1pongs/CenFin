@@ -22,25 +22,25 @@
 
 <ul class="nav nav-tabs my-3">
   <li class="nav-item">
-    <a class="nav-link{% if not current_category %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}">Accounts</a>
+    <a class="nav-link{% if not current_category %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?sort={{ sort }}">Accounts</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=product">Products</a>
+    <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=product&sort={{ sort }}">Products</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=stock_bond">Stock &amp; Bond</a>
+    <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=stock_bond&sort={{ sort }}">Stock &amp; Bond</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=property">Property</a>
+    <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=property&sort={{ sort }}">Property</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=vehicle">Vehicle</a>
+    <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=vehicle&sort={{ sort }}">Vehicle</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment">Equipment</a>
+    <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment&sort={{ sort }}">Equipment</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance">Insurance</a>
+    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance&sort={{ sort }}">Insurance</a>
   </li>
 </ul>
 
@@ -85,15 +85,10 @@
     <div class="p-3 sidebar rounded">
       <form id="filter-form" method="get">
         <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">
-        <div class="d-flex gap-2 mb-2">
-          <input type="date" name="start" value="{{ start }}" class="form-control">
-          <input type="date" name="end" value="{{ end }}" class="form-control">
-        </div>
         <select name="sort" class="form-select mb-2">
-          <option value="name" {% if sort == 'name' %}selected{% endif %}>Name A→Z</option>
-          <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name Z→A</option>
-          <option value="bal_high" {% if sort == 'bal_high' %}selected{% endif %}>Balance High→Low</option>
-          <option value="bal_low" {% if sort == 'bal_low' %}selected{% endif %}>Balance Low→High</option>
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+          <option value="balance" {% if sort == 'balance' %}selected{% endif %}>Sort by Balance</option>
+          <option value="account_type" {% if sort == 'account_type' %}selected{% endif %}>Sort by Type</option>
         </select>
         <a href="." class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
       </form>
@@ -129,7 +124,7 @@
           </div>
           <form id="insForm" method="post" action="{% url 'insurance:create' %}" data-entity="{{ entity.pk }}">
             {% csrf_token %}
-            {{ insurance_form|crispy }}
+            {% include "insurance/_insurance_form_fields.html" with form=insurance_form %}
           </form>
         </div>
       </div>
@@ -218,4 +213,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 </script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const typeSel = document.getElementById('id_insurance_type');
+    const vulRow = document.getElementById('vul-fields');
+    if (!typeSel || !vulRow) return;
+    const toggle = () => {
+      vulRow.style.display = typeSel.value === 'vul' ? '' : 'none';
+    };
+    typeSel.addEventListener('change', toggle);
+    toggle();
+  });
+  </script>
 {% endblock %}

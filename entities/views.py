@@ -454,20 +454,6 @@ class EntityAccountsView(TemplateView):
             acqs = acqs.filter(category=category)
         ctx["current_category"] = category
         ctx["acquisitions"] = acqs
-        
-        start_str = params.get("start", "").strip()
-        end_str = params.get("end", "").strip()
-        start_date = end_date = None
-        if start_str:
-            try:
-                start_date = date.fromisoformat(start_str)
-            except ValueError:
-                pass
-        if end_str:
-            try:
-                end_date = date.fromisoformat(end_str)
-            except ValueError:
-                pass
 
         inflow = Transaction.objects.filter(
             user=self.request.user,
@@ -479,12 +465,6 @@ class EntityAccountsView(TemplateView):
             entity_source_id=entity_pk,
             asset_type_source__iexact="liquid",
         )
-        if start_date:
-            inflow = inflow.filter(date__gte=start_date)
-            outflow = outflow.filter(date__gte=start_date)
-        if end_date:
-            inflow = inflow.filter(date__lte=end_date)
-            outflow = outflow.filter(date__lte=end_date)
 
         inflow = inflow.values(
             "account_destination_id",
@@ -529,20 +509,16 @@ class EntityAccountsView(TemplateView):
             results = [r for r in results if q in r["name"].lower()]
 
         sort = params.get("sort", "name")
-        if sort == "name_desc":
-            results.sort(key=lambda x: x["name"], reverse=True)
-        elif sort == "bal_high":
+        if sort == "balance":
             results.sort(key=lambda x: x["balance"], reverse=True)
-        elif sort == "bal_low":
-            results.sort(key=lambda x: x["balance"])
+        elif sort == "account_type":
+            results.sort(key=lambda x: (x.get("type") or "", x["name"]))
         else:
             results.sort(key=lambda x: x["name"])
 
         ctx["accounts"] = results
         ctx["total_balance"] = sum(b["balance"] for b in results)
         ctx["search"] = params.get("q", "")
-        ctx["start"] = start_str
-        ctx["end"] = end_str
         ctx["sort"] = sort
         ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
 

@@ -117,7 +117,7 @@
           </div>
           <form id="insForm" method="post" action="{% url 'insurance:create' %}" data-entity="{{ entity.pk }}">
             {% csrf_token %}
-            {{ insurance_form|crispy }}
+            {% include "insurance/_insurance_form_fields.html" with form=insurance_form %}
           </form>
         </div>
       </div>
@@ -184,4 +184,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const typeSel = document.getElementById('id_insurance_type');
+  const vulRow = document.getElementById('vul-fields');
+  if (!typeSel || !vulRow) return;
+  const toggle = () => {
+    vulRow.style.display = typeSel.value === 'vul' ? '' : 'none';
+  };
+  typeSel.addEventListener('change', toggle);
+  toggle();
+});
+  </script>
 {% endblock %}

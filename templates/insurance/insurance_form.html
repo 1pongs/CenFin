@@ -16,30 +16,7 @@
         <div class="card-body">
           <form method="post" novalidate>
             {% csrf_token %}
-            <div class="row g-2">
-              <div class="col-md-6 d-grid gap-2">
-                {{ form.policy_owner|as_crispy_field }}
-                {{ form.insurance_type|as_crispy_field }}
-                {{ form.premium_mode|as_crispy_field }}
-              </div>
-              <div class="col-md-6 d-grid gap-2">
-                {{ form.person_insured|as_crispy_field }}
-                {{ form.sum_assured|as_crispy_field }}
-                {{ form.premium_amount|as_crispy_field }}
-              </div>
-            </div>
-
-            <div class="row g-2 mt-0">
-              <div class="col-md-6">{{ form.valuation_date|as_crispy_field }}</div>
-            </div>
-
-            <div id="vul-fields" class="row g-2">
-              <div class="col-md-6">{{ form.unit_balance|as_crispy_field }}</div>
-              <div class="col-md-6">{{ form.unit_value|as_crispy_field }}</div>
-              {{ form.entity }}
-            </div>
-
-            {{ form.acquisition }}
+            {% include "insurance/_insurance_form_fields.html" %}
 
             <div class="d-flex justify-content-end gap-2 sticky-bottom bg-white pt-3 mt-3 border-top">
               <button type="submit" class="btn btn-primary">Save</button>
