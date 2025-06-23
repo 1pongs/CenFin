@@ -1,0 +1,6 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="model_year_desc" {% if sort == 'model_year_desc' %}selected{% endif %}>Model Year (desc)</option>
+  <option value="mileage_desc" {% if sort == 'mileage_desc' %}selected{% endif %}>Mileage (desc)</option>
+{% endblock %}

@@ -14,7 +14,6 @@ class AcquisitionAdmin(admin.ModelAdmin):
             form.base_fields.pop('current_value', None)
             form.base_fields.pop('market', None)
         if cat != 'property':
-            form.base_fields.pop('is_sellable', None)
             form.base_fields.pop('expected_lifespan_years', None)
             form.base_fields.pop('location', None)
         if cat != 'insurance':

@@ -1,0 +1,5 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="expected_lifespan_desc" {% if sort == 'expected_lifespan_desc' %}selected{% endif %}>Expected Lifespan (desc)</option>
+{% endblock %}

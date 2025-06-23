@@ -1,0 +1,13 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block extra_fields %}
+  <select name="market" class="form-select mb-2">
+    <option value="">All Markets</option>
+    {% for m in markets %}
+      <option value="{{ m }}" {% if market == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+{% endblock %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="current_value_desc" {% if sort == 'current_value_desc' %}selected{% endif %}>Current Value (desc)</option>
+{% endblock %}

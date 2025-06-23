@@ -207,6 +207,89 @@ def get_entity_aggregate_rows(user):
     return list(results.values())
 
 
+# ---------------------------------------------------------------------------
+# Helper: acquisition & insurance filtering
+# ---------------------------------------------------------------------------
+from django.db.models import Q
+
+
+def filter_acquisitions_for_tab(entity, user, params, category):
+    qs = (
+        Acquisition.objects.select_related("purchase_tx", "sell_tx")
+        .filter(user=user, purchase_tx__entity_destination=entity, category=category)
+    )
+    q = params.get("q", "").strip()
+    sort = params.get("sort", "name")
+
+    if category == "product":
+        if q:
+            qs = qs.filter(name__icontains=q)
+        if sort == "capital_cost_desc":
+            qs = qs.order_by("-purchase_tx__amount")
+        else:
+            qs = qs.order_by("name")
+
+    elif category == "stock_bond":
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(market__icontains=q))
+        market = params.get("market", "").strip()
+        if market:
+            qs = qs.filter(market=market)
+        if sort == "current_value_desc":
+            qs = qs.order_by("-current_value")
+        else:
+            qs = qs.order_by("name")
+
+    elif category == "property":
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(location__icontains=q))
+        location = params.get("location", "").strip()
+        if location:
+            qs = qs.filter(location=location)
+        if sort == "expected_lifespan_desc":
+            qs = qs.order_by("-expected_lifespan_years")
+        else:
+            qs = qs.order_by("name")
+
+    elif category == "vehicle":
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(plate_number__icontains=q))
+        if sort == "model_year_desc":
+            qs = qs.order_by("-model_year")
+        elif sort == "mileage_desc":
+            qs = qs.order_by("-mileage")
+        else:
+            qs = qs.order_by("name")
+
+    elif category == "equipment":
+        if q:
+            qs = qs.filter(name__icontains=q)
+        if sort == "expected_lifespan_desc":
+            qs = qs.order_by("-expected_lifespan_years")
+        else:
+            qs = qs.order_by("name")
+
+    return qs
+
+
+def filter_insurances_for_tab(entity, user, params):
+    qs = Insurance.objects.filter(user=user, entity=entity)
+    q = params.get("q", "").strip()
+    if q:
+        qs = qs.filter(Q(policy_owner__icontains=q) | Q(person_insured__icontains=q))
+    typ = params.get("type", "").strip()
+    if typ:
+        qs = qs.filter(insurance_type=typ)
+    sort = params.get("sort", "status")
+    if sort == "sum_assured_desc":
+        qs = qs.order_by("-sum_assured")
+    elif sort == "status":
+        qs = qs.order_by("status")
+    else:
+        qs = qs.order_by("policy_owner")
+    return qs
+
+
 class EntityListView(TemplateView):
     template_name = "entities/entity_list.html"
 
@@ -446,82 +529,121 @@ class EntityAccountsView(TemplateView):
         ctx["entity"] = entity
 
         category = params.get("category", "").strip()
-        acqs = (
-            Acquisition.objects.select_related("purchase_tx", "sell_tx")
-            .filter(user=self.request.user, purchase_tx__entity_destination=entity)
-        )
-        if category:
-            acqs = acqs.filter(category=category)
         ctx["current_category"] = category
-        ctx["acquisitions"] = acqs
+        qs_copy = params.copy()
+        qs_copy.pop("category", None)
+        ctx["nav_qs"] = qs_copy.urlencode()
 
-        inflow = Transaction.objects.filter(
-            user=self.request.user,
-            entity_destination_id=entity_pk,
-            asset_type_destination__iexact="liquid",
-        )
-        outflow = Transaction.objects.filter(
-            user=self.request.user,
-            entity_source_id=entity_pk,
-            asset_type_source__iexact="liquid",
-        )
-
-        inflow = inflow.values(
-            "account_destination_id",
-            "account_destination__account_name",
-        ).annotate(total_in=Sum("amount"))
-        outflow = outflow.values(
-            "account_source_id",
-            "account_source__account_name",
-        ).annotate(total_out=Sum("amount"))
-
-        balances = {}
-        for row in inflow:
-            acc_pk = row["account_destination_id"]
-            balances[acc_pk] = {
-                "id": acc_pk,
-                "name": row["account_destination__account_name"],
-                "balance": row["total_in"],
-            }
-        for row in outflow:
-            acc_pk = row["account_source_id"]
-            name = row.get("account_source__account_name", "")
-            entry = balances.setdefault(
-                acc_pk, {"id": acc_pk, "name": name, "balance": 0}
+        if not category:
+            # ----- Accounts tab -----
+            inflow = Transaction.objects.filter(
+                user=self.request.user,
+                entity_destination_id=entity_pk,
+                asset_type_destination__iexact="liquid",
             )
-            if not entry["name"]:
-                entry["name"] = name
-            entry["balance"] -= row["total_out"]
+            outflow = Transaction.objects.filter(
+                user=self.request.user,
+                entity_source_id=entity_pk,
+                asset_type_source__iexact="liquid",
+            )
+            
+            inflow = inflow.values(
+                "account_destination_id",
+                "account_destination__account_name",
+            ).annotate(total_in=Sum("amount"))
+            outflow = outflow.values(
+                "account_source_id",
+                "account_source__account_name",
+            ).annotate(total_out=Sum("amount"))
 
-        # add account type information
-        account_map = {
-            acc.id: acc
-            for acc in Account.objects.filter(id__in=balances.keys())
-        }
-        for pk, data in balances.items():
-            acc = account_map.get(pk)
-            data["type"] = getattr(acc, "account_type", "") if acc else ""
+            balances = {}
+            for row in inflow:
+                acc_pk = row["account_destination_id"]
+                balances[acc_pk] = {
+                    "id": acc_pk,
+                    "name": row["account_destination__account_name"],
+                    "balance": row["total_in"],
+                }
+            for row in outflow:
+                acc_pk = row["account_source_id"]
+                name = row.get("account_source__account_name", "")
+                entry = balances.setdefault(
+                    acc_pk, {"id": acc_pk, "name": name, "balance": 0}
+                )
+                if not entry["name"]:
+                    entry["name"] = name
+                entry["balance"] -= row["total_out"]
 
-        results = list(balances.values())
+            account_map = {
+                acc.id: acc
+                for acc in Account.objects.filter(id__in=balances.keys())
+            }
+            for pk, data in balances.items():
+                acc = account_map.get(pk)
+                data["type"] = getattr(acc, "account_type", "") if acc else ""
 
-        q = params.get("q", "").strip().lower()
-        if q:
-            results = [r for r in results if q in r["name"].lower()]
+            results = list(balances.values())
+        
+            q = params.get("q", "").strip().lower()
+            if q:
+                results = [r for r in results if q in r["name"].lower()]
 
-        sort = params.get("sort", "name")
-        if sort == "balance":
-            results.sort(key=lambda x: x["balance"], reverse=True)
-        elif sort == "account_type":
-            results.sort(key=lambda x: (x.get("type") or "", x["name"]))
-        else:
-            results.sort(key=lambda x: x["name"])
+            sort = params.get("sort", "name")
+            if sort == "balance":
+                results.sort(key=lambda x: x["balance"], reverse=True)
+            elif sort == "account_type":
+                results.sort(key=lambda x: (x.get("type") or "", x["name"]))
+            else:
+                results.sort(key=lambda x: x["name"])
 
-        ctx["accounts"] = results
-        ctx["total_balance"] = sum(b["balance"] for b in results)
+            ctx["accounts"] = results
+            ctx["total_balance"] = sum(b["balance"] for b in results)
+            ctx["search"] = params.get("q", "")
+            ctx["sort"] = sort
+            ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+            return ctx
+
+        if category == "insurance":
+            ins_qs = filter_insurances_for_tab(entity, self.request.user, params)
+            ctx["insurances"] = ins_qs
+            ctx["search"] = params.get("q", "")
+            ctx["sort"] = params.get("sort", "status")
+            ctx["type"] = params.get("type", "")
+            ctx["type_choices"] = Insurance.TYPE_CHOICES
+            ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+            return ctx
+
+        acqs = filter_acquisitions_for_tab(entity, self.request.user, params, category)
+        ctx["acquisitions"] = acqs
         ctx["search"] = params.get("q", "")
-        ctx["sort"] = sort
+        ctx["sort"] = params.get("sort", "name")
+        if category == "stock_bond":
+            ctx["market"] = params.get("market", "")
+            ctx["markets"] = (
+                Acquisition.objects.filter(
+                    user=self.request.user,
+                    purchase_tx__entity_destination=entity,
+                    category="stock_bond",
+                )
+                .exclude(market="")
+                .values_list("market", flat=True)
+                .distinct()
+                .order_by("market")
+            )
+        elif category == "property":
+            ctx["location"] = params.get("location", "")
+            ctx["locations"] = (
+                Acquisition.objects.filter(
+                    user=self.request.user,
+                    purchase_tx__entity_destination=entity,
+                    category="property",
+                )
+                .exclude(location="")
+                .values_list("location", flat=True)
+                .distinct()
+                .order_by("location")
+            )
         ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
-
         return ctx
 
 @require_POST

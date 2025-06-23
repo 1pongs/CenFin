@@ -60,7 +60,6 @@ class AcquisitionForm(forms.Form):
     model_year = forms.IntegerField(required=False, label="Model Year")
 
     # property
-    is_sellable = forms.BooleanField(required=False)
     expected_lifespan_years = forms.IntegerField(required=False)
     location = forms.CharField(max_length=255, required=False)
 
@@ -158,7 +157,6 @@ class AcquisitionForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
-                Column("is_sellable", css_class="col-md-6"),
                 Column("expected_lifespan_years", css_class="col-md-6"),
                 css_class="g-3",
             ),

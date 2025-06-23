@@ -22,25 +22,25 @@
 
 <ul class="nav nav-tabs my-3">
   <li class="nav-item">
-    <a class="nav-link{% if not current_category %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?sort={{ sort }}">Accounts</a>
+    <a class="nav-link{% if not current_category %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}{% if nav_qs %}?{{ nav_qs }}{% endif %}">Accounts</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=product&sort={{ sort }}">Products</a>
+    <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=product{% if nav_qs %}&{{ nav_qs }}{% endif %}">Products</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=stock_bond&sort={{ sort }}">Stock &amp; Bond</a>
+    <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=stock_bond{% if nav_qs %}&{{ nav_qs }}{% endif %}">Stock &amp; Bond</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=property&sort={{ sort }}">Property</a>
+    <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=property{% if nav_qs %}&{{ nav_qs }}{% endif %}">Property</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=vehicle&sort={{ sort }}">Vehicle</a>
+    <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=vehicle{% if nav_qs %}&{{ nav_qs }}{% endif %}">Vehicle</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment&sort={{ sort }}">Equipment</a>
+    <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment{% if nav_qs %}&{{ nav_qs }}{% endif %}">Equipment</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance&sort={{ sort }}">Insurance</a>
+    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance{% if nav_qs %}&{{ nav_qs }}{% endif %}">Insurance</a>
   </li>
 </ul>
 
@@ -71,27 +71,55 @@
       {% empty %}
         <p>No accounts yet.</p>
       {% endfor %}
+    {% elif current_category == 'insurance' %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
+        {% for ins in insurances %}
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-body">
+                <h6 class="card-subtitle text-muted small mb-1">{{ ins.get_insurance_type_display }}</h6>
+                <h5 class="card-title mb-2">{{ ins.policy_owner|default:ins.person_insured }}</h5>
+                <dl class="row small mb-0">
+                  <dt class="col-5">Status</dt>
+                  <dd class="col-7">{{ ins.get_status_display }}</dd>
+                </dl>
+              </div>
+              <div class="card-footer bg-transparent border-0 text-end">
+                <a href="{% url 'insurance:pay-premium' ins.pk %}" class="btn btn-sm btn-primary">Pay Premium</a>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <p class="text-center">No insurance policies.</p>
+        {% endfor %}
+      </div>
     {% else %}
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
         {% for acq in acquisitions %}
           {% render_acquisition_card acq %}
         {% empty %}
           <p class="text-center">No acquisitions.</p>
-        {% endfor %}  
+        {% endfor %}
       </div>
-     {% endif %}
+    {% endif %}
   </div>
   <aside class="col-lg-4">
     <div class="p-3 sidebar rounded">
-      <form id="filter-form" method="get">
-        <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">
-        <select name="sort" class="form-select mb-2">
-          <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
-          <option value="balance" {% if sort == 'balance' %}selected{% endif %}>Sort by Balance</option>
-          <option value="account_type" {% if sort == 'account_type' %}selected{% endif %}>Sort by Type</option>
-        </select>
-        <a href="." class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
-      </form>
+    {% if not current_category %}
+        {% include 'entities/_toolbar_accounts.html' %}
+      {% elif current_category == 'product' %}
+        {% include 'entities/_toolbar_products.html' %}
+      {% elif current_category == 'stock_bond' %}
+        {% include 'entities/_toolbar_stock_bond.html' %}
+      {% elif current_category == 'property' %}
+        {% include 'entities/_toolbar_property.html' %}
+      {% elif current_category == 'vehicle' %}
+        {% include 'entities/_toolbar_vehicle.html' %}
+      {% elif current_category == 'equipment' %}
+        {% include 'entities/_toolbar_equipment.html' %}
+      {% elif current_category == 'insurance' %}
+        {% include 'entities/_toolbar_insurance.html' %}
+      {% endif %}
     </div>
   </aside>
 </div>

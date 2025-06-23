@@ -1,0 +1,5 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="capital_cost_desc" {% if sort == 'capital_cost_desc' %}selected{% endif %}>Capital Cost (desc)</option>
+{% endblock %}

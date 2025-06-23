@@ -1,0 +1,12 @@
+{% comment %}Base search & sort toolbar{% endcomment %}
+<form id="filter-form" method="get">
+  {% block search_field %}
+  <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">
+  {% endblock %}
+  {% block extra_fields %}{% endblock %}
+  <select name="sort" class="form-select mb-2">
+    {% block sort_options %}{% endblock %}
+  </select>
+  {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+  <a href="." class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
+</form>

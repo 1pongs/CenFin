@@ -52,7 +52,6 @@ class Acquisition(models.Model):
     market = models.CharField(max_length=100, blank=True)
 
     # property
-    is_sellable = models.BooleanField(default=False)
     expected_lifespan_years = models.IntegerField(null=True, blank=True)
     location = models.CharField(max_length=120, blank=True)
 

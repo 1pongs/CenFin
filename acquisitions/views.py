@@ -22,10 +22,10 @@ from entities.forms import EntityForm
 CARD_FIELDS_BY_CATEGORY = {
     "product":    ["date_bought", "amount", "target_selling_date", "status"],
     "stock_bond": ["date_bought", "amount", "current_value", "market", "target_selling_date", "status"],
-    "property":   ["date_bought", "amount", "location", "expected_lifespan_years", "is_sellable", "status"],
+    "property":   ["date_bought", "amount", "location", "expected_lifespan_years", "status"],
     "insurance":  ["date_bought", "amount", "insurance_type", "cash_value", "maturity_date", "provider", "status"],
-    "equipment":  ["date_bought", "amount", "location", "expected_lifespan_years", "is_sellable", "status"],
-    "vehicle":    ["date_bought", "amount", "model_year", "mileage", "plate_number", "is_sellable", "status"],
+    "equipment":  ["date_bought", "amount", "location", "expected_lifespan_years", "status"],
+    "vehicle":    ["date_bought", "amount", "model_year", "mileage", "plate_number", "status"],
 }
 
 # Short list of fields shown directly on the acquisition cards
@@ -165,7 +165,6 @@ class AcquisitionCreateView(FormView):
             purchase_tx=tx,
             current_value=data.get("current_value"),
             market=data.get("market", ""),
-            is_sellable=data.get("is_sellable"),
             expected_lifespan_years=data.get("expected_lifespan_years"),
             location=data.get("location", ""),
             target_selling_date=data.get("target_selling_date"),
@@ -225,7 +224,6 @@ class AcquisitionUpdateView(AcquisitionCreateView):
                 "remarks": tx.remarks,
                 "current_value": self.object.current_value,
                 "market": self.object.market,
-                "is_sellable": self.object.is_sellable,
                 "expected_lifespan_years": self.object.expected_lifespan_years,
                 "location": self.object.location,
                 "target_selling_date": self.object.target_selling_date,
@@ -262,7 +260,6 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         acq.category = data["category"]
         acq.current_value = data.get("current_value")
         acq.market = data.get("market", "")
-        acq.is_sellable = data.get("is_sellable")
         acq.expected_lifespan_years = data.get("expected_lifespan_years")
         acq.location = data.get("location", "")
         acq.target_selling_date = data.get("target_selling_date")

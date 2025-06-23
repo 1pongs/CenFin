@@ -1,0 +1,6 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="balance" {% if sort == 'balance' %}selected{% endif %}>Sort by Balance</option>
+  <option value="account_type" {% if sort == 'account_type' %}selected{% endif %}>Sort by Type</option>
+{% endblock %}
