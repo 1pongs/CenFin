@@ -53,12 +53,22 @@
     <h2>Top 10 “Big‑Ticket” Entries (YTD)</h2>
     <div class="card shadow-sm">
       <div class="card-body">
-        <select id="entitySelectTop" class="form-select form-select-sm mb-2">
-          <option value="overall">Overall performance</option>
-          {% for e in entities %}
-            <option value="{{ e.id }}">{{ e.entity_name }}</option>
-          {% endfor %}
-        </select>
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <span class="small text-secondary">YTD {{ today|date:"Y" }}</span>
+          <div class="d-flex gap-2">
+            <select id="txnTypeFilter" aria-label="Transaction Type Filter" class="form-select form-select-sm">
+              <option value="all"{% if selected_txn_type == 'all' %} selected{% endif %}>All</option>
+              {% for val,label in txn_type_choices %}
+                <option value="{{ val }}"{% if val == selected_txn_type %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <select id="entitiesFilter" multiple aria-label="Entities Filter" class="form-select form-select-sm">
+              {% for e in entities %}
+                <option value="{{ e.id }}"{% if e.id in selected_entities %} selected{% endif %}>{{ e.entity_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
         <canvas id="topEntriesChart" height="180" data-api-url="{% url 'dashboard:top10-data' %}"></canvas>
       </div>
     </div>

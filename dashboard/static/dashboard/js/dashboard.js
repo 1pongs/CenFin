@@ -178,9 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
     debounceId = setTimeout(loadData, 200);
   }
 
-  async function fetchTopData(ent){
+  async function fetchTopData(){
+    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
+    const params = new URLSearchParams();
+    if(ids) params.set('entities', ids);
+    if(txnTypeSel.value) params.set('txn_type', txnTypeSel.value);
     try{
-      const resp = await fetch(`${topUrl}?entity_id=${ent}`, {credentials:'same-origin'});
+      const resp = await fetch(`${topUrl}?${params.toString()}`, {credentials:'same-origin'});
       if(resp.ok) return await resp.json();
     }catch(err){
       console.error(err);
@@ -202,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadTop(){
-    const data = await fetchTopData(entitySelTop.value);
+    const data = await fetchTopData();
     refreshTop10(ticketChart, data);
   }
 
@@ -213,8 +217,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   entitySel.addEventListener('change', debouncedLoad);
   monthSel.addEventListener('change', debouncedLoad);
-  const entitySelTop = document.getElementById('entitySelectTop');
-  entitySelTop.addEventListener('change', debouncedTop);
+  const entitySelTop = document.getElementById('entitiesFilter');
+  const txnTypeSel = document.getElementById('txnTypeFilter');
+
+  const urlParams = new URLSearchParams(location.search);
+  function applyInitialFilters(){
+    const entParam = urlParams.get('entities');
+    if(entParam){
+      const ids = entParam.split(',');
+      [...entitySelTop.options].forEach(o=>{ o.selected = ids.includes(o.value); });
+    }
+    const tx = urlParams.get('txn_type');
+    if(tx){
+      txnTypeSel.value = tx;
+    }
+  }
+
+  function updateQuery(){
+    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
+    if(ids) urlParams.set('entities', ids); else urlParams.delete('entities');
+    urlParams.set('txn_type', txnTypeSel.value);
+    history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
+  }
+
+  entitySelTop.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
+  txnTypeSel.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
+
+  applyInitialFilters();
 
   loadData();
   loadTop();

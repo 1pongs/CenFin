@@ -46,25 +46,28 @@ def dashboard_data(request):
 @login_required
 @require_GET
 def top10_data(request):
-    """Return top-10 big ticket entries filtered by entity."""
-    ent = request.GET.get('entity_id')
-    if ent and ent not in {'overall', 'all'}:
+    """Return top-10 big ticket entries filtered by entity and type."""
+    entity_ids = request.GET.getlist("entities")
+    if len(entity_ids) == 1 and "," in entity_ids[0]:
+        entity_ids = [e for e in entity_ids[0].split(",") if e]
+    txn_type = request.GET.get("txn_type")
+    ids = []
+    for val in entity_ids:
         try:
-            ent = int(ent)
+            ids.append(int(val))
         except (TypeError, ValueError):
-            return JsonResponse({'error': 'invalid entity'}, status=400)
-    else:
-        ent = None
+            return JsonResponse({"error": "invalid entity"}, status=400)
 
     today = date.today()
     year_start = date(today.year, 1, 1)
 
-    q = Q(user=request.user, date__gte=year_start)
-    if ent:
-        q &= Q(entity_source_id=ent) | Q(entity_destination_id=ent)
-
+    qs = Transaction.objects.filter(user=request.user, date__gte=year_start)
+    if ids:
+        qs = qs.filter(Q(entity_source_id__in=ids) | Q(entity_destination_id__in=ids))
+    if txn_type and txn_type != "all":
+        qs = qs.filter(transaction_type=txn_type)
     qs = (
-        Transaction.objects.filter(q)
+        qs
         .annotate(entry_type=Case(
             When(transaction_type_destination="Income", then=Value("income")),
             When(transaction_type_source="Expense", then=Value("expense")),

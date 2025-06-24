@@ -15,6 +15,7 @@ from datetime import date
 
 from django.http import JsonResponse
 from transactions.models import Transaction
+from transactions.constants import TXN_TYPE_CHOICES
 from entities.models import Entity
 from cenfin_proj.utils import get_monthly_summary, get_monthly_cash_flow
 
@@ -74,14 +75,38 @@ class DashboardView(TemplateView):
         ]
         ctx["monthly_summary"] = get_monthly_summary(user=self.request.user)
         today = timezone.now().date()
+        ctx["today"] = today
         
         ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
+        params = self.request.GET
+        selected_entities = []
+        for val in params.getlist("entities"):
+            if "," in val:
+                selected_entities.extend([e for e in val.split(",") if e])
+            else:
+                selected_entities.append(val)
+        try:
+            selected_entities = [int(v) for v in selected_entities]
+        except ValueError:
+            selected_entities = []
+        txn_type = params.get("txn_type", "all")
+        ctx["selected_entities"] = selected_entities
+        ctx["selected_txn_type"] = txn_type
+        ctx["txn_type_choices"] = TXN_TYPE_CHOICES
         # ------------------------------------------------------
         # Top 10 big-ticket transactions for the current year
         # ------------------------------------------------------
         year_start = date(today.year, 1, 1)
+        qs = Transaction.objects.filter(user=self.request.user, date__gte=year_start)
+        if selected_entities:
+            qs = qs.filter(
+                Q(entity_source_id__in=selected_entities) |
+                Q(entity_destination_id__in=selected_entities)
+            )
+        if txn_type and txn_type != "all":
+            qs = qs.filter(transaction_type=txn_type)
         top_entries_qs = (
-            Transaction.objects.filter(user=self.request.user, date__gte=year_start)
+            qs
             .annotate(abs_amount=Abs("amount"))
             .annotate(
                 entry_type=Case(
