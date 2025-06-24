@@ -53,6 +53,10 @@ class AcquisitionListView(ListView):
         if cat:
             qs = qs.filter(category=cat)
 
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(name__icontains=q)
+        
         status = self.request.GET.get("status")
         if status == "active":
             qs = qs.filter(sell_tx__isnull=True)
@@ -96,6 +100,7 @@ class AcquisitionListView(ListView):
         ctx["status"] = self.request.GET.get("status", "")
         ctx["start"] = self.request.GET.get("start", "")
         ctx["end"] = self.request.GET.get("end", "")
+        ctx["q"] = self.request.GET.get("q", "")
         ctx["sort"] = self.request.GET.get("sort", "name")
         ctx["entity_id"] = self.request.GET.get("entity", "")
         ctx["form"] = AcquisitionForm(user=self.request.user)
@@ -163,6 +168,7 @@ class AcquisitionCreateView(FormView):
             name=data["name"],
             category=data["category"],
             purchase_tx=tx,
+            status="active",
             current_value=data.get("current_value"),
             market=data.get("market", ""),
             expected_lifespan_years=data.get("expected_lifespan_years"),

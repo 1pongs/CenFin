@@ -12,25 +12,25 @@
   <div class="col-lg-8 mb-4">
     <ul class="nav nav-tabs mb-3">
       <li class="nav-item">
-        <a class="nav-link{% if not current_category %} active{% endif %}" href="?{% if status %}status={{ status }}&{% endif %}{% if start %}start={{ start }}&{% endif %}{% if end %}end={{ end }}&{% endif %}{% if entity_id %}entity={{ entity_id }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}category=">All</a>
+        <a class="nav-link{% if not current_category %} active{% endif %}" href="?{% if status %}status={{ status }}&{% endif %}{% if start %}start={{ start }}&{% endif %}{% if end %}end={{ end }}&{% endif %}{% if entity_id %}entity={{ entity_id }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}{% if q %}q={{ q }}&{% endif %}category=">All</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="?category=product{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Products</a>
+        <a class="nav-link{% if current_category == 'product' %} active{% endif %}" href="?category=product{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Products</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="?category=stock_bond{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Stock &amp; Bond</a>
+        <a class="nav-link{% if current_category == 'stock_bond' %} active{% endif %}" href="?category=stock_bond{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Stock &amp; Bond</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="?category=property{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Property</a>
+        <a class="nav-link{% if current_category == 'property' %} active{% endif %}" href="?category=property{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Property</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="?category=vehicle{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Vehicle</a>
+        <a class="nav-link{% if current_category == 'vehicle' %} active{% endif %}" href="?category=vehicle{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Vehicle</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="?category=equipment{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Equipment</a>
+        <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="?category=equipment{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Equipment</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="?category=insurance{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">Insurance</a>
+        <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="?category=insurance{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Insurance</a>
       </li>
     </ul>
 
@@ -58,6 +58,7 @@
         <i class="bi bi-plus-lg me-1"></i>Add
       </button>
       <form id="filter-form" method="get">
+        <input type="search" name="q" value="{{ q }}" placeholder="Search" class="form-control form-control-sm mb-2">
         <select name="status" class="form-select mb-2">
           <option value="">All Status</option>
           <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
@@ -79,7 +80,7 @@
           <option value="date" {% if sort == 'date' %}selected{% endif %}>Sort by Date</option>
         </select>
         <input type="hidden" name="category" value="{{ current_category }}">
-        <a href="?{% if current_category %}category={{ current_category }}{% endif %}" class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
+        <a href="?{% if current_category %}category={{ current_category }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-outline-secondary w-100 mb-2">Clear Filters</a>
       </form>
     </div>
   </aside>

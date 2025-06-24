@@ -44,7 +44,21 @@ class InsuranceCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         form.instance.status = "inactive"
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        ins = self.object
+        acq = Acquisition.objects.create(
+            name=ins.policy_owner or ins.person_insured,
+            category=Acquisition.CATEGORY_INSURANCE,
+            user=ins.user,
+            purchase_tx=None,
+            status="inactive",
+            sum_assured_amount=ins.sum_assured,
+            insurance_type=ins.insurance_type,
+            provider=ins.policy_owner,
+        )
+        ins.acquisition = acq
+        ins.save(update_fields=["acquisition"])
+        return response
     
     def get_success_url(self):
         if self.object.entity_id:
@@ -112,9 +126,15 @@ def pay_premium(request, pk):
                 note=tx.description or "",
                 transaction=tx,
             )
+            updates = []
             if insurance.status != "active":
                 insurance.status = "active"
-                insurance.save(update_fields=["status"])
+                updates.append("status")
+            if insurance.acquisition and insurance.acquisition.status != "active":
+                insurance.acquisition.status = "active"
+                insurance.acquisition.save(update_fields=["status"])
+            if updates:
+                insurance.save(update_fields=updates)
             return redirect("entities:detail", pk=insurance.entity_id)
     else:
         initial = {

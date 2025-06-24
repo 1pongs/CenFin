@@ -12,6 +12,7 @@ class EntityForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop("show_actions", True)
+        cancel_url = kwargs.pop("cancel_url", reverse_lazy("entities:list"))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -32,7 +33,7 @@ class EntityForm(forms.ModelForm):
                         "cancel",
                         "Cancel",
                         css_class="btn btn-outline-secondary",
-                        onclick=f"window.location.href='{reverse_lazy('entities:list')}'",
+                        oonclick=f"window.location.href='{cancel_url}'",
                         type="button",
                     ),
                     css_class="d-flex justify-content-end gap-2 mt-3",

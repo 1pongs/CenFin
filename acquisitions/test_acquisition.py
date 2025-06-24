@@ -22,6 +22,27 @@ class AcquisitionListViewTest(TestCase):
         resp = self.client.get(reverse("acquisitions:acquisition-list"))
         self.assertEqual(resp.status_code, 200)
         self.assertTemplateUsed(resp, "acquisitions/acquisition_list.html")
+
+    def test_search_filters_by_name(self):
+        tx1 = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="a",
+            transaction_type="buy acquisition",
+            amount=Decimal("1"),
+        )
+        tx2 = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="b",
+            transaction_type="buy acquisition",
+            amount=Decimal("1"),
+        )
+        Acquisition.objects.create(name="Alpha", category="product", purchase_tx=tx1, user=self.user, status="active")
+        Acquisition.objects.create(name="Beta", category="product", purchase_tx=tx2, user=self.user, status="active")
+        resp = self.client.get(reverse("acquisitions:acquisition-list"), {"q": "alp"})
+        self.assertContains(resp, "Alpha")
+        self.assertNotContains(resp, "Beta")
 # Create your tests here.
 
 @override_settings(

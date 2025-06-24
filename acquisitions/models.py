@@ -32,12 +32,19 @@ class Acquisition(models.Model):
         ("health", "Health"),
     ]
 
+    STATUS_CHOICES = [
+        ("inactive", "Inactive"),
+        ("active", "Active"),
+    ]
+    
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default=CATEGORY_PRODUCT)
     purchase_tx = models.OneToOneField(
         Transaction,
         on_delete=models.CASCADE,
         related_name="acquisition_purchase",
+        null=True,
+        blank=True,
     )
     sell_tx = models.OneToOneField(
         Transaction,
@@ -70,6 +77,8 @@ class Acquisition(models.Model):
     maturity_date = models.DateField(null=True, blank=True)
     provider = models.CharField(max_length=255, blank=True)
 
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
+    
     created_at = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="acquisitions", null=True)
 

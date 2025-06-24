@@ -17,11 +17,13 @@ def render_acquisition_card(acq, urgent=False):
 @register.filter
 def attr(obj, name):
     if name == "date_bought":
-        return obj.purchase_tx.date
+        return obj.purchase_tx.date if obj.purchase_tx else ""
     if name == "amount":
-        return obj.purchase_tx.amount
+        return obj.purchase_tx.amount if obj.purchase_tx else None
     if name == "status":
-        return "Sold" if obj.sell_tx else "Owned"
+        if obj.sell_tx:
+            return "Sold"
+        return obj.get_status_display()
     return getattr(obj, name)
 
 

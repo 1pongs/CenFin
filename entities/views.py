@@ -479,6 +479,15 @@ class EntityUpdateView(UpdateView):
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        cancel = self.request.GET.get("next") or reverse("entities:accounts", args=[self.object.pk])
+        kwargs["cancel_url"] = cancel
+        return kwargs
+
+    def get_success_url(self):
+        return self.request.GET.get("next") or reverse("entities:list")
+    
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, "Entity updated successfully!")

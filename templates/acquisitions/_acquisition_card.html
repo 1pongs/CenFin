@@ -1,6 +1,6 @@
 {% load acquisition_tags humanize %}
 <div class="col">
-  <div class="card h-100 cat-{{ acq.category }} {% if urgent %}border-danger{% endif %}">
+  <div class="card h-100 cat-{{ acq.category }} {% if acq.status == 'inactive' %}inactive{% endif %} {% if urgent %}border-danger{% endif %}">
     <div class="card-body clickable-card" data-bs-toggle="modal" data-bs-target="#acq{{ acq.pk }}Modal">
       <h6 class="card-subtitle text-muted small mb-1">{{ acq.get_category_display }}</h6>
       <h5 class="card-title mb-2">{{ acq.name }}</h5>
