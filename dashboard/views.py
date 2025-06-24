@@ -84,12 +84,27 @@ class DashboardView(TemplateView):
         
         ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
         params = self.request.GET
-        start_cf, end_cf = parse_range_params(self.request, today - timedelta(days=365))
-        start_top, end_top = parse_range_params(self.request, date(today.year, 1, 1))
+
+        # Defaults for the date filters used by the charts. These are separate
+        # from the possibly user-supplied values so the "Clear Filter" buttons
+        # can reset back to the original ranges.
+        default_start_cf = today - timedelta(days=365)
+        default_end_cf = today
+        default_start_top = date(today.year, 1, 1)
+        default_end_top = today
+
+        start_cf, end_cf = parse_range_params(self.request, default_start_cf)
+        start_top, end_top = parse_range_params(self.request, default_start_top)
         ctx["range_start_cf"] = start_cf
         ctx["range_end_cf"] = end_cf
         ctx["range_start_top"] = start_top
         ctx["range_end_top"] = end_top
+
+        # Defaults used when clearing the filters in the modal dialogs
+        ctx["default_range_start_cf"] = default_start_cf
+        ctx["default_range_end_cf"] = default_end_cf
+        ctx["default_range_start_top"] = default_start_top
+        ctx["default_range_end_top"] = default_end_top
         selected_entities = []
         for val in params.getlist("entities"):
             if "," in val:

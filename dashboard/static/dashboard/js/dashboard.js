@@ -267,6 +267,29 @@ document.addEventListener('DOMContentLoaded', () => {
   topStart.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
   topEnd.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
 
+  const clearCashBtn = document.getElementById('clearCashFilter');
+  if(clearCashBtn){
+    clearCashBtn.addEventListener('click', () => {
+      entitySel.value = entitySel.dataset.default || 'overall';
+      cashStart.value = cashStart.dataset.default || '';
+      cashEnd.value = cashEnd.dataset.default || '';
+      updateQuery();
+      loadData();
+    });
+  }
+
+  const clearTopBtn = document.getElementById('clearTopFilter');
+  if(clearTopBtn){
+    clearTopBtn.addEventListener('click', () => {
+      txnTypeSel.value = txnTypeSel.dataset.default || 'all';
+      [...entitySelTop.options].forEach(o => { o.selected = false; });
+      topStart.value = topStart.dataset.default || '';
+      topEnd.value = topEnd.dataset.default || '';
+      updateQuery();
+      loadTop();
+    });
+  }
+
   applyInitialFilters();
 
   loadData();

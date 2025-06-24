@@ -26,20 +26,40 @@
     <h2>Monthly Cash‑Flow vs Assets</h2>
     <div class="card shadow-sm">
       <div class="card-body">
-        <div class="row g-2 flex-nowrap mb-2 dashboard-filter" style="max-width:420px;">
-          <div class="col-auto">
-            <select id="entitySelect" class="form-select form-select-sm">
-              <option value="overall">Overall performance</option>
-              {% for e in entities %}
-                <option value="{{ e.id }}">{{ e.entity_name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-auto">
-            <input id="cashStart" type="date" class="form-control form-control-sm" value="{{ range_start_cf|date:'Y-m-d' }}">
-          </div>
-          <div class="col-auto">
-            <input id="cashEnd" type="date" class="form-control form-control-sm" value="{{ range_end_cf|date:'Y-m-d' }}">
+        <div class="d-flex justify-content-end mb-2">
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cashFlowFilterModal">Filter</button>
+        </div>
+        <!-- Modal for cash flow chart filters -->
+        <div class="modal fade" id="cashFlowFilterModal" tabindex="-1" aria-labelledby="cashFlowFilterLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="cashFlowFilterLabel">Cash‑Flow Filters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2 flex-nowrap dashboard-filter" style="max-width:420px;">
+                  <div class="col-auto">
+                    <select id="entitySelect" class="form-select form-select-sm" data-default="overall">
+                      <option value="overall">Overall performance</option>
+                      {% for e in entities %}
+                        <option value="{{ e.id }}">{{ e.entity_name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-auto">
+                    <input id="cashStart" type="date" class="form-control form-control-sm" value="{{ range_start_cf|date:'Y-m-d' }}" data-default="{{ default_range_start_cf|date:'Y-m-d' }}">
+                  </div>
+                  <div class="col-auto">
+                    <input id="cashEnd" type="date" class="form-control form-control-sm" value="{{ range_end_cf|date:'Y-m-d' }}" data-default="{{ default_range_end_cf|date:'Y-m-d' }}">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="clearCashFilter">Clear Filter</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Apply</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="position-relative">
@@ -56,30 +76,49 @@
     <h2>Top 10 List</h2>
     <div class="card shadow-sm">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="row g-2 flex-nowrap dashboard-filter">
-            <div class="col-auto">
-              <input id="topStart" type="date" class="form-control form-control-sm" value="{{ range_start_top|date:'Y-m-d' }}">
-            </div>
-            <div class="col-auto">
-              <input id="topEnd" type="date" class="form-control form-control-sm" value="{{ range_end_top|date:'Y-m-d' }}">
-            </div>
-          </div>
-          <div class="row g-2 flex-nowrap dashboard-filter">
-            <div class="col-auto" style="width:110px;">
-              <select id="txnTypeFilter" aria-label="Transaction Type Filter" class="form-select form-select-sm">
-                <option value="all"{% if selected_txn_type == 'all' %} selected{% endif %}>All</option>
-                {% for val,label in txn_type_choices %}
-                  <option value="{{ val }}"{% if val == selected_txn_type %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-auto" style="width:120px;">
-              <select id="entitiesFilter" multiple aria-label="Entities Filter" class="form-select form-select-sm">
-                {% for e in entities %}
-                  <option value="{{ e.id }}"{% if e.id in selected_entities %} selected{% endif %}>{{ e.entity_name }}</option>
-                {% endfor %}
-              </select>
+        <div class="d-flex justify-content-end mb-2">
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#topListFilterModal">Filter</button>
+        </div>
+
+        <!-- Modal for top list chart filters -->
+        <div class="modal fade" id="topListFilterModal" tabindex="-1" aria-labelledby="topListFilterLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="topListFilterLabel">Top List Filters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2 flex-nowrap dashboard-filter mb-2">
+                  <div class="col-auto">
+                    <input id="topStart" type="date" class="form-control form-control-sm" value="{{ range_start_top|date:'Y-m-d' }}" data-default="{{ default_range_start_top|date:'Y-m-d' }}">
+                  </div>
+                  <div class="col-auto">
+                    <input id="topEnd" type="date" class="form-control form-control-sm" value="{{ range_end_top|date:'Y-m-d' }}" data-default="{{ default_range_end_top|date:'Y-m-d' }}">
+                  </div>
+                </div>
+                <div class="row g-2 flex-nowrap dashboard-filter">
+                  <div class="col-auto" style="width:110px;">
+                    <select id="txnTypeFilter" aria-label="Transaction Type Filter" class="form-select form-select-sm" data-default="all">
+                      <option value="all"{% if selected_txn_type == 'all' %} selected{% endif %}>All</option>
+                      {% for val,label in txn_type_choices %}
+                        <option value="{{ val }}"{% if val == selected_txn_type %} selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-auto" style="width:120px;">
+                    <select id="entitiesFilter" multiple aria-label="Entities Filter" class="form-select form-select-sm" data-default="">
+                      {% for e in entities %}
+                        <option value="{{ e.id }}"{% if e.id in selected_entities %} selected{% endif %}>{{ e.entity_name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="clearTopFilter">Clear Filter</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Apply</button>
+              </div>
             </div>
           </div>
         </div>
