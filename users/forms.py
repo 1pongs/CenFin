@@ -1,12 +1,12 @@
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 
 class UserSettingsForm(forms.ModelForm):
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ["first_name", "last_name", "email"]
 
     def __init__(self, *args, **kwargs):

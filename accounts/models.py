@@ -73,6 +73,19 @@ class Account(models.Model):
 
     objects = AccountManager()
 
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            qs = Account.objects.filter(account_name__iexact=self.account_name, user=self.user)
+            if qs.filter(is_active=True).exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError({"account_name": "Name already in use."})
+            inactive = qs.filter(is_active=False).first()
+            if inactive:
+                self.pk = inactive.pk
+                self.is_active = True
+                self._state.adding = False
+        super().save(*args, **kwargs)
+
     def delete(self, *args, **kwargs):
         self.is_active=False
         self.save()

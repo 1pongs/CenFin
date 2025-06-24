@@ -6,7 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
 from django.contrib import messages
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from .forms import UserSettingsForm
 
@@ -28,7 +28,7 @@ class UserLogoutView(View):
         return self.post(request, *args, **kwargs)
 
 class UserSettingsView(UpdateView):
-    model = User
+    model = get_user_model()
     form_class = UserSettingsForm
     template_name = "users/account_settings.html"
     success_url = reverse_lazy("users:settings")

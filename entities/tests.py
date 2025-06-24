@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from entities.models import Entity
 from accounts.models import Account
@@ -14,6 +14,7 @@ from transactions.models import Transaction
 )
 class EntitySoftDeleteTest(TestCase):
     def setUp(self):
+        User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
         self.ent = Entity.objects.create(
@@ -58,6 +59,7 @@ class EntitySoftDeleteTest(TestCase):
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 class OutsideHiddenListTest(TestCase):
     def setUp(self):
+        User = get_user_model()
         self.user = User.objects.create_user(username="x", password="p")
         self.client.force_login(self.user)
         Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
@@ -73,6 +75,7 @@ class OutsideHiddenListTest(TestCase):
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 class AccountHiddenListTest(TestCase):
     def setUp(self):
+        User = get_user_model()
         self.user = User.objects.create_user(username="y", password="p")
         self.client.force_login(self.user)
         Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)

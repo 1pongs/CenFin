@@ -26,6 +26,19 @@ class Entity(models.Model):
 
     objects=EntityQuerySet.as_manager()
 
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            qs = Entity.objects.filter(entity_name__iexact=self.entity_name, user=self.user)
+            if qs.filter(is_active=True).exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError({"entity_name": "Name already in use."})
+            inactive = qs.filter(is_active=False).first()
+            if inactive:
+                self.pk = inactive.pk
+                self.is_active = True
+                self._state.adding = False
+        super().save(*args, **kwargs)
+
     def delete(self, *args, **kwargs):
         self.is_active=False
         self.save()
