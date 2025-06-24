@@ -8,16 +8,21 @@ from django.db.models import (
     DecimalField,
     Value,
     CharField,
+    Q,
 )
 from django.db.models.functions import Abs
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta
 
 from django.http import JsonResponse
 from transactions.models import Transaction
 from transactions.constants import TXN_TYPE_CHOICES
 from entities.models import Entity
-from cenfin_proj.utils import get_monthly_summary, get_monthly_cash_flow
+from cenfin_proj.utils import (
+    get_monthly_summary,
+    get_monthly_cash_flow,
+    parse_range_params,
+)
 
 # Create your views here.
 
@@ -79,6 +84,12 @@ class DashboardView(TemplateView):
         
         ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
         params = self.request.GET
+        start_cf, end_cf = parse_range_params(self.request, today - timedelta(days=365))
+        start_top, end_top = parse_range_params(self.request, date(today.year, 1, 1))
+        ctx["range_start_cf"] = start_cf
+        ctx["range_end_cf"] = end_cf
+        ctx["range_start_top"] = start_top
+        ctx["range_end_top"] = end_top
         selected_entities = []
         for val in params.getlist("entities"):
             if "," in val:
@@ -94,10 +105,11 @@ class DashboardView(TemplateView):
         ctx["selected_txn_type"] = txn_type
         ctx["txn_type_choices"] = TXN_TYPE_CHOICES
         # ------------------------------------------------------
-        # Top 10 big-ticket transactions for the current year
+        # Top 10 big-ticket transactions within date range
         # ------------------------------------------------------
-        year_start = date(today.year, 1, 1)
-        qs = Transaction.objects.filter(user=self.request.user, date__gte=year_start)
+        qs = Transaction.objects.filter(
+            user=self.request.user, date__range=[start_top, end_top]
+        )
         if selected_entities:
             qs = qs.filter(
                 Q(entity_source_id__in=selected_entities) |

@@ -102,19 +102,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const entitySel = document.getElementById('entitySelect');
-  const monthSel = document.getElementById('monthSelect');
+  const cashStart = document.getElementById('cashStart');
+  const cashEnd = document.getElementById('cashEnd');
   const spinner = document.getElementById('chartSpinner');
   const noData = document.getElementById('noDataMsg');
   const cache = {};
   let debounceId = null;
   let debounceTopId = null;
 
-  async function fetchData(ent, months){
-    const key = `${ent}|${months}`;
+  async function fetchData(ent, start, end){
+    const key = `${ent}|${start}|${end}`;
     if(cache[key]) return cache[key];
     spinner.classList.remove('d-none');
     try{
-      const resp = await fetch(`${dataUrl}?entity_id=${ent}&months=${months}`, {credentials:'same-origin'});
+      const params = new URLSearchParams();
+      params.set('entity_id', ent);
+      if(start) params.set('start', start);
+      if(end) params.set('end', end);
+      const resp = await fetch(`${dataUrl}?${params.toString()}`, {credentials:'same-origin'});
       if(resp.ok){
         const data = await resp.json();
         cache[key] = data;
@@ -169,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadData(){
-    const data = await fetchData(entitySel.value, monthSel.value);
+    const data = await fetchData(entitySel.value, cashStart.value, cashEnd.value);
     refreshChart(flowChart, data);
   }
 
@@ -183,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams();
     if(ids) params.set('entities', ids);
     if(txnTypeSel.value) params.set('txn_type', txnTypeSel.value);
+    if(topStart.value) params.set('start', topStart.value);
+    if(topEnd.value) params.set('end', topEnd.value);
     try{
       const resp = await fetch(`${topUrl}?${params.toString()}`, {credentials:'same-origin'});
       if(resp.ok) return await resp.json();
@@ -215,10 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
     debounceTopId = setTimeout(loadTop, 200);
   }
 
-  entitySel.addEventListener('change', debouncedLoad);
-  monthSel.addEventListener('change', debouncedLoad);
+  entitySel.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
+  cashStart.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
+  cashEnd.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
   const entitySelTop = document.getElementById('entitiesFilter');
   const txnTypeSel = document.getElementById('txnTypeFilter');
+  const topStart = document.getElementById('topStart');
+  const topEnd = document.getElementById('topEnd');
 
   const urlParams = new URLSearchParams(location.search);
   function applyInitialFilters(){
@@ -231,17 +241,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if(tx){
       txnTypeSel.value = tx;
     }
+    const startParam = urlParams.get('start');
+    const endParam = urlParams.get('end');
+    if(startParam){
+      cashStart.value = startParam;
+      topStart.value = startParam;
+    }
+    if(endParam){
+      cashEnd.value = endParam;
+      topEnd.value = endParam;
+    }
   }
 
   function updateQuery(){
     const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
     if(ids) urlParams.set('entities', ids); else urlParams.delete('entities');
     urlParams.set('txn_type', txnTypeSel.value);
+    if(cashStart.value) urlParams.set('start', cashStart.value);
+    if(cashEnd.value) urlParams.set('end', cashEnd.value);
     history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
   }
 
   entitySelTop.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
   txnTypeSel.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
+  topStart.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
+  topEnd.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
 
   applyInitialFilters();
 

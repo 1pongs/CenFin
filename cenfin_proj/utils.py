@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta
 
 from django.db.models import (Sum, F, Value, DecimalField, Case, When, Q)
 from django.db.models.functions import Coalesce, TruncMonth
@@ -343,4 +343,132 @@ def get_monthly_summary(entity_id=None, user=None):
                 "non_liquid": non_liquid_bal,
             }
         )
+    return summary
+
+
+def parse_range_params(request, default_start, default_end=None):
+    """Parse start/end date strings from request.GET with defaults."""
+    today = timezone.now().date()
+    if default_end is None:
+        default_end = today
+    start_str = request.GET.get("start")
+    end_str = request.GET.get("end")
+    try:
+        start = date.fromisoformat(start_str) if start_str else default_start
+    except (TypeError, ValueError):
+        start = default_start
+    try:
+        end = date.fromisoformat(end_str) if end_str else default_end
+    except (TypeError, ValueError):
+        end = default_end
+    return start, end
+
+
+def get_monthly_cash_flow_range(entity_id=None, start=None, end=None, drop_empty=False, user=None):
+    """Return monthly cash-flow data for the given date range."""
+    from transactions.models import Transaction
+
+    if start is None or end is None:
+        raise ValueError("start and end dates are required")
+
+    q = Q()
+    if entity_id:
+        q = Q(entity_source_id=entity_id) | Q(entity_destination_id=entity_id)
+    if user is not None:
+        q &= Q(user=user)
+    if entity_id and not Transaction.objects.filter(q).exists():
+        return []
+
+    start_month = date(start.year, start.month, 1)
+    end_month = date(end.year, end.month, 1)
+
+    months_seq = []
+    y, m = start_month.year, start_month.month
+    while (y < end_month.year) or (y == end_month.year and m <= end_month.month):
+        months_seq.append(date(y, m, 1))
+        m += 1
+        if m == 13:
+            m = 1
+            y += 1
+
+    initial = Transaction.objects.filter(q, date__lt=start_month).aggregate(
+        liquid=Sum(
+            Case(
+                When(asset_type_destination="Liquid", then=F("amount")),
+                When(asset_type_source="Liquid", then=-F("amount")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        non_liquid=Sum(
+            Case(
+                When(asset_type_destination="Non-Liquid", then=F("amount")),
+                When(asset_type_source="Non-Liquid", then=-F("amount")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+    )
+
+    qs = (
+        Transaction.objects.filter(q, date__range=[start_month, end])
+        .annotate(month=TruncMonth("date"))
+        .values("month")
+        .annotate(
+            income=Sum(
+                Case(
+                    When(transaction_type_destination="Income", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
+            ),
+            expenses=Sum(
+                Case(
+                    When(transaction_type_source="Expense", then=F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
+            ),
+            liquid_delta=Sum(
+                Case(
+                    When(asset_type_destination="Liquid", then=F("amount")),
+                    When(asset_type_source="Liquid", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
+            ),
+            non_liquid_delta=Sum(
+                Case(
+                    When(asset_type_destination="Non-Liquid", then=F("amount")),
+                    When(asset_type_source="Non-Liquid", then=-F("amount")),
+                    default=0,
+                    output_field=DecimalField(),
+                )
+            ),
+        )
+        .order_by("month")
+    )
+
+    month_map = {}
+    for row in qs:
+        mv = row["month"].date() if hasattr(row["month"], "date") else row["month"]
+        month_map[mv] = row
+
+    liquid_bal = initial.get("liquid") or 0
+    non_liquid_bal = initial.get("non_liquid") or 0
+    summary = []
+    for d in months_seq:
+        row = month_map.get(d, {})
+        liquid_bal += row.get("liquid_delta", 0) or 0
+        non_liquid_bal += row.get("non_liquid_delta", 0) or 0
+        item = {
+            "month": d.strftime("%b"),
+            "income": row.get("income", 0) or 0,
+            "expenses": row.get("expenses", 0) or 0,
+            "liquid": liquid_bal,
+            "non_liquid": non_liquid_bal,
+        }
+        if drop_empty and item["income"] == 0 and item["expenses"] == 0 and row.get("liquid_delta", 0) == 0 and row.get("non_liquid_delta", 0) == 0:
+            continue
+        summary.append(item)
     return summary

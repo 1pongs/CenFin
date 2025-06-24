@@ -6,16 +6,16 @@ from datetime import date
 from django.db.models import Sum, Case, When, F, Value, CharField
 from django.db.models.functions import Abs
 from django.db.models import Q
-from cenfin_proj.utils import get_monthly_cash_flow
+from cenfin_proj.utils import get_monthly_cash_flow_range, parse_range_params
 from transactions.models import Transaction
 
 
 @login_required
 @require_GET
 def dashboard_data(request):
-    """Return dashboard chart data filtered by entity and months."""
+    """Return dashboard chart data filtered by entity and date range."""
     ent = request.GET.get('entity_id')
-    months = request.GET.get('months', '12')
+    start, end = parse_range_params(request, None)
 
     if ent and ent not in {'all', 'overall'}:
         try:
@@ -25,12 +25,7 @@ def dashboard_data(request):
     else:
         ent = None
 
-    try:
-        months = int(months)
-    except (TypeError, ValueError):
-        months = 12
-
-    data = get_monthly_cash_flow(ent, months, drop_empty=False, user=request.user)
+    data = get_monthly_cash_flow_range(ent, start=start, end=end, drop_empty=False, user=request.user)
 
     labels = [row['month'] for row in data]
     datasets = {
@@ -59,9 +54,9 @@ def top10_data(request):
             return JsonResponse({"error": "invalid entity"}, status=400)
 
     today = date.today()
-    year_start = date(today.year, 1, 1)
+    start, end = parse_range_params(request, date(today.year, 1, 1))
 
-    qs = Transaction.objects.filter(user=request.user, date__gte=year_start)
+    qs = Transaction.objects.filter(user=request.user, date__range=[start, end])
     if ids:
         qs = qs.filter(Q(entity_source_id__in=ids) | Q(entity_destination_id__in=ids))
     if txn_type and txn_type != "all":

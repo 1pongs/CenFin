@@ -48,3 +48,12 @@ footer {
 .card.inactive {
   opacity: 0.5;
 }
+
+/* Uniform sizing for dashboard filter toolbars */
+.dashboard-filter .form-control-sm,
+.dashboard-filter .form-select-sm {
+  min-width: 100px;
+  height: calc(1.5em + 0.5rem + 2px);
+  font-size: 0.875rem;
+  border-radius: 0.2rem;
+}
