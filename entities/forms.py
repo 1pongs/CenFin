@@ -33,7 +33,7 @@ class EntityForm(forms.ModelForm):
                         "cancel",
                         "Cancel",
                         css_class="btn btn-outline-secondary",
-                        oonclick=f"window.location.href='{cancel_url}'",
+                        onclick=f"window.location.href='{cancel_url}'",
                         type="button",
                     ),
                     css_class="d-flex justify-content-end gap-2 mt-3",
