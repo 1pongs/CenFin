@@ -10,8 +10,9 @@
 {% endblock %}
 
 {% block content %}
-{% url 'transactions:transaction_list' as back_url %}
-{% include "includes/back_button.html" with url=back_url %}
+<a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
+  <i class="bi bi-arrow-left"></i> Back
+</a>
 <div id="form-container" class="container py-4">
 
   <div class="row justify-content-center">
@@ -61,9 +62,6 @@
 
     if (defaults.description !== undefined) {
       document.getElementById('id_description').value = defaults.description;
-    }
-    if (defaults.date !== undefined) {
-      document.getElementById('id_date').value = defaults.date;
     }
     if (defaults.transaction_type !== undefined) {
       document.getElementById('id_transaction_type').value = defaults.transaction_type;

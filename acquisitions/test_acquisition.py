@@ -216,7 +216,8 @@ class OutsideAccountVisibilityTest(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="vis", password="p")
         self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.outside = Account.objects.get(account_name="Outside", user=None)
+        from accounts.utils import ensure_outside_account
+        self.outside = ensure_outside_account()
 
     def test_acquisition_form_includes_outside(self):
         form = AcquisitionForm(user=self.user)
@@ -272,8 +273,10 @@ class OutsideAutoLockTest(TestCase):
         self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.dest = Account.objects.create(account_name="Dest", account_type="Cash", user=self.user)
         self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
-        self.out_acc = Account.objects.get(account_name="Outside", user=None)
-        self.out_ent = Entity.objects.get(entity_name="Outside", user=None)
+        from accounts.utils import ensure_outside_account
+        from entities.utils import ensure_fixed_entities
+        self.out_acc = ensure_outside_account()
+        self.out_ent, _ = ensure_fixed_entities()
 
     def test_buy_form_forces_outside_destination(self):
         form = AcquisitionForm(data={

@@ -301,7 +301,7 @@ class EntityListView(TemplateView):
 
         qs = (
             get_entity_balances()
-            .filter(user=self.request.user)
+            .filter(Q(user=self.request.user) | Q(user__isnull=True))
             .exclude(entity_type="outside")
             .filter(is_visible=True)
         )

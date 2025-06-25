@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm as DjangoUserCreationForm
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
@@ -42,3 +43,16 @@ class UserSettingsForm(forms.ModelForm):
             )
 
         self.helper.layout = Layout(*layout_fields)
+
+
+class CustomUserCreationForm(DjangoUserCreationForm):
+    """User creation form compatible with the custom User model."""
+
+    class Meta(DjangoUserCreationForm.Meta):
+        model = get_user_model()
+        fields = (
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+        )

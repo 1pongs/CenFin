@@ -4,9 +4,11 @@
 {% block title %}New Insurance Policy · CENFIN{% endblock %}
 
 {% block content %}
-{% url 'insurance:list' as back_url %}
-{% include "includes/back_button.html" with url=back_url %}
+
 <div class="container py-4">
+  <a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
+  <i class="bi bi-arrow-left"></i> Back
+</a>
   <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-6">
       <div class="card shadow-sm border-0">

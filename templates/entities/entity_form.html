@@ -8,12 +8,9 @@
 {% endblock %}
 
 {% block content %}
-{% if form.instance.pk %}
-{% url 'entities:accounts' form.instance.pk as back_url %}
-{% else %}
-{% url 'entities:list' as back_url %}
-{% endif %}
-{% include "includes/back_button.html" with url=back_url %}
+<a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
+  <i class="bi bi-arrow-left"></i> Back
+</a>
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-6">

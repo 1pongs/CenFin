@@ -2,20 +2,20 @@ from django.contrib.auth.views import LoginView
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.views import View
-from django.contrib.auth.forms import UserCreationForm
+
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 
-from .forms import UserSettingsForm
+from .forms import UserSettingsForm, CustomUserCreationForm
 
 class UserLoginView(LoginView):
     template_name = "users/login.html"
     redirect_authenticated_user = True
 
 class RegisterView(CreateView):
-    form_class = UserCreationForm
+    form_class = CustomUserCreationForm
     template_name = "users/register.html"
     success_url = reverse_lazy("users:login")
 

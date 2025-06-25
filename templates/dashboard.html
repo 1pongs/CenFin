@@ -122,7 +122,10 @@
             </div>
           </div>
         </div>
-        <canvas id="topEntriesChart" height="180" data-api-url="{% url 'dashboard:top10-data' %}"></canvas>
+        <div class="position-relative">
+          <div id="topNoDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
+          <canvas id="topEntriesChart" height="180" data-api-url="{% url 'dashboard:top10-data' %}"></canvas>
+        </div>
       </div>
     </div>
   </div>

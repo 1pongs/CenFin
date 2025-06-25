@@ -6,8 +6,9 @@
 {% endblock %}
 
 {% block content %}
-{% url 'entities:list' as back_url %}
-{% include "includes/back_button.html" with url=back_url %}
+<a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
+  <i class="bi bi-arrow-left"></i> Back
+</a>
 <div class="d-flex justify-content-between align-items-center mt-3">
   <h2 class="mb-0">{{ entity.entity_name }}</h2>
   <div>

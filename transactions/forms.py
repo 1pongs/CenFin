@@ -221,10 +221,7 @@ class TransactionForm(forms.ModelForm):
 
 # ---------------- Template Form ----------------
 class TemplateForm(forms.ModelForm):
-    date = forms.DateField(
-        required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
+
     description = forms.CharField(max_length=255, required=False)
     transaction_type = forms.ChoiceField(
         choices=TXN_TYPE_CHOICES,
@@ -257,7 +254,7 @@ class TemplateForm(forms.ModelForm):
         model = TransactionTemplate
         fields = [
             "name",
-            "date", "description",
+            "description",
             "transaction_type", "amount",
             "account_source", "account_destination",
             "entity_source", "entity_destination",
@@ -333,7 +330,6 @@ class TemplateForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("date", css_class="col-md-6"),
                 Column("transaction_type", css_class="col-md-6"),
                 css_class="g-3",
             ),

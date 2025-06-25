@@ -8,9 +8,12 @@ def ensure_fixed_entities():
         user=None,
         defaults={"entity_type": "outside", "is_visible": False},
     )
-    account, _ = Entity.objects.get_or_create(
+    account, created = Entity.objects.get_or_create(
         entity_name="Account",
         user=None,
-        defaults={"entity_type": "free fund", "is_visible": False},
+        defaults={"entity_type": "free fund", "is_visible": True},
     )
+    if not created and not account.is_visible:
+        account.is_visible = True
+        account.save(update_fields=["is_visible"])
     return outside, account
