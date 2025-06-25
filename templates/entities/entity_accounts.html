@@ -9,17 +9,18 @@
 {% block content %}
 {% url 'entities:list' as back_url %}
 {% include "includes/back_button.html" with url=back_url %}
-<div class="d-flex justify-content-between align-items-center mt-3">
-  <h2 class="mb-0">{{ entity.entity_name }}</h2>
-  <div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="mb-0">{{ entity.entity_name }}</h2>
+      <a href="{% url 'entities:edit' entity.pk %}?next={{ request.path }}" class="edit-entity-link small" title="Edit">Edit</a>
+    </div>
+    <div>
     <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#insModal">
       <i class="bi bi-shield-plus me-1"></i>Add Insurance
     </button>
     <a href="{% url 'accounts:create' %}" class="btn btn-success btn-sm me-2">
       <i class="bi bi-plus-lg me-1"></i>Add Account
     </a>
-    <a href="{% url 'entities:edit' entity.pk %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary me-2">Edit</a>
-    <a href="{% url 'entities:delete' entity.pk %}" class="btn btn-sm btn-danger">Delete</a>
   </div>
 </div>
 

@@ -57,3 +57,14 @@ footer {
   font-size: 0.875rem;
   border-radius: 0.2rem;
 }
+
+.edit-entity-link {
+  font-size: 0.7rem;     /* ~12 px — mas maliit pa sa .small */
+  color: var(--bs-primary);
+  text-decoration: none;
+}
+
+.edit-entity-link:hover,
+.edit-entity-link:focus {
+  text-decoration: underline;   /* subtle hover cue */
+}
