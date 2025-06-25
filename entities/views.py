@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import date, timedelta
 
-from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField
+from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField, Count
 from collections import defaultdict
 
 
@@ -556,14 +556,20 @@ class EntityAccountsView(TemplateView):
                 asset_type_source__iexact="liquid",
             )
             
-            inflow = inflow.values(
-                "account_destination_id",
-                "account_destination__account_name",
-            ).annotate(total_in=Sum("amount"))
-            outflow = outflow.values(
-                "account_source_id",
-                "account_source__account_name",
-            ).annotate(total_out=Sum("amount"))
+            inflow = (
+                inflow.values(
+                    "account_destination_id",
+                    "account_destination__account_name",
+                )
+                .annotate(total_in=Sum("amount"), count_in=Count("id"))
+            )
+            outflow = (
+                outflow.values(
+                    "account_source_id",
+                    "account_source__account_name",
+                )
+                .annotate(total_out=Sum("amount"), count_out=Count("id"))
+            )
 
             balances = {}
             for row in inflow:
@@ -572,16 +578,19 @@ class EntityAccountsView(TemplateView):
                     "id": acc_pk,
                     "name": row["account_destination__account_name"],
                     "balance": row["total_in"],
+                    "tx_count": row["count_in"],
                 }
             for row in outflow:
                 acc_pk = row["account_source_id"]
                 name = row.get("account_source__account_name", "")
                 entry = balances.setdefault(
-                    acc_pk, {"id": acc_pk, "name": name, "balance": 0}
+                    acc_pk,
+                    {"id": acc_pk, "name": name, "balance": 0, "tx_count": 0},
                 )
                 if not entry["name"]:
                     entry["name"] = name
                 entry["balance"] -= row["total_out"]
+                entry["tx_count"] += row["count_out"]
 
             account_map = {
                 acc.id: acc
@@ -600,6 +609,8 @@ class EntityAccountsView(TemplateView):
             sort = params.get("sort", "name")
             if sort == "balance":
                 results.sort(key=lambda x: x["balance"], reverse=True)
+            elif sort == "tx_count":
+                results.sort(key=lambda x: x.get("tx_count", 0), reverse=True)
             elif sort == "account_type":
                 results.sort(key=lambda x: (x.get("type") or "", x["name"]))
             else:

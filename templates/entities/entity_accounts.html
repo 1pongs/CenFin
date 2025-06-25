@@ -15,6 +15,9 @@
     <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#insModal">
       <i class="bi bi-shield-plus me-1"></i>Add Insurance
     </button>
+    <a href="{% url 'accounts:create' %}" class="btn btn-success btn-sm me-2">
+      <i class="bi bi-plus-lg me-1"></i>Add Account
+    </a>
     <a href="{% url 'entities:edit' entity.pk %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary me-2">Edit</a>
     <a href="{% url 'entities:delete' entity.pk %}" class="btn btn-sm btn-danger">Delete</a>
   </div>
@@ -62,6 +65,7 @@
                 <a href="{% url 'accounts:edit' a.id %}" class="text-decoration-none">{{ a.name }}</a>
               </div>
               <small class="text-muted">{{ a.type }}</small>
+              <div class="small text-muted">Transactions: {{ a.tx_count }}</div>
             </div>
             <div class="ms-auto fw-bold">
               <span class="amount-display" data-prefix="₱" data-decimals="0">{{ a.balance|floatformat:0|intcomma }}</span>
