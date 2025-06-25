@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
       types: bigTickets.map(r => r.type)
     });
   } else {
-    ctx2.classList.add('d-none');
+    ctx2.classList.add('invisible');
     noDataTop.classList.remove('d-none');
   }
 
@@ -165,13 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // the API that does not exist in the chart will be logged in the console.
   function refreshChart(payload){
     if(!payload.labels || payload.labels.length === 0){
-      ctx1.classList.add('d-none');
+      ctx1.classList.add('invisible');
       noData.classList.remove('d-none');
       if(flowChart){ flowChart.destroy(); flowChart = null; }
       return;
     }
     noData.classList.add('d-none');
-    ctx1.classList.remove('d-none');
+    ctx1.classList.remove('invisible');
     if(!flowChart) createFlowChart();
     flowChart.data.labels = payload.labels || [];
     const usedKeys = new Set();
@@ -224,13 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function refreshTop10(payload){
     if(!payload.labels || payload.labels.length === 0){
-      ctx2.classList.add('d-none');
+      ctx2.classList.add('invisible');
       noDataTop.classList.remove('d-none');
       if(ticketChart){ ticketChart.destroy(); ticketChart = null; }
       return;
     }
     noDataTop.classList.add('d-none');
-    ctx2.classList.remove('d-none');
+    ctx2.classList.remove('invisible');
     if(!ticketChart){
       createTicketChart(payload);
       return;
