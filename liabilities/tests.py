@@ -47,3 +47,17 @@ class LoanModelTest(TestCase):
         loan.refresh_from_db()
         self.assertTrue(payment.is_paid)
         self.assertEqual(loan.outstanding_balance, Decimal("200"))
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LiabilityListViewTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="view", password="p")
+        self.client.force_login(self.user)
+
+    def test_list_view_uses_template(self):
+        from django.urls import reverse
+        resp = self.client.get(reverse("liabilities:list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, "liabilities/liability_list.html")

@@ -64,6 +64,7 @@ class Account(models.Model):
         ('Cash','Cash'),
         ('Outside','Outside'),
         ('Entity','Entity'),
+        ('Credit', 'Credit'),
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)

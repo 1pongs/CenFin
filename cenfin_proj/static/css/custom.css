@@ -45,6 +45,8 @@ footer {
 .card.cat-equipment { background-color: #f8f9fa; }
 .card.cat-vehicle { background-color: #ffe5d0; }
 .card.cat-stock_bond { background-color: #e2d5f8; }
+.card.cat-credit { background-color: #cff4fc; }
+.card.cat-loan { background-color: #ffe5cc; }
 .card.inactive {
   opacity: 0.5;
 }

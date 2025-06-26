@@ -230,3 +230,18 @@ class TemplateOutsideEnforcedTest(TestCase):
         tpl = TransactionTemplate.objects.first()
         self.assertEqual(tpl.autopop_map["account_destination"], self.out_acc.pk)
         self.assertEqual(tpl.autopop_map["entity_destination"], self.out_ent.pk)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class ConstantsTest(TestCase):
+    def test_credit_constants(self):
+        from .constants import transaction_type_TX_MAP, ASSET_TYPE_CHOICES
+        self.assertEqual(
+            transaction_type_TX_MAP["cc_purchase"],
+            ("expense", "outside", "credit", "outside"),
+        )
+        self.assertEqual(
+            transaction_type_TX_MAP["cc_payment"],
+            ("transfer", "transfer", "liquid", "credit"),
+        )
+        self.assertIn(("credit", "Credit"), ASSET_TYPE_CHOICES)

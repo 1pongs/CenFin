@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Liabilities · CENFIN{% endblock %}
+{% block content %}
+<h1 class="mb-4">Liabilities</h1>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link{% if tab == 'credit' %} active{% endif %}" href="?tab=credit">Credit</a></li>
+  <li class="nav-item"><a class="nav-link{% if tab == 'loans' %} active{% endif %}" href="?tab=loans">Loans</a></li>
+</ul>
+{% block liabilities_content %}{% endblock %}
+{% endblock %}

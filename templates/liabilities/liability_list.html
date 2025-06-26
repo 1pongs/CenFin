@@ -1,0 +1,36 @@
+{% load humanize %}
+{% block liabilities_content %}
+{% if tab == 'loans' %}
+  {% for loan in loans %}
+    <div class="card cat-loan mb-3 p-3">
+      <div class="d-flex justify-content-between">
+        <div>
+          <strong>{{ loan.lender.name }}</strong><br>
+          <small>{{ loan.principal_amount|floatformat:2|intcomma }}</small>
+        </div>
+        <div class="text-end">
+          <a href="#" class="btn btn-sm btn-primary">Record Payment</a>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p>No loans.</p>
+  {% endfor %}
+{% else %}
+  {% for card in credit_cards %}
+    <div class="card cat-credit mb-3 p-3">
+      <div class="d-flex justify-content-between">
+        <div>
+          <strong>{{ card.card_name }}</strong><br>
+          <small>{{ card.issuer.name }}</small>
+        </div>
+        <div class="text-end">
+          <a href="#" class="btn btn-sm btn-primary">Pay</a>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p>No credit cards.</p>
+  {% endfor %}
+{% endif %}
+{% endblock %}
