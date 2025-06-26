@@ -2,7 +2,19 @@ from .models import Entity
 
 
 def ensure_fixed_entities(user=None):
-    """Return the Outside and Account entities, creating them if needed."""
+    """Return the Outside and Account entities for ``user``.
+
+    When ``user`` is ``None`` the function will **not** create any new rows and
+    simply return existing records if they exist. This behaviour keeps older
+    migrations that called this utility without a user from creating orphaned
+    entities with ``user_id`` set to ``NULL``.
+    """
+
+    if user is None:
+        outside = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
+        account = Entity.objects.filter(entity_name="Account", user__isnull=True).first()
+        return outside, account
+    
     outside, _ = Entity.objects.get_or_create(
         entity_name="Outside",
         user=user,

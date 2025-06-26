@@ -70,7 +70,7 @@ class AccountBalanceCalculationTest(TestCase):
         self.other = Account.objects.create(account_name="BDO", account_type="Banks", user=self.user)
         self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
         self.out_acc = ensure_outside_account()
-        self.out_ent, _ = ensure_fixed_entities()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
 
         today = timezone.now().date()
 

@@ -63,7 +63,8 @@ class TransactionFormBalanceTest(TestCase):
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = Account.objects.create(account_name="Outside", account_type="Outside", user=self.user)
-        self.out_ent = Entity.objects.create(entity_name="Outside", entity_type="outside", user=self.user)
+        from entities.utils import ensure_fixed_entities
+        self.out_ent, _ = ensure_fixed_entities(self.user)
 
     def _form_data(self, **overrides):
         data = {
@@ -149,7 +150,7 @@ class OutsideEnforcedTest(TestCase):
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = ensure_outside_account()
-        self.out_ent, _ = ensure_fixed_entities()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
 
     def _post_txn(self, tx_type, **overrides):
         data = {
@@ -201,7 +202,7 @@ class TemplateOutsideEnforcedTest(TestCase):
         self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.ent = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.out_acc = ensure_outside_account()
-        self.out_ent, _ = ensure_fixed_entities()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
 
     def _post_tpl(self, tx_type):
         data = {

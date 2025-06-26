@@ -20,7 +20,7 @@ class InsuranceFlowTest(TestCase):
         self.entity = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
         self.account = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
         self.out_acc = ensure_outside_account()
-        self.out_ent, _ = ensure_fixed_entities()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
 
     def test_insurance_creation_creates_inactive_acquisition(self):
         resp = self.client.post(reverse("insurance:create"), {

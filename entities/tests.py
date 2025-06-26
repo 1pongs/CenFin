@@ -64,7 +64,7 @@ class OutsideHiddenListTest(TestCase):
         self.client.force_login(self.user)
         Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
         from entities.utils import ensure_fixed_entities
-        self.outside, _ = ensure_fixed_entities()
+        self.outside, _ = ensure_fixed_entities(self.user)
 
     def test_outside_not_in_list(self):
         resp = self.client.get(reverse("entities:list"))
@@ -81,7 +81,7 @@ class AccountVisibleListTest(TestCase):
         self.client.force_login(self.user)
         Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
         from entities.utils import ensure_fixed_entities
-        _, self.account_ent = ensure_fixed_entities()
+        _, self.account_ent = ensure_fixed_entities(self.user)
 
     def test_account_in_list(self):
         resp = self.client.get(reverse("entities:list"))

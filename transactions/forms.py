@@ -176,7 +176,7 @@ class TransactionForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         amt = cleaned.get("amount") or Decimal("0")
-        outside_entity, _ = ensure_fixed_entities()
+        outside_entity, _ = ensure_fixed_entities(self.user)
         outside_account = ensure_outside_account()
         tx_type = cleaned.get("transaction_type")
 
@@ -268,11 +268,12 @@ class TemplateForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         show_actions = kwargs.pop('show_actions', True)
         super().__init__(*args, **kwargs)
+        self.user = user
 
         css = self.fields['amount'].widget.attrs.get('class', '')
         self.fields['amount'].widget.attrs['class'] = f"{css} amount-input".strip()
 
-        outside_entity, _ = ensure_fixed_entities()
+        outside_entity, _ = ensure_fixed_entities(self.user)
         outside_account = ensure_outside_account()
         tx_type = (
             self.data.get("transaction_type")
@@ -367,7 +368,7 @@ class TemplateForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         tx_type = cleaned.get("transaction_type")
-        outside_entity, _ = ensure_fixed_entities()
+        outside_entity, _ = ensure_fixed_entities(self.user)
         outside_account = ensure_outside_account()
         if tx_type == "income":
             cleaned["account_source"] = outside_account
