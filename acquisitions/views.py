@@ -128,11 +128,8 @@ class AcquisitionCreateView(FormView):
         kwargs["user"] = self.request.user
         ent_id = self.request.GET.get("entity")
         if ent_id:
-            try:
-                ent = Entity.objects.get(pk=ent_id, user=self.request.user)
-                kwargs["locked_entity"] = ent
-            except Entity.DoesNotExist:
-                pass
+            ent = get_object_or_404(Entity, pk=ent_id, user=self.request.user)
+            kwargs["locked_entity"] = ent
         cat = self.request.GET.get("category")
         if cat:
             kwargs.setdefault("initial", {})["category"] = cat
@@ -189,11 +186,8 @@ class AcquisitionCreateView(FormView):
     def get_success_url(self):
         ent_id = self.request.GET.get("entity")
         if ent_id:
-            try:
-                Entity.objects.get(pk=ent_id, user=self.request.user)
-                return reverse("entities:detail", args=[ent_id])
-            except Entity.DoesNotExist:
-                pass
+            get_object_or_404(Entity, pk=ent_id, user=self.request.user)
+            return reverse("entities:detail", args=[ent_id])
         return super().get_success_url()
 
     def form_invalid(self, form):

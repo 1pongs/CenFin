@@ -94,10 +94,7 @@ def category_list(request):
 def acquisition_options(request, entity_id, category):
     if category not in {"property", "vehicle"}:
         raise Http404()
-    try:
-        Entity.objects.get(pk=entity_id, user=request.user)
-    except Entity.DoesNotExist:
-        raise Http404()
+    get_object_or_404(Entity, pk=entity_id, user=request.user)
     acqs = (
         Acquisition.objects.filter(
             user=request.user,

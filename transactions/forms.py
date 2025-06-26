@@ -77,7 +77,7 @@ class TransactionForm(forms.ModelForm):
         for n in self._must_fill:
             self.fields[n].required = True
 
-        outside_entity, _ = ensure_fixed_entities()
+        outside_entity, _ = ensure_fixed_entities(user)
         outside_account = ensure_outside_account()
         tx_type = (self.data.get("transaction_type")
                    or self.initial.get("transaction_type")
