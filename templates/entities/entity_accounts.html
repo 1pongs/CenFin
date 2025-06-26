@@ -74,7 +74,7 @@
           </div>
         </div>
       {% empty %}
-        <p>No accounts yet.</p>
+        {% include 'includes/no_accounts.html' %}
       {% endfor %}
     {% elif current_category == 'insurance' %}
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">

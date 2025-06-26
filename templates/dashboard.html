@@ -66,7 +66,7 @@
           <div id="chartSpinner" class="position-absolute top-50 start-50 translate-middle d-none">
             <div class="spinner-border text-secondary" role="status"></div>
           </div>
-          <div id="noDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
+          <div id="noDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data available</div>
           <canvas id="cashFlowAssetsChart" height="180" data-api-url="{% url 'dashboard:dashboard-data' %}"></canvas>
         </div>
       </div>
@@ -123,7 +123,7 @@
           </div>
         </div>
         <div class="position-relative">
-          <div id="topNoDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data</div>
+          <div id="topNoDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data available</div>
           <canvas id="topEntriesChart" height="180" data-api-url="{% url 'dashboard:top10-data' %}"></canvas>
         </div>
       </div>

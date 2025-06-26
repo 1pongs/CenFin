@@ -161,10 +161,19 @@ document.addEventListener('DOMContentLoaded', () => {
     'Asset': 'asset'
   };
 
+  function isEmptyPayload(payload){
+    if(!payload.labels || payload.labels.length === 0) return true;
+    if(!payload.datasets) return true;
+    return Object.values(payload.datasets).every(arr => {
+      if(!Array.isArray(arr)) return true;
+      return arr.every(v => Number(v) === 0);
+    });
+  }
+
   // Update chart data in place using the mapping above. Any dataset coming from
   // the API that does not exist in the chart will be logged in the console.
   function refreshChart(payload){
-    if(!payload.labels || payload.labels.length === 0){
+    if(isEmptyPayload(payload)){
       ctx1.classList.add('invisible');
       noData.classList.remove('d-none');
       if(flowChart){ flowChart.destroy(); flowChart = null; }
