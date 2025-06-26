@@ -6,6 +6,10 @@ transaction_type_TX_MAP = {
     "transfer": ("transfer", "transfer", "liquid",    "liquid"),
     "buy_acquisition":("transfer", "buy_acquisition","liquid",    "non_liquid"),
     "sell_acquisition":("buy_acquisition","transfer","non_liquid","liquid"),
+    "loan_disbursement":("outside", "loan_disbursement", "outside", "liquid"),
+    "loan_repayment":("expense", "outside", "liquid", "outside"),
+    "cc_purchase":("expense", "outside", "liquid", "outside"),
+    "cc_payment":("transfer", "transfer", "liquid", "liquid"),
 }
 
 TXN_TYPE_CHOICES = (("","---------"),)+ tuple((key, key.replace('_', ' ').title())

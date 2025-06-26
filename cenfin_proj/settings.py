@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'entities',
     'acquisitions.apps.AcquisitionsConfig',
     'insurance.apps.InsuranceConfig',
+    'liabilities',
     'users',
 ]
 CRISPY_ALLOWED_TEMPLATE_PACKS = {"bootstrap5"}
