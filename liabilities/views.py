@@ -1,7 +1,8 @@
-from django.views.generic import TemplateView, CreateView
+from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
+from django.contrib import messages
 
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
@@ -130,6 +131,11 @@ class LoanCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        lender_name = self.request.POST.get("lender_name", "").strip()
+        if form.cleaned_data.get("lender") is None and lender_name:
+            with transaction.atomic():
+                lender, _ = Lender.objects.get_or_create(name=lender_name)
+            form.instance.lender = lender
         return super().form_valid(form)
     
     def get_form_kwargs(self):
@@ -137,4 +143,72 @@ class LoanCreateView(CreateView):
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
         kwargs["cancel_url"] = cancel
         return kwargs
+    
+
+class CreditCardUpdateView(UpdateView):
+    model = CreditCard
+    form_class = CreditCardForm
+    template_name = "liabilities/credit_form.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        kwargs["cancel_url"] = cancel
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Credit card updated successfully!")
+        return response
+
+
+class CreditCardDeleteView(DeleteView):
+    model = CreditCard
+    template_name = "liabilities/credit_confirm_delete.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Credit card deleted.")
+        return super().delete(request, *args, **kwargs)
+
+
+class LoanUpdateView(UpdateView):
+    model = Loan
+    form_class = LoanForm
+    template_name = "liabilities/loan_form.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        kwargs["cancel_url"] = cancel
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Loan updated successfully!")
+        return response
+
+
+class LoanDeleteView(DeleteView):
+    model = Loan
+    template_name = "liabilities/loan_confirm_delete.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Loan deleted.")
+        return super().delete(request, *args, **kwargs)
        

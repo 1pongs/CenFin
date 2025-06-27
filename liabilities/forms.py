@@ -26,7 +26,12 @@ class LoanForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.fields['lender'].required = False
+        self.fields['lender_name'].required = False
         self.fields['lender_name'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
+        for fld in ['principal_amount', 'interest_rate']:
+            css = self.fields[fld].widget.attrs.get('class', '')
+            self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
+            self.fields[fld].widget.attrs.setdefault('inputmode', 'decimal')
 
         layout_fields = [
             Row(
@@ -51,6 +56,17 @@ class LoanForm(forms.ModelForm):
             )
         self.helper.layout = Layout(*layout_fields)
 
+    def clean(self):
+        cleaned_data = super().clean()
+        lender = cleaned_data.get('lender')
+        name = (cleaned_data.get('lender_name') or '').strip()
+        if not lender and not name:
+            self.add_error('lender_name', 'Lender is required — select one or create a new lender first.')
+        if not lender and name:
+            if Lender.objects.filter(name__iexact=name).exists():
+                self.add_error('lender_name', 'Lender already exists.')
+        return cleaned_data
+
 class CreditCardForm(forms.ModelForm):
     issuer_name = forms.CharField(label="Issuer")
 
@@ -69,6 +85,10 @@ class CreditCardForm(forms.ModelForm):
         self.fields['issuer'].required = False
         self.fields['issuer_name'].required = False
         self.fields['issuer_name'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
+        for fld in ['credit_limit', 'interest_rate']:
+            css = self.fields[fld].widget.attrs.get('class', '')
+            self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
+            self.fields[fld].widget.attrs.setdefault('inputmode', 'decimal')
         layout_fields = [
             Row(
                 Column('issuer_name', css_class='col-md-6'),

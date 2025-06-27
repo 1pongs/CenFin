@@ -12,7 +12,9 @@
   <div class="d-flex justify-content-between align-items-center mt-3">
     <div class="d-flex align-items-center gap-2">
       <h2 class="mb-0">{{ entity.entity_name }}</h2>
+      {% if not entity.is_account_entity %}
       <a href="{% url 'entities:edit' entity.pk %}?next={{ request.path }}" class="edit-entity-link small" title="Edit">Edit</a>
+      {% endif %}
     </div>
     <div>
     <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#insModal">

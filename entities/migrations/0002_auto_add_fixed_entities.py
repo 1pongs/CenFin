@@ -1,10 +1,8 @@
 from django.db import migrations
 
 def create_fixed_entities(apps, schema_editor):
-    from entities.utils import ensure_fixed_entities
-    from accounts.utils import ensure_outside_account
-    ensure_fixed_entities()
-    ensure_outside_account()
+    # No-op placeholder; default entities are created via user signals.
+    pass
 
 class Migration(migrations.Migration):
     dependencies = [

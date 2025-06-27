@@ -20,12 +20,22 @@ def ensure_fixed_entities(user=None):
         user=user,
         defaults={"entity_type": "outside", "is_visible": False},
     )
+    defaults = {"entity_type": "free fund", "is_visible": True}
+    if hasattr(Entity, "is_account_entity"):
+        defaults["is_account_entity"] = True
     account, created = Entity.objects.get_or_create(
         entity_name="Account",
         user=user,
-        defaults={"entity_type": "free fund", "is_visible": True},
+        defaults=defaults,
     )
-    if not created and not account.is_visible:
-        account.is_visible = True
-        account.save(update_fields=["is_visible"])
+    if not created:
+        update_fields = []
+        if not account.is_visible:
+            account.is_visible = True
+            update_fields.append("is_visible")
+        if hasattr(account, "is_account_entity") and not account.is_account_entity:
+            account.is_account_entity = True
+            update_fields.append("is_account_entity")
+        if update_fields:
+            account.save(update_fields=update_fields)
     return outside, account

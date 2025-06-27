@@ -22,6 +22,7 @@ class Entity(models.Model):
     entity_type = models.CharField(max_length=50, choices=entities_type_choices)
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
+    is_account_entity = models.BooleanField(default=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entities", null=True)
 
     objects=EntityQuerySet.as_manager()

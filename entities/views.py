@@ -478,6 +478,13 @@ class EntityUpdateView(UpdateView):
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user)
+    
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.is_account_entity:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("Cannot modify Account Entity")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -501,6 +508,13 @@ class EntityDeleteView(DeleteView):
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user)
+    
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.is_account_entity:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("Cannot delete Account Entity")
+        return super().dispatch(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
