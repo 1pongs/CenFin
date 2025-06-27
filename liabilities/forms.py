@@ -29,7 +29,10 @@ class LoanForm(forms.ModelForm):
         self.fields['lender_name'].required = False
         self.fields['lender_name'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
         for fld in ['principal_amount', 'interest_rate']:
-            css = self.fields[fld].widget.attrs.get('class', '')
+            attrs = self.fields[fld].widget.attrs
+            css = attrs.get('class', '')
+            # use TextInput so our JS formatter can insert commas
+            self.fields[fld].widget = forms.TextInput(attrs=attrs)
             self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
             self.fields[fld].widget.attrs.setdefault('inputmode', 'decimal')
 
@@ -86,7 +89,9 @@ class CreditCardForm(forms.ModelForm):
         self.fields['issuer_name'].required = False
         self.fields['issuer_name'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
         for fld in ['credit_limit', 'interest_rate']:
-            css = self.fields[fld].widget.attrs.get('class', '')
+            attrs = self.fields[fld].widget.attrs
+            css = attrs.get('class', '')
+            self.fields[fld].widget = forms.TextInput(attrs=attrs)
             self.fields[fld].widget.attrs['class'] = f"{css} amount-input".strip()
             self.fields[fld].widget.attrs.setdefault('inputmode', 'decimal')
         layout_fields = [
