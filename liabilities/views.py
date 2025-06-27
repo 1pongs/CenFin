@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView, CreateView
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
@@ -109,6 +109,12 @@ class CreditCardCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        kwargs["cancel_url"] = cancel
+        return kwargs
 
 
 class LoanCreateView(CreateView):
@@ -120,4 +126,10 @@ class LoanCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        kwargs["cancel_url"] = cancel
+        return kwargs
        

@@ -2,6 +2,7 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
+from django.urls import reverse_lazy
 from .models import Loan, CreditCard
 
 class LoanForm(forms.ModelForm):
@@ -15,7 +16,7 @@ class LoanForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop('show_actions', True)
-        cancel_url = kwargs.pop('cancel_url', '#')
+        cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -49,7 +50,7 @@ class CreditCardForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop('show_actions', True)
-        cancel_url = kwargs.pop('cancel_url', '#')
+        cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
