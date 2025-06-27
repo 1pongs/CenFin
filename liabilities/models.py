@@ -32,7 +32,7 @@ class Lender(models.Model):
     
     class Meta:
         constraints = [
-            models.UniqueConstraint(Lower("name"), name="lender_name_ci_unique")
+            models.UniqueConstraint(Lower("name"), name="uq_issuer_name_ci")
         ]
 
 
@@ -106,7 +106,7 @@ class LoanPayment(models.Model):
 
 class CreditCard(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="credit_cards", null=True)
-    issuer = models.ForeignKey(Lender, on_delete=models.CASCADE, related_name="credit_cards")
+    issuer = models.ForeignKey(Lender, on_delete=models.PROTECT, related_name="credit_cards")
     card_name = models.CharField(max_length=100)
     credit_limit = models.DecimalField(max_digits=12, decimal_places=2)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)

@@ -5,7 +5,7 @@ from django.urls import reverse_lazy, reverse
 
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
-
+from django.db import transaction
 
 class LiabilityListView(TemplateView):
     template_name = "liabilities/liability_list.html"
@@ -108,6 +108,11 @@ class CreditCardCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        issuer_name = self.request.POST.get("issuer_name", "").strip()
+        if form.cleaned_data.get("issuer") is None and issuer_name:
+            with transaction.atomic():
+                issuer, _ = Lender.objects.get_or_create(name=issuer_name)
+            form.instance.issuer = issuer
         return super().form_valid(form)
     
     def get_form_kwargs(self):

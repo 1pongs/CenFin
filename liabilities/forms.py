@@ -67,6 +67,7 @@ class CreditCardForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.fields['issuer'].required = False
+        self.fields['issuer_name'].required = False
         self.fields['issuer_name'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
         layout_fields = [
             Row(
@@ -94,3 +95,15 @@ class CreditCardForm(forms.ModelForm):
                 )
             )
         self.helper.layout = Layout(*layout_fields)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        issuer = cleaned_data.get('issuer')
+        name = (cleaned_data.get('issuer_name') or '').strip()
+
+        if not issuer and not name:
+            self.add_error('issuer_name', 'Issuer is required — select one or create a new issuer first.')
+        if not issuer and name:
+            if Lender.objects.filter(name__iexact=name).exists():
+                self.add_error('issuer_name', 'Issuer already exists.')
+        return cleaned_data

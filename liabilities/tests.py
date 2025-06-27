@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 
 from transactions.models import Transaction
-from .models import Lender, Loan, LoanPayment
+from .models import Lender, Loan, LoanPayment, CreditCard
 from django.core.exceptions import ValidationError
 
 
@@ -77,3 +77,44 @@ class LenderUniqueTest(TestCase):
         Lender.objects.create(name="Test Bank")
         with self.assertRaises(ValidationError):
             Lender.objects.create(name="test bank")
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class CreditCardFormTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="card", password="p")
+        self.client.force_login(self.user)
+        self.lender = Lender.objects.create(name="BDO")
+
+    def _post_card(self, **overrides):
+        from django.urls import reverse
+        data = {
+            "issuer": overrides.get("issuer", ""),
+            "issuer_name": overrides.get("issuer_name", ""),
+            "card_name": overrides.get("card_name", "Visa"),
+            "credit_limit": overrides.get("credit_limit", "1000"),
+            "interest_rate": overrides.get("interest_rate", "1"),
+            "statement_day": overrides.get("statement_day", "1"),
+            "payment_due_day": overrides.get("payment_due_day", "10"),
+        }
+        return self.client.post(reverse("liabilities:credit-create"), data)
+
+    def test_missing_issuer_shows_error(self):
+        resp = self._post_card()
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertFormError(form, "issuer_name", "Issuer is required — select one or create a new issuer first.")
+
+    def test_new_issuer_created(self):
+        resp = self._post_card(issuer_name="NewBank")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Lender.objects.filter(name="NewBank").exists())
+        card = CreditCard.objects.latest("id")
+        self.assertEqual(card.issuer.name, "NewBank")
+
+    def test_duplicate_name_error(self):
+        resp = self._post_card(issuer_name="bdo")
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertFormError(form, "issuer_name", "Issuer already exists.")
