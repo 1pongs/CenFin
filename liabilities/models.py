@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models.functions import Lower
 from decimal import Decimal
 from datetime import date
 
@@ -28,6 +29,11 @@ class Lender(models.Model):
 
     def __str__(self):
         return self.name
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="lender_name_ci_unique")
+        ]
 
 
 class Loan(models.Model):

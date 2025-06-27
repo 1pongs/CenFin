@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 from transactions.models import Transaction
 from .models import Lender, Loan, LoanPayment
+from django.core.exceptions import ValidationError
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -68,3 +69,11 @@ class LiabilityListViewTest(TestCase):
         self.assertContains(resp, "navbar-dark")
         self.assertContains(resp, '<a class="nav-link active" href="?tab=credit">Credit</a>', html=True)
         self.assertContains(resp, 'id="filter-form"')
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LenderUniqueTest(TestCase):
+    def test_lender_name_unique_case_insensitive(self):
+        Lender.objects.create(name="Test Bank")
+        with self.assertRaises(ValidationError):
+            Lender.objects.create(name="test bank")

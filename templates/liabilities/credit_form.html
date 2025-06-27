@@ -21,9 +21,37 @@
             {% csrf_token %}
             {% crispy form %}
           </form>
+          <datalist id="issuer-list"></datalist>
+          <div class="modal fade" id="id_issuer_name-modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Create Issuer</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  Create new issuer "<span class="new-name"></span>"?
+                  <div class="dup-msg text-warning mt-2" style="display:none"></div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="button" class="btn btn-primary confirm-btn">Create</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/lender-search.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSearchCreate('id_issuer_name','id_issuer','/api/issuers/search-or-create/');
+  });
+</script>
 {% endblock %}
