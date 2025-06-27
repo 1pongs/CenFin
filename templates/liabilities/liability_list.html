@@ -1,36 +1,70 @@
-{% load humanize %}
+{% extends 'liabilities/base.html' %}
+{% load humanize static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
 {% block liabilities_content %}
-{% if tab == 'loans' %}
-  {% for loan in loans %}
-    <div class="card cat-loan mb-3 p-3">
-      <div class="d-flex justify-content-between">
-        <div>
-          <strong>{{ loan.lender.name }}</strong><br>
-          <small>{{ loan.principal_amount|floatformat:2|intcomma }}</small>
+<div class="row">
+  <div class="col-lg-8 mb-4">
+    {% if tab == 'loans' %}
+      {% for loan in loans %}
+        <div class="card cat-loan mb-3 p-3">
+          <div class="d-flex justify-content-between">
+            <div>
+              <strong>{{ loan.lender.name }}</strong><br>
+              <small>{{ loan.principal_amount|floatformat:2|intcomma }}</small>
+            </div>
+            <div class="text-end">
+              <a href="#" class="btn btn-sm btn-primary">Record Payment</a>
+            </div>
+          </div>
         </div>
-        <div class="text-end">
-          <a href="#" class="btn btn-sm btn-primary">Record Payment</a>
         </div>
-      </div>
+        {% empty %}
+        <div class="card text-center p-5">
+          <i class="bi bi-wallet2 fs-1 mb-3 text-muted"></i>
+          <p class="mb-0">No loans.</p>
+     {% endfor %}
+    {% else %}
+      {% for card in credit_cards %}
+        <div class="card cat-credit mb-3 p-3">
+          <div class="d-flex justify-content-between">
+            <div>
+              <strong>{{ card.card_name }}</strong><br>
+              <small>{{ card.issuer.name }}</small>
+            </div>
+            <div class="text-end">
+              <a href="#" class="btn btn-sm btn-primary">Pay</a>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="card text-center p-5">
+          <i class="bi bi-credit-card fs-1 mb-3 text-muted"></i>
+          <p class="mb-0">No credit cards.</p>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+  <aside class="col-lg-4">
+    <div class="p-3 sidebar rounded">
+      {% include 'liabilities/_toolbar.html' %}
     </div>
-  {% empty %}
-    <p>No loans.</p>
-  {% endfor %}
-{% else %}
-  {% for card in credit_cards %}
-    <div class="card cat-credit mb-3 p-3">
-      <div class="d-flex justify-content-between">
-        <div>
-          <strong>{{ card.card_name }}</strong><br>
-          <small>{{ card.issuer.name }}</small>
-        </div>
-        <div class="text-end">
-          <a href="#" class="btn btn-sm btn-primary">Pay</a>
-        </div>
-      </div>
-    </div>
-  {% empty %}
-    <p>No credit cards.</p>
-  {% endfor %}
-{% endif %}
+  </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('filter-form');
+    if(form){
+      form.querySelectorAll('select,input').forEach(el => {
+        el.addEventListener('change', () => form.submit());
+      });
+    }
+  });
+</script>
 {% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'entities/_toolbar_base.html' %}
+{% block extra_fields %}
+  <select name="status" class="form-select mb-2">
+    <option value="">All Status</option>
+    <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+  </select>
+  <div class="d-flex gap-2 mb-2">
+    <input type="date" name="start" value="{{ start }}" class="form-control">
+    <input type="date" name="end" value="{{ end }}" class="form-control">
+  </div>
+  <select name="entity" class="form-select mb-2">
+    <option value="">All entities</option>
+    {% for ent in entities %}
+      <option value="{{ ent.pk }}" {% if entity_id|default:''|stringformat:'s' == ent.pk|stringformat:'s' %}selected{% endif %}>{{ ent.name }}</option>
+    {% endfor %}
+  </select>
+{% endblock %}
+{% block sort_options %}
+  <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>
+  <option value="balance" {% if sort == 'balance' %}selected{% endif %}>Sort by Balance</option>
+  <option value="date" {% if sort == 'date' %}selected{% endif %}>Sort by Date</option>
+{% endblock %}

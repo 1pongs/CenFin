@@ -61,3 +61,10 @@ class LiabilityListViewTest(TestCase):
         resp = self.client.get(reverse("liabilities:list"))
         self.assertEqual(resp.status_code, 200)
         self.assertTemplateUsed(resp, "liabilities/liability_list.html")
+
+    def test_list_view_renders_nav_tabs_and_filters(self):
+        from django.urls import reverse
+        resp = self.client.get(reverse("liabilities:list"))
+        self.assertContains(resp, "navbar-dark")
+        self.assertContains(resp, '<a class="nav-link active" href="?tab=credit">Credit</a>', html=True)
+        self.assertContains(resp, 'id="filter-form"')
