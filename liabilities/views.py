@@ -1,8 +1,10 @@
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, CreateView
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.urls import reverse_lazy
 
 from .models import Loan, CreditCard, Lender
+from .forms import LoanForm, CreditCardForm
 
 
 class LiabilityListView(TemplateView):
@@ -97,4 +99,25 @@ class LiabilityListView(TemplateView):
             "entities": Lender.objects.all().order_by("name"),
         })
         return ctx
+    
+class CreditCardCreateView(CreateView):
+    model = CreditCard
+    form_class = CreditCardForm
+    template_name = "liabilities/credit_form.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)
+
+
+class LoanCreateView(CreateView):
+    model = Loan
+    form_class = LoanForm
+    template_name = "liabilities/loan_form.html"
+    success_url = reverse_lazy("liabilities:list")
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)
        

@@ -21,8 +21,7 @@
             </div>
           </div>
         </div>
-        </div>
-        {% empty %}
+      {% empty %}
         <div class="card text-center p-5">
           <i class="bi bi-wallet2 fs-1 mb-3 text-muted"></i>
           <p class="mb-0">No loans.</p>
@@ -50,9 +49,37 @@
   </div>
   <aside class="col-lg-4">
     <div class="p-3 sidebar rounded">
+      <button type="button" class="btn btn-success w-100 mb-3" data-bs-toggle="modal" data-bs-target="#addLiabilityModal">
+        <i class="bi bi-plus-lg me-1"></i>Add
+      </button>
       {% include 'liabilities/_toolbar.html' %}
     </div>
   </aside>
+</div>
+
+<div class="modal fade" id="addLiabilityModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Liability</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="mb-3">Choose what you'd like to add:</p>
+        <div class="d-flex justify-content-around">
+          <a href="{% url 'liabilities:credit-create' %}" class="btn btn-outline-primary">
+            Credit Card
+          </a>
+          <a href="{% url 'liabilities:loan-create' %}" class="btn btn-outline-primary">
+            Loan
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
