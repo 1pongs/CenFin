@@ -23,6 +23,7 @@ class Entity(models.Model):
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
     is_account_entity = models.BooleanField(default=False)
+    is_system_default = models.BooleanField(default=False, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entities", null=True)
 
     objects=EntityQuerySet.as_manager()
@@ -38,10 +39,19 @@ class Entity(models.Model):
                 self.pk = inactive.pk
                 self.is_active = True
                 self._state.adding = False
+        else:
+            if self.is_system_default:
+                from django.db.models import ProtectedError
+                orig = Entity.objects.get(pk=self.pk)
+                if orig.entity_name != self.entity_name or orig.is_active != self.is_active:
+                    raise ProtectedError("System entity cannot be modified", [self])
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        self.is_active=False
+        if self.is_system_default:
+            from django.db.models import ProtectedError
+            raise ProtectedError("System entity cannot be modified", [self])
+        self.is_active = False
         self.save()
 
     def __str__(self):

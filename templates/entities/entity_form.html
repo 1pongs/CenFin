@@ -23,7 +23,7 @@
             {% csrf_token %}
             {% crispy form %}
           </form>
-          {% if form.instance.pk and not form.instance.is_account_entity %}
+          {% if form.instance.pk and not form.instance.is_account_entity and not form.instance.is_system_default %}
           <div class="mt-3 text-end">
             <a href="{% url 'entities:delete' form.instance.pk %}" class="btn btn-danger">Delete</a>
           </div>

@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from entities.models import Entity
 from accounts.models import Account
 from transactions.models import Transaction
+from django.db.models import ProtectedError
 
 
 @override_settings(
@@ -88,3 +89,29 @@ class AccountVisibleListTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         names = [e.entity_name for e in resp.context["entities"]]
         self.assertIn("Account", names)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class SystemDefaultProtectionTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="z", password="p")
+        self.client.force_login(self.user)
+        from entities.utils import ensure_fixed_entities
+        _, self.account_ent = ensure_fixed_entities(self.user)
+
+    def test_ui_hides_controls(self):
+        resp = self.client.get(reverse("entities:accounts", args=[self.account_ent.pk]))
+        self.assertNotContains(resp, "Edit")
+
+    def test_http_block(self):
+        resp = self.client.post(reverse("entities:edit", args=[self.account_ent.pk]), {
+            "entity_name": "New",
+            "entity_type": "free fund",
+        })
+        self.assertEqual(resp.status_code, 403)
+
+    def test_model_protection(self):
+        with self.assertRaises(ProtectedError):
+            self.account_ent.entity_name = "New"
+            self.account_ent.save()

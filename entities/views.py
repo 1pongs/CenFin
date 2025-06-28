@@ -481,6 +481,9 @@ class EntityUpdateView(UpdateView):
     
     def dispatch(self, request, *args, **kwargs):
         obj = self.get_object()
+        if getattr(obj, "is_system_default", False):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("The Accounts entity cannot be modified or removed.")
         if obj.is_account_entity:
             from django.core.exceptions import PermissionDenied
             raise PermissionDenied("Cannot modify Account Entity")
@@ -511,6 +514,9 @@ class EntityDeleteView(DeleteView):
     
     def dispatch(self, request, *args, **kwargs):
         obj = self.get_object()
+        if getattr(obj, "is_system_default", False):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("The Accounts entity cannot be modified or removed.")
         if obj.is_account_entity:
             from django.core.exceptions import PermissionDenied
             raise PermissionDenied("Cannot delete Account Entity")
