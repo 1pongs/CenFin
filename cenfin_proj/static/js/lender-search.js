@@ -11,19 +11,27 @@ function setupSearchCreate(textId, hiddenId, apiUrl){
   let cache = {};
 
   async function search(term){
-    if(!term) return;
+    if(!term){
+      list.innerHTML = '';
+      return;
+    }
+    list.innerHTML = '<option value="Searching..." disabled>';
     const resp = await fetch(`${apiUrl}?q=${encodeURIComponent(term)}`, {credentials:'same-origin'});
     if(resp.ok){
       const data = await resp.json();
       list.innerHTML = '';
       cache = {};
-      data.results.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r.name;
-        opt.dataset.id = r.id;
-        list.appendChild(opt);
-        cache[r.name] = r.id;
-      });
+      if(data.results.length === 0){
+        list.innerHTML = '<option value="No results found. Press Enter to add." disabled>';
+      } else {
+        data.results.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.name;
+          opt.dataset.id = r.id;
+          list.appendChild(opt);
+          cache[r.name] = r.id;
+        });
+      }
     }
   }
 

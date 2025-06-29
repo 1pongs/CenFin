@@ -28,6 +28,9 @@ class LoanForm(forms.ModelForm):
         self.fields['lender'].required = False
         self.fields['lender_name'].required = False
         self.fields['lender_name'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
+        if self.instance.pk and self.instance.lender_id:
+            self.fields['lender'].initial = self.instance.lender_id
+            self.fields['lender_name'].initial = self.instance.lender.name
         for fld in ['principal_amount', 'interest_rate']:
             attrs = self.fields[fld].widget.attrs
             css = attrs.get('class', '')
@@ -88,6 +91,9 @@ class CreditCardForm(forms.ModelForm):
         self.fields['issuer'].required = False
         self.fields['issuer_name'].required = False
         self.fields['issuer_name'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
+        if self.instance.pk and self.instance.issuer_id:
+            self.fields['issuer'].initial = self.instance.issuer_id
+            self.fields['issuer_name'].initial = self.instance.issuer.name
         for fld in ['credit_limit', 'interest_rate']:
             attrs = self.fields[fld].widget.attrs
             css = attrs.get('class', '')
