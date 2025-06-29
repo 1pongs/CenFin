@@ -90,8 +90,8 @@ class CreditCardFormTest(TestCase):
     def _post_card(self, **overrides):
         from django.urls import reverse
         data = {
-            "issuer": overrides.get("issuer", ""),
-            "issuer_name": overrides.get("issuer_name", ""),
+            "issuer_id": overrides.get("issuer_id", ""),
+            "issuer_text": overrides.get("issuer_text", ""),
             "card_name": overrides.get("card_name", "Visa"),
             "credit_limit": overrides.get("credit_limit", "1000"),
             "interest_rate": overrides.get("interest_rate", "1"),
@@ -104,17 +104,17 @@ class CreditCardFormTest(TestCase):
         resp = self._post_card()
         self.assertEqual(resp.status_code, 200)
         form = resp.context["form"]
-        self.assertFormError(form, "issuer_name", "Issuer is required — select one or create a new issuer first.")
+        self.assertFormError(form, "issuer_text", "Issuer is required — select one or create a new issuer first.")
 
     def test_new_issuer_created(self):
-        resp = self._post_card(issuer_name="NewBank")
+        resp = self._post_card(issuer_text="NewBank")
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Lender.objects.filter(name="NewBank").exists())
         card = CreditCard.objects.latest("id")
         self.assertEqual(card.issuer.name, "NewBank")
 
     def test_duplicate_name_error(self):
-        resp = self._post_card(issuer_name="bdo")
-        self.assertEqual(resp.status_code, 200)
-        form = resp.context["form"]
-        self.assertFormError(form, "issuer_name", "Issuer already exists.")
+        resp = self._post_card(issuer_text="bdo")
+        self.assertEqual(resp.status_code, 302)
+        card = CreditCard.objects.latest("id")
+        self.assertEqual(card.issuer, self.lender)

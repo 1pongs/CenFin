@@ -32,7 +32,7 @@ class Lender(models.Model):
     
     class Meta:
         constraints = [
-            models.UniqueConstraint(Lower("name"), name="uq_issuer_name_ci")
+            models.UniqueConstraint(Lower("name"), name="uniq_lender_name_ci")
         ]
 
 

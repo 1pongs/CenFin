@@ -21,6 +21,7 @@ from accounts.views import api_create_account
 from entities.views import api_create_entity
 from transactions.views import api_create_template
 from liabilities.api import lender_search, lender_create, lender_search_or_create
+from liabilities.views import lender_search as ajax_lender_search, lender_create as ajax_lender_create
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -34,6 +35,8 @@ urlpatterns = [
     path('api/lenders/create/', lender_create, name='api_lender_create'),
     path('api/lenders/search-or-create/', lender_search_or_create, name='api_lender_search_create'),
     path('api/issuers/search-or-create/', lender_search_or_create, name='api_issuer_search_create'),
+    path('ajax/lender/search/', ajax_lender_search, name='ajax_lender_search'),
+    path('ajax/lender/create/', ajax_lender_create, name='ajax_lender_create'),
     path('transactions/', include('transactions.urls', namespace='transactions')),
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('acquisitions/', include(('acquisitions.urls', 'acquisitions'), namespace='acquisitions')),

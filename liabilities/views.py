@@ -3,10 +3,28 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
 from django.db import transaction
+
+
+@login_required
+def lender_search(request):
+    q = request.GET.get('q', '')
+    objs = Lender.objects.filter(name__icontains=q).order_by('name')[:10]
+    return JsonResponse({'results': [{'id': o.pk, 'text': o.name} for o in objs]})
+
+
+@login_required
+@require_POST
+def lender_create(request):
+    name = request.POST['name'].strip()
+    lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={'name': name})
+    return JsonResponse({'id': lender.pk, 'text': lender.name})
 
 class LiabilityListView(TemplateView):
     template_name = "liabilities/liability_list.html"
@@ -109,11 +127,6 @@ class CreditCardCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        issuer_name = self.request.POST.get("issuer_name", "").strip()
-        if form.cleaned_data.get("issuer") is None and issuer_name:
-            with transaction.atomic():
-                issuer, _ = Lender.objects.get_or_create(name=issuer_name)
-            form.instance.issuer = issuer
         return super().form_valid(form)
     
     def get_form_kwargs(self):
@@ -131,11 +144,6 @@ class LoanCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        lender_name = self.request.POST.get("lender_name", "").strip()
-        if form.cleaned_data.get("lender") is None and lender_name:
-            with transaction.atomic():
-                lender, _ = Lender.objects.get_or_create(name=lender_name)
-            form.instance.lender = lender
         return super().form_valid(form)
     
     def get_form_kwargs(self):
@@ -146,8 +154,8 @@ class LoanCreateView(CreateView):
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({
-                "lender_name": self.object.lender.name,
-                "lender": self.object.lender_id,
+                "lender_text": self.object.lender.name,
+                "lender_id": self.object.lender_id,
             })
         return kwargs
     
@@ -168,8 +176,8 @@ class CreditCardUpdateView(UpdateView):
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({
-                "issuer_name": self.object.issuer.name,
-                "issuer": self.object.issuer_id,
+                "issuer_text": self.object.issuer.name,
+                "issuer_id": self.object.issuer_id,
             })
         return kwargs
 
@@ -209,8 +217,8 @@ class LoanUpdateView(UpdateView):
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({
-                "lender_name": self.object.lender.name,
-                "lender": self.object.lender_id,
+                "lender_text": self.object.lender.name,
+                "lender_id": self.object.lender_id,
             })
         return kwargs
 

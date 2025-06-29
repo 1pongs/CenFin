@@ -10,7 +10,8 @@ from entities.utils import ensure_fixed_entities
 from .models import Loan, CreditCard, Lender
 
 class LoanForm(forms.ModelForm):
-    lender_name = forms.CharField(label="Lender / Issuer")
+    lender_id = forms.ModelChoiceField(queryset=Lender.objects.all(), widget=forms.HiddenInput(), required=False)
+    lender_text = forms.CharField(label="Lender / Issuer", required=False)
     account_destination = forms.ModelChoiceField(
         queryset=Account.objects.none(),
         label="Account Destination"
@@ -34,12 +35,11 @@ class LoanForm(forms.ModelForm):
     class Meta:
         model = Loan
         fields = [
-            'lender', 'lender_name', 'principal_amount', 'interest_rate',
+            'lender_id', 'lender_text', 'principal_amount', 'interest_rate',
             'received_date', 'term_months'
         ]
         widgets = {
             'received_date': forms.DateInput(attrs={'type': 'date'}),
-            'lender': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -49,12 +49,12 @@ class LoanForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
-        self.fields['lender'].required = False
-        self.fields['lender_name'].required = False
-        self.fields['lender_name'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
+        self.fields['lender_id'].required = False
+        self.fields['lender_text'].required = False
+        self.fields['lender_text'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
         if self.instance.pk and self.instance.lender_id:
-            self.fields['lender'].initial = self.instance.lender_id
-            self.fields['lender_name'].initial = self.instance.lender.name
+            self.fields['lender_id'].initial = self.instance.lender_id
+            self.fields['lender_text'].initial = self.instance.lender.name
         if user is not None:
             account_qs = Account.objects.filter(user=user)
             self.fields['account_destination'].queryset = account_qs
@@ -77,7 +77,7 @@ class LoanForm(forms.ModelForm):
 
         layout_fields = [
             Row(
-                Column('lender_name', css_class='col-md-6'),
+                Column('lender_text', css_class='col-md-6'),
                 Column('principal_amount', css_class='col-md-6'),
                 css_class='g-3'
             ),
@@ -104,13 +104,15 @@ class LoanForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        lender = cleaned_data.get('lender')
-        name = (cleaned_data.get('lender_name') or '').strip()
-        if not lender and not name:
-            self.add_error('lender_name', 'Lender is required — select one or create a new lender first.')
-        if not lender and name:
-            if Lender.objects.filter(name__iexact=name).exists():
-                self.add_error('lender_name', 'Lender already exists.')
+        lender = cleaned_data.get('lender_id')
+        name = (cleaned_data.get('lender_text') or '').strip()
+        if lender:
+            self.instance.lender = lender
+        else:
+            if not name:
+                self.add_error('lender_text', 'Lender is required — select one or create a new lender first.')
+            else:
+                self.instance.lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={'name': name})
         return cleaned_data
     
     def save(self, commit=True):
@@ -125,26 +127,24 @@ class LoanForm(forms.ModelForm):
 
 
 class CreditCardForm(forms.ModelForm):
-    issuer_name = forms.CharField(label="Lender / Issuer")
+    issuer_id = forms.ModelChoiceField(queryset=Lender.objects.all(), widget=forms.HiddenInput(), required=False)
+    issuer_text = forms.CharField(label="Lender / Issuer", required=False)
 
     class Meta:
         model = CreditCard
-        fields = ['issuer', 'issuer_name', 'card_name', 'credit_limit', 'interest_rate', 'statement_day', 'payment_due_day']
-        widgets = {
-            'issuer': forms.HiddenInput(),
-        }
+        fields = ['issuer_id', 'issuer_text', 'card_name', 'credit_limit', 'interest_rate', 'statement_day', 'payment_due_day']
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop('show_actions', True)
         cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
-        self.fields['issuer'].required = False
-        self.fields['issuer_name'].required = False
-        self.fields['issuer_name'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
+        self.fields['issuer_id'].required = False
+        self.fields['issuer_text'].required = False
+        self.fields['issuer_text'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
         if self.instance.pk and self.instance.issuer_id:
-            self.fields['issuer'].initial = self.instance.issuer_id
-            self.fields['issuer_name'].initial = self.instance.issuer.name
+            self.fields['issuer_id'].initial = self.instance.issuer_id
+            self.fields['issuer_text'].initial = self.instance.issuer.name
         for fld in ['credit_limit', 'interest_rate']:
             attrs = self.fields[fld].widget.attrs
             css = attrs.get('class', '')
@@ -153,7 +153,7 @@ class CreditCardForm(forms.ModelForm):
             self.fields[fld].widget.attrs.setdefault('inputmode', 'decimal')
         layout_fields = [
             Row(
-                Column('issuer_name', css_class='col-md-6'),
+                Column('issuer_text', css_class='col-md-6'),
                 Column('card_name', css_class='col-md-6'),
                 css_class='g-3'
             ),
@@ -180,12 +180,14 @@ class CreditCardForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        issuer = cleaned_data.get('issuer')
-        name = (cleaned_data.get('issuer_name') or '').strip()
+        issuer = cleaned_data.get('issuer_id')
+        name = (cleaned_data.get('issuer_text') or '').strip()
 
-        if not issuer and not name:
-            self.add_error('issuer_name', 'Issuer is required — select one or create a new issuer first.')
-        if not issuer and name:
-            if Lender.objects.filter(name__iexact=name).exists():
-                self.add_error('issuer_name', 'Issuer already exists.')
+        if issuer:
+            self.instance.issuer = issuer
+        else:
+            if not name:
+                self.add_error('issuer_text', 'Issuer is required — select one or create a new issuer first.')
+            else:
+                self.instance.issuer, _ = Lender.objects.get_or_create(name__iexact=name, defaults={'name': name})
         return cleaned_data

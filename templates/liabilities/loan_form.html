@@ -28,6 +28,7 @@
           </div>
           {% endif %}
           <datalist id="lender-list"></datalist>
+          <input type="hidden" id="id_lender_id" name="lender_id">
         </div>
       </div>
     </div>
@@ -39,7 +40,7 @@
 <script src="{% static 'js/lender-autocomplete.js' %}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    setupAutocomplete('id_lender_name','id_lender','/api/lenders/search/','/api/lenders/create/');
+    setupAutocomplete('id_lender_text', 'id_lender_id', '/ajax/lender/search/','/ajax/lender/create/');
   });
 </script>
 {% endblock %}
