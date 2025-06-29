@@ -20,7 +20,7 @@ from transactions import views as txn_api_views
 from accounts.views import api_create_account
 from entities.views import api_create_entity
 from transactions.views import api_create_template
-from liabilities.api import lender_search_or_create
+from liabilities.api import lender_search, lender_create, lender_search_or_create
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,6 +30,8 @@ urlpatterns = [
     path('api/create/account/', api_create_account, name='api_create_account'),
     path('api/create/entity/', api_create_entity, name='api_create_entity'),
     path('api/create/template/', api_create_template, name='api_create_template'),
+    path('api/lenders/search/', lender_search, name='api_lender_search'),
+    path('api/lenders/create/', lender_create, name='api_lender_create'),
     path('api/lenders/search-or-create/', lender_search_or_create, name='api_lender_search_create'),
     path('api/issuers/search-or-create/', lender_search_or_create, name='api_issuer_search_create'),
     path('transactions/', include('transactions.urls', namespace='transactions')),

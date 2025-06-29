@@ -10,7 +10,7 @@ from entities.utils import ensure_fixed_entities
 from .models import Loan, CreditCard, Lender
 
 class LoanForm(forms.ModelForm):
-    lender_name = forms.CharField(label="Lender")
+    lender_name = forms.CharField(label="Lender / Issuer")
     account_destination = forms.ModelChoiceField(
         queryset=Account.objects.none(),
         label="Account Destination"
@@ -125,7 +125,7 @@ class LoanForm(forms.ModelForm):
 
 
 class CreditCardForm(forms.ModelForm):
-    issuer_name = forms.CharField(label="Issuer")
+    issuer_name = forms.CharField(label="Lender / Issuer")
 
     class Meta:
         model = CreditCard

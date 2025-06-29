@@ -6,6 +6,26 @@ from difflib import SequenceMatcher
 
 from .models import Lender
 
+
+@login_required
+def lender_search(request):
+    term = request.GET.get("q", "").strip()
+    qs = Lender.objects.all()
+    if term:
+        qs = qs.filter(name__icontains=term)
+    results = [{"id": l.id, "text": l.name} for l in qs.order_by("name")[:10]]
+    return JsonResponse({"results": results})
+
+
+@login_required
+@require_http_methods(["POST"])
+def lender_create(request):
+    name = request.POST.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "missing name"}, status=400)
+    lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={"name": name})
+    return JsonResponse({"id": lender.id, "text": lender.name})
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def lender_search_or_create(request):
