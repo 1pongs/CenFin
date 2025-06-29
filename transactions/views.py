@@ -156,6 +156,8 @@ class TransactionUpdateView(UpdateView):
     template_name = "transactions/transaction_edit_form.html"
     success_url = reverse_lazy("transactions:transaction_list")
 
+    READ_ONLY_TYPES = {"loan_disbursement", "loan_repayment"}
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
@@ -178,6 +180,13 @@ class TransactionUpdateView(UpdateView):
         tx_type = context['selected_txn_type'] or ''
         context['show_balance_summary'] = not (tx_type == 'income' or tx_type.startswith('sell'))
         return context
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if self.object.transaction_type in self.READ_ONLY_TYPES:
+            for field in form.fields.values():
+                field.disabled = True
+        return form
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -187,6 +196,13 @@ class TransactionUpdateView(UpdateView):
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.transaction_type in self.READ_ONLY_TYPES:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied()
+        return super().post(request, *args, **kwargs)
 
 def transaction_delete(request, pk):
     txn = get_object_or_404(Transaction, pk=pk, user=request.user)

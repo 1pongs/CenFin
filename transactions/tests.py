@@ -245,3 +245,54 @@ class ConstantsTest(TestCase):
             ("transfer", "transfer", "liquid", "credit"),
         )
         self.assertIn(("credit", "Credit"), ASSET_TYPE_CHOICES)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class HiddenTypesTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="ht", password="p")
+
+    def test_hidden_types_removed(self):
+        form = TransactionForm(user=self.user)
+        offered = {c[0] for c in form.fields["transaction_type"].choices}
+        hidden = {
+            "premium_payment", "loan_disbursement",
+            "loan_repayment", "cc_purchase", "cc_payment"
+        }
+        self.assertEqual(len(hidden & offered), 0)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LoanTxnImmutableTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="imm", password="p")
+        self.client.force_login(self.user)
+        self.acc = Account.objects.create(account_name="A", account_type="Cash", user=self.user)
+        self.ent = Entity.objects.create(entity_name="E", entity_type="outside", user=self.user)
+        self.tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            transaction_type="loan_disbursement",
+            amount=Decimal("10"),
+            account_source=self.acc,
+            account_destination=self.acc,
+            entity_source=self.ent,
+            entity_destination=self.ent,
+        )
+
+    def test_fields_disabled(self):
+        from django.urls import reverse
+        resp = self.client.get(reverse("transactions:transaction_update", args=[self.tx.pk]))
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertTrue(all(f.disabled for f in form.fields.values()))
+
+    def test_post_denied(self):
+        from django.urls import reverse
+        resp = self.client.post(
+            reverse("transactions:transaction_update", args=[self.tx.pk]),
+            {"amount": "20"},
+        )
+        self.assertEqual(resp.status_code, 403)

@@ -101,18 +101,27 @@ class TransactionForm(forms.ModelForm):
 
          # Remove asset-related transaction types when using this form
         if 'transaction_type' in self.fields:
-            disallowed = {'buy acquisition', 'sell acquisition', 'buy property', 'sell property'}
+            disallowed = {
+                'buy acquisition', 'sell acquisition',
+                'buy property', 'sell property'
+            }
+            hidden = set()
+            if type(self) is TransactionForm:
+                hidden = {
+                    'premium_payment', 'loan_disbursement',
+                    'loan_repayment', 'cc_purchase', 'cc_payment'
+                }
             current_type = getattr(self.instance, 'transaction_type', None)
 
-            if current_type in disallowed:
+            if current_type in disallowed | hidden:
                 self.fields['transaction_type'].choices = [
-                    (current_type, current_type.title())
+                    (current_type, current_type.replace('_', ' ').title())
                 ]
                 self.fields['transaction_type'].disabled = True
             else:
                 self.fields['transaction_type'].choices = [
                     c for c in self.fields['transaction_type'].choices
-                    if c[0] not in disallowed
+                    if c[0] not in disallowed | hidden
                 ]
 
         self.helper = FormHelper()

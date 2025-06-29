@@ -142,6 +142,7 @@ class LoanCreateView(CreateView):
         kwargs = super().get_form_kwargs()
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
         kwargs["cancel_url"] = cancel
+        kwargs["user"] = self.request.user
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({
@@ -204,6 +205,7 @@ class LoanUpdateView(UpdateView):
         kwargs = super().get_form_kwargs()
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
         kwargs["cancel_url"] = cancel
+        kwargs["user"] = self.request.user
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({

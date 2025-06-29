@@ -64,12 +64,21 @@ class Loan(models.Model):
         super().save(*args, **kwargs)
         if new:
             self._create_schedule()
+            from accounts.utils import ensure_outside_account
+            from entities.utils import ensure_fixed_entities
+
+            outside_acc = ensure_outside_account()
+            outside_ent, account_ent = ensure_fixed_entities(self.user)
             Transaction.objects.create(
                 user=self.user,
                 date=self.received_date,
                 description=f"Loan from {self.lender.name}",
                 transaction_type="loan_disbursement",
                 amount=self.principal_amount,
+                account_source=outside_acc,
+                account_destination=getattr(self, '_account_destination', None),
+                entity_source=outside_ent,
+                entity_destination=account_ent,
             )
 
     def _create_schedule(self):

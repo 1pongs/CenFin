@@ -1,12 +1,35 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Row, Column, Submit, Button
+from crispy_forms.layout import Layout, Row, Column, Submit, Button, Field
 from crispy_forms.bootstrap import FormActions
 from django.urls import reverse_lazy
+from accounts.models import Account
+from entities.models import Entity
+from accounts.utils import ensure_outside_account
+from entities.utils import ensure_fixed_entities
 from .models import Loan, CreditCard, Lender
 
 class LoanForm(forms.ModelForm):
     lender_name = forms.CharField(label="Lender")
+    account_destination = forms.ModelChoiceField(
+        queryset=Account.objects.none(),
+        label="Account Destination"
+    )
+    account_source = forms.ModelChoiceField(
+        queryset=Account.objects.none(),
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    entity_source = forms.ModelChoiceField(
+        queryset=Entity.objects.none(),
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    entity_destination = forms.ModelChoiceField(
+        queryset=Entity.objects.none(),
+        widget=forms.HiddenInput(),
+        required=False
+    )
 
     class Meta:
         model = Loan
@@ -22,6 +45,7 @@ class LoanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop('show_actions', True)
         cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -31,6 +55,18 @@ class LoanForm(forms.ModelForm):
         if self.instance.pk and self.instance.lender_id:
             self.fields['lender'].initial = self.instance.lender_id
             self.fields['lender_name'].initial = self.instance.lender.name
+        if user is not None:
+            account_qs = Account.objects.filter(user=user)
+            self.fields['account_destination'].queryset = account_qs
+            outside_acc = ensure_outside_account()
+            outside_ent, account_ent = ensure_fixed_entities(user)
+            self.fields['account_source'].queryset = Account.objects.filter(pk=outside_acc.pk)
+            self.fields['account_source'].initial = outside_acc
+            self.fields['entity_source'].queryset = Entity.objects.filter(pk=outside_ent.pk)
+            self.fields['entity_source'].initial = outside_ent
+            self.fields['entity_destination'].queryset = Entity.objects.filter(pk=account_ent.pk)
+            self.fields['entity_destination'].initial = account_ent
+
         for fld in ['principal_amount', 'interest_rate']:
             attrs = self.fields[fld].widget.attrs
             css = attrs.get('class', '')
@@ -50,6 +86,10 @@ class LoanForm(forms.ModelForm):
                 Column('term_months', css_class='col-md-6'),
                 css_class='g-3'
             ),
+            Row(Column('account_destination', css_class='col-md-6'), css_class='g-3'),
+            Field('account_source'),
+            Field('entity_source'),
+            Field('entity_destination'),
             Row(Column('received_date', css_class='col-md-6'), css_class='g-3')
         ]
         if show_actions:
@@ -72,6 +112,17 @@ class LoanForm(forms.ModelForm):
             if Lender.objects.filter(name__iexact=name).exists():
                 self.add_error('lender_name', 'Lender already exists.')
         return cleaned_data
+    
+    def save(self, commit=True):
+        loan = super().save(commit=False)
+        loan._account_destination = self.cleaned_data.get('account_destination')
+        loan._account_source = self.cleaned_data.get('account_source')
+        loan._entity_source = self.cleaned_data.get('entity_source')
+        loan._entity_destination = self.cleaned_data.get('entity_destination')
+        if commit:
+            loan.save()
+        return loan
+
 
 class CreditCardForm(forms.ModelForm):
     issuer_name = forms.CharField(label="Issuer")
