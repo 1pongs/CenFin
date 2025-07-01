@@ -156,7 +156,12 @@ class TransactionUpdateView(UpdateView):
     template_name = "transactions/transaction_edit_form.html"
     success_url = reverse_lazy("transactions:transaction_list")
 
-    READ_ONLY_TYPES = {"loan_disbursement", "loan_repayment"}
+    READ_ONLY_TYPES = {
+        "loan_disbursement",
+        "loan_repayment",
+        "buy acquisition",
+        "sell acquisition",
+    }
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

@@ -46,6 +46,13 @@ class Loan(models.Model):
     maturity_date = models.DateField(blank=True, null=True)
     monthly_payment = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     outstanding_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    disbursement_tx = models.OneToOneField(
+        Transaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="loan_disbursement",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -69,7 +76,7 @@ class Loan(models.Model):
 
             outside_acc = ensure_outside_account()
             outside_ent, account_ent = ensure_fixed_entities(self.user)
-            Transaction.objects.create(
+            tx = Transaction.objects.create(
                 user=self.user,
                 date=self.received_date,
                 description=f"Loan from {self.lender.name}",
@@ -80,7 +87,24 @@ class Loan(models.Model):
                 entity_source=outside_ent,
                 entity_destination=account_ent,
             )
-
+            self.disbursement_tx = tx
+            super().save(update_fields=["disbursement_tx"])
+        else:
+            if self.disbursement_tx_id:
+                tx = self.disbursement_tx
+                tx.date = self.received_date
+                tx.amount = self.principal_amount
+                tx.description = f"Loan from {self.lender.name}"
+                if getattr(self, "_account_destination", None) is not None:
+                    tx.account_destination = self._account_destination
+                if getattr(self, "_account_source", None) is not None:
+                    tx.account_source = self._account_source
+                if getattr(self, "_entity_source", None) is not None:
+                    tx.entity_source = self._entity_source
+                if getattr(self, "_entity_destination", None) is not None:
+                    tx.entity_destination = self._entity_destination
+                tx.save()
+                
     def _create_schedule(self):
         for i in range(1, self.term_months + 1):
             due = _add_months(self.received_date, i)

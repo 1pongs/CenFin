@@ -58,3 +58,46 @@ class LoanAutocompleteTests(TestCase):
         resp = self.client.post(reverse("ajax_lender_create"), {"name": "Zigzag Bank"})
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(Lender.objects.filter(name="Zigzag Bank").exists())
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LoanUpdateTransactionTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="up", password="p")
+        self.client.force_login(self.user)
+        self.lender = Lender.objects.create(name="UpdateBank")
+        self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
+        self.loan = Loan.objects.create(
+            user=self.user,
+            lender=self.lender,
+            principal_amount=Decimal("100"),
+            interest_rate=Decimal("1"),
+            received_date=date(2025, 1, 1),
+            term_months=6,
+        )
+        self.tx = self.loan.disbursement_tx
+
+    def test_update_changes_transaction(self):
+        from django.urls import reverse
+        resp = self.client.post(
+            reverse("liabilities:loan-update", args=[self.loan.pk]),
+            {
+                "lender_id": self.lender.pk,
+                "lender_text": self.lender.name,
+                "principal_amount": "150",
+                "interest_rate": "1",
+                "received_date": "2025-02-01",
+                "term_months": "6",
+                "account_destination": self.dest.pk,
+                "account_source": self.out_acc.pk,
+                "entity_source": self.out_ent.pk,
+                "entity_destination": self.acc_ent.pk,
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.tx.refresh_from_db()
+        self.assertEqual(self.tx.amount, Decimal("150"))
+        self.assertEqual(self.tx.date, date(2025, 2, 1))
