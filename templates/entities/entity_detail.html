@@ -42,7 +42,7 @@
   {% for ins in insurances %}
     <div class="col">
       <div class="card h-100">
-        <div class="card-body">
+        <div class="card-body clickable-card" onclick="window.location.href='{% url 'insurance:edit' ins.pk %}'">
           <h6 class="card-subtitle text-muted small mb-1">{{ ins.get_insurance_type_display }}</h6>
           <h5 class="card-title mb-2">{{ ins.policy_owner|default:ins.person_insured }}</h5>
           <dl class="row small mb-0">

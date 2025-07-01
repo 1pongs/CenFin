@@ -5,7 +5,7 @@
   <tr><th>Policy</th><th>Sum Assured</th><th>Total Premiums</th><th>Cash Value</th></tr>
   {% for ins in object_list %}
   <tr>
-    <td><a href="{{ ins.get_absolute_url }}">{{ ins }}</a></td>
+    <td><a href="{% url 'insurance:edit' ins.pk %}">{{ ins }}</a></td>
     <td>{{ ins.sum_assured }}</td>
     <td>{{ ins.total_premiums_paid }}</td>
     <td>{{ ins.cash_value }}</td>

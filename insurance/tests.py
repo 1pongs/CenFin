@@ -68,3 +68,40 @@ class InsuranceFlowTest(TestCase):
         self.assertEqual(ins.acquisition.status, "active")
         self.assertEqual(PremiumPayment.objects.count(), 1)
         self.assertEqual(Transaction.objects.count(), 1)
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class InsuranceEditDeleteTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="e", password="p")
+        self.client.force_login(self.user)
+        self.ins = Insurance.objects.create(
+            user=self.user,
+            policy_owner="Owner",
+            insurance_type="term",
+            sum_assured=Decimal("1000"),
+            premium_mode="annual",
+            premium_amount=Decimal("100"),
+        )
+
+    def test_edit_and_delete(self):
+        resp = self.client.post(
+            reverse("insurance:edit", args=[self.ins.pk]),
+            {
+                "policy_owner": "Owner 2",
+                "person_insured": "",
+                "insurance_type": "term",
+                "sum_assured": "2000",
+                "premium_mode": "annual",
+                "premium_amount": "150",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("insurance:list"))
+        self.ins.refresh_from_db()
+        self.assertEqual(self.ins.sum_assured, Decimal("2000"))
+
+        resp = self.client.post(reverse("insurance:delete", args=[self.ins.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("insurance:list"))
+        self.assertFalse(Insurance.objects.filter(pk=self.ins.pk).exists())

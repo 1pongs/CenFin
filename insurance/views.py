@@ -1,8 +1,9 @@
-from django.views.generic import ListView, DetailView, CreateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.contrib import messages
 
 from acquisitions.models import Acquisition
 from entities.models import Entity
@@ -54,7 +55,6 @@ class InsuranceCreateView(CreateView):
             status="inactive",
             sum_assured_amount=ins.sum_assured,
             insurance_type=ins.insurance_type,
-            policy_owner=ins.policy_owner,
             provider=ins.provider,
             maturity_date=ins.maturity_date,
         )
@@ -145,3 +145,43 @@ def pay_premium(request, pk):
             initial["account_source"] = acc.pk
         form = PremiumPaymentForm(initial=initial, user=request.user)
     return render(request, "insurance/pay_premium_form.html", {"form": form, "insurance": insurance})
+
+
+@method_decorator(login_required, name="dispatch")
+class InsuranceUpdateView(UpdateView):
+    model = Insurance
+    form_class = InsuranceForm
+    template_name = "insurance/insurance_form.html"
+    success_url = reverse_lazy("insurance:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Insurance policy updated successfully!")
+        return response
+
+    def get_success_url(self):
+        if self.object.entity_id:
+            return reverse("entities:detail", args=[self.object.entity_id])
+        return super().get_success_url()
+
+
+@method_decorator(login_required, name="dispatch")
+class InsuranceDeleteView(DeleteView):
+    model = Insurance
+    template_name = "insurance/insurance_confirm_delete.html"
+    success_url = reverse_lazy("insurance:list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Insurance policy deleted.")
+        return super().delete(request, *args, **kwargs)
+
+    def get_success_url(self):
+        if self.object.entity_id:
+            return reverse("entities:detail", args=[self.object.entity_id])
+        return super().get_success_url()
