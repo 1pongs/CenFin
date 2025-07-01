@@ -54,7 +54,9 @@ class InsuranceCreateView(CreateView):
             status="inactive",
             sum_assured_amount=ins.sum_assured,
             insurance_type=ins.insurance_type,
-            provider=ins.policy_owner,
+            policy_owner=ins.policy_owner,
+            provider=ins.provider,
+            maturity_date=ins.maturity_date,
         )
         ins.acquisition = acq
         ins.save(update_fields=["acquisition"])

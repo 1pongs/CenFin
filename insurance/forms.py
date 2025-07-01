@@ -17,10 +17,12 @@ class InsuranceForm(forms.ModelForm):
         fields = [
             "policy_owner",
             "person_insured",
+            "provider",
             "insurance_type",
             "sum_assured",
             "premium_mode",
             "premium_amount",
+            "maturity_date",
             "unit_balance",
             "unit_value",
             "valuation_date",
@@ -29,6 +31,7 @@ class InsuranceForm(forms.ModelForm):
         ]
         widgets = {
             "valuation_date": forms.DateInput(attrs={"type": "date"}),
+            "maturity_date": forms.DateInput(attrs={"type": "date"}),
             "sum_assured": forms.TextInput(attrs={"inputmode": "decimal"}),
             "premium_amount": forms.TextInput(attrs={"inputmode": "decimal"}),
             "unit_balance": forms.TextInput(attrs={"inputmode": "decimal"}),
@@ -69,6 +72,11 @@ class InsuranceForm(forms.ModelForm):
             Row(
                 Column("policy_owner", css_class="col-md-6"),
                 Column("person_insured", css_class="col-md-6"),
+                css_class="g-2",
+            ),
+            Row(
+                Column("provider", css_class="col-md-6"),
+                Column("maturity_date", css_class="col-md-6"),
                 css_class="g-2",
             ),
             Row(
