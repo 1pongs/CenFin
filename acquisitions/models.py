@@ -91,6 +91,8 @@ class Acquisition(models.Model):
     cash_value = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
+    maturity_date = models.DateField(null=True, blank=True)
+    provider = models.CharField(max_length=255, blank=True)
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
     
