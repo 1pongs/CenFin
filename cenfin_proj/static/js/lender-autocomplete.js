@@ -4,6 +4,8 @@ function setupAutocomplete(textId, hiddenId, searchUrl, createUrl){
   if(!input || !hidden) return;
   const list = document.getElementById(input.getAttribute('list'));
   if(!list) return;
+  const csrfInput = input.form?.querySelector('input[name="csrfmiddlewaretoken"]');
+  const csrf = csrfInput ? csrfInput.value : null;
   const spinner = document.createElement('div');
   spinner.className = 'spinner-border spinner-border-sm text-secondary ms-2 d-none';
   spinner.role = 'status';
@@ -67,7 +69,15 @@ function setupAutocomplete(textId, hiddenId, searchUrl, createUrl){
     spinner.classList.remove('d-none');
     const fd = new FormData();
     fd.append('name', name);
-    const resp = await fetch(createUrl, {method:'POST', body:fd, credentials:'same-origin'});
+    if(csrf){
+      fd.append('csrfmiddlewaretoken', csrf);
+    }
+    const resp = await fetch(createUrl, {
+      method:'POST',
+      body:fd,
+      credentials:'same-origin',
+      headers: csrf ? {'X-CSRFToken': csrf} : {}
+    });
     spinner.classList.add('d-none');
     if(resp.ok){
       const data = await resp.json();
