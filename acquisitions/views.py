@@ -95,7 +95,13 @@ class AcquisitionListView(ListView):
         ctx = super().get_context_data(**kwargs)
         today = timezone.now().date()
         upcoming = today + timezone.timedelta(days=30)
-        ctx["urgent_qs"] = self.get_queryset().filter(target_selling_date__range=[today, upcoming], sell_tx__isnull=True)
+        urgent_qs = ctx["acquisitions"].filter(
+            target_selling_date__range=[today, upcoming],
+            sell_tx__isnull=True,
+        )
+        ctx["urgent_qs"] = urgent_qs
+        if urgent_qs.exists():
+            ctx["acquisitions"] = ctx["acquisitions"].exclude(pk__in=urgent_qs.values_list("pk", flat=True))
         ctx["current_category"] = self.request.GET.get("category", "")
         ctx["status"] = self.request.GET.get("status", "")
         ctx["start"] = self.request.GET.get("start", "")
