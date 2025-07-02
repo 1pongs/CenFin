@@ -1,6 +1,7 @@
+{% load humanize %}
 <p class="mb-1 small">Liquid:
-  <span class="amount-display" data-prefix="₱" data-decimals="0">{{ entity.liquid_total|floatformat:0|intcomma }}</span>
+  <span class="amount-display" data-prefix="₱" data-decimals="2">{{ entity.liquid_total|floatformat:2|intcomma }}</span>
 </p>
 <p class="mb-0 small">Non-Liquid:
-  <span class="amount-display" data-prefix="₱" data-decimals="0">{{ entity.non_liquid_total|floatformat:0|intcomma }}</span>
+  <span class="amount-display" data-prefix="₱" data-decimals="2">{{ entity.non_liquid_total|floatformat:2|intcomma }}</span>
 </p>
