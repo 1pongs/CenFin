@@ -1,10 +1,16 @@
-{% comment %}Reusable simple card component{% endcomment %}
+{% comment %}Reusable simple card component with optional subtitle, buttons and footer{% endcomment %}
 {% if link %}
-<a href="{{ link }}" class="cenfin-card text-reset text-decoration-none d-block  {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+<a href="{{ link }}" class="cenfin-card text-reset text-decoration-none d-block {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
 {% else %}
 <div class="cenfin-card {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
 {% endif %}
-  {% if category_badge %}<span class="badge bg-secondary">{{ category_badge }}</span>{% endif %}
+  {% if badge %}
+    <span class="badge bg-secondary">{{ badge }}</span>
+  {% elif category_badge %}
+    <span class="badge bg-secondary">{{ category_badge }}</span>
+  {% endif %}
+  {% if buttons %}<div class="card-buttons">{{ buttons|safe }}</div>{% endif %}
+  {% if subtitle %}<h6 class="text-muted small mb-1">{{ subtitle }}</h6>{% endif %}
   <h6 class="card-title mb-2">{{ title }}</h6>
   {% if rows %}
     {% for label,value in rows %}
@@ -12,6 +18,17 @@
       <p class="mb-1"><span class="field-label">{{ label }}:</span> <span class="field-value">{{ value }}</span></p>
       {% endif %}
     {% endfor %}
+    {% elif field_tags %}
+    {% for label,value in field_tags %}
+      <p class="mb-1"><span class="field-label">{{ label }}:</span> <span class="field-value">{{ value }}</span></p>
+    {% endfor %}
+  {% endif %}
+  {% if footer_template %}
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">
+      {% include footer_template %}
+    </div>
+  {% elif footer %}
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">{{ footer|safe }}</div>
   {% endif %}
   {% if action_btn %}
     <div class="mt-auto text-end">{{ action_btn|safe }}</div>

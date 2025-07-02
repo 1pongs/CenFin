@@ -13,7 +13,7 @@
         {% for loan in loans %}
           <div class="col">
             {% url 'liabilities:loan-edit' loan.pk as edit_url %}
-            {% include 'includes/card.html' with link=edit_url title=loan.lender.name subtitle=loan.principal_amount|floatformat:2|intcomma field_tags=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan.principal_amount|floatformat:2|intcomma rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
           </div>
         {% empty %}
           <div class="card text-center p-5">
@@ -27,7 +27,7 @@
         {% for card in credit_cards %}
           <div class="col">
             {% url 'liabilities:credit-edit' card.pk as edit_url %}
-            {% include 'includes/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name field_tags=card.field_tags buttons='<span class="btn btn-sm btn-primary">Pay</span>' modifier='card-credit' %}
+          {% include 'components/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name rows=card.field_tags buttons='<span class="btn btn-sm btn-primary">Pay</span>' modifier='card-credit' %}
           </div>
         {% empty %}
         <div class="card text-center p-5">
