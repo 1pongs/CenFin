@@ -1,0 +1,11 @@
+{% if not acq.sell_tx %}
+<a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">
+  {% if acq.category == 'insurance' %}
+    {% if acq.insurance_type == 'vul' %}Withdraw{% else %}Claim{% endif %}
+  {% elif acq.category == 'equipment' %}
+    Dispose
+  {% else %}
+    Sell
+  {% endif %}
+</a>
+{% endif %}

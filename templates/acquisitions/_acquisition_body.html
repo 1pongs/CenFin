@@ -1,0 +1,16 @@
+<h6 class="text-muted small mb-1">{{ acq.get_category_display }}</h6>
+<h5 class="mb-2">{{ acq.name }}</h5>
+<dl class="row small mb-0">
+  {% for field in summary_list %}
+    <dt class="col-5">{{ field|capfirst|replace:"_, " }}</dt>
+    <dd class="col-7">
+      {% with value=acq|attr:field %}
+        {% if field == 'location' %}
+          {% if value %}{{ value|city }}{% else %}-{% endif %}
+        {% else %}
+          {% if value %}{{ value }}{% else %}-{% endif %}
+        {% endif %}
+      {% endwith %}
+    </dd>
+  {% endfor %}
+</dl>

@@ -45,8 +45,13 @@ footer {
 .card.cat-equipment { background-color: #f8f9fa; }
 .card.cat-vehicle { background-color: #ffe5d0; }
 .card.cat-stock_bond { background-color: #e2d5f8; }
-.card.cat-credit { background-color: #cff4fc; }
-.card.cat-loan { background-color: #ffe5cc; }
+/* Legacy category colors retained for acquisition listings */
+.cenfin-card.cat-property { background-color: #d1e7dd; }
+.cenfin-card.cat-product { background-color: #cfe2ff; }
+.cenfin-card.cat-insurance { background-color: #fff3cd; }
+.cenfin-card.cat-equipment { background-color: #f8f9fa; }
+.cenfin-card.cat-vehicle { background-color: #ffe5d0; }
+.cenfin-card.cat-stock_bond { background-color: #e2d5f8; }
 .card.inactive {
   opacity: 0.5;
 }

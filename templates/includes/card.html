@@ -1,0 +1,27 @@
+{% comment %}Reusable card component{% endcomment %}
+{% if link %}
+<a href="{{ link }}" class="cenfin-card {{ modifier }} text-reset text-decoration-none d-block" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+{% else %}
+<div class="cenfin-card {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+{% endif %}
+  {% if badge %}<span class="badge bg-secondary card-badge">{{ badge }}</span>{% endif %}
+  {% if buttons %}<div class="card-buttons">{{ buttons|safe }}</div>{% endif %}
+  {% if subtitle %}<h6 class="text-muted small mb-1">{{ subtitle }}</h6>{% endif %}
+  <h5 class="mb-2">{{ title }}</h5>
+  {% if body_template %}
+    {% include body_template %}
+  {% elif body %}
+    {{ body|safe }}
+  {% endif %}
+  {% if footer_template %}
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">
+      {% include footer_template %}
+    </div>
+  {% elif footer %}
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">{{ footer|safe }}</div>
+  {% endif %}
+{% if link %}
+</a>
+{% else %}
+</div>
+{% endif %}

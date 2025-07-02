@@ -1,46 +1,11 @@
 {% load acquisition_tags humanize %}
 <div class="col">
-  <div class="card h-100 cat-{{ acq.category }} {% if acq.status == 'inactive' %}inactive{% endif %} {% if urgent %}border-danger{% endif %}">
-    {% if acq.category == 'insurance' and insurance %}
-    <a href="{% url 'insurance:edit' insurance.pk %}?next={{ request.get_full_path }}" class="card-body clickable-card text-decoration-none text-reset d-block">
-    {% else %}
-    <div class="card-body clickable-card" data-bs-toggle="modal" data-bs-target="#acq{{ acq.pk }}Modal">
-      {% endif %}
-      <h6 class="card-subtitle text-muted small mb-1">{{ acq.get_category_display }}</h6>
-      <h5 class="card-title mb-2">{{ acq.name }}</h5>
-      <dl class="row small mb-0">
-        {% for field in summary_list %}
-          <dt class="col-5">{{ field|capfirst|replace:"_, " }}</dt>
-          <dd class="col-7">
-            {% with value=acq|attr:field %}
-              {% if field == 'location' %}
-                {% if value %}{{ value|city }}{% else %}-{% endif %}
-              {% else %}
-                {% if value %}{{ value }}{% else %}-{% endif %}
-              {% endif %}
-            {% endwith %}
-          </dd>
-        {% endfor %}
-      </dl>
-    {% if acq.category == 'insurance' and insurance %}
-    </a>
-    {% else %}
-    </div>
-    {% endif %}
-    {% if not acq.sell_tx %}
-    <div class="card-footer bg-transparent border-0 text-end">
-      <a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">
-        {% if acq.category == 'insurance' %}
-          {% if acq.insurance_type == 'vul' %}Withdraw{% else %}Claim{% endif %}
-        {% elif acq.category == 'equipment' %}
-          Dispose
-        {% else %}
-          Sell
-        {% endif %}
-      </a>
-    </div>
-    {% endif %}
-  </div>
+  {% if acq.category == 'insurance' and insurance %}
+    {% url 'insurance:edit' insurance.pk as edit_url %}
+    {% include 'includes/card.html' with link=edit_url modifier='card-acquisition h-100 cat-'|add:acq.category title=acq.name badge=acq.get_category_display body_template='acquisitions/_acquisition_body.html' acq=acq summary_list=summary_list footer_template='acquisitions/_acquisition_footer.html' %}
+  {% else %}
+    {% include 'includes/card.html' with modifier='card-acquisition h-100 cat-'|add:acq.category title=acq.name badge=acq.get_category_display body_template='acquisitions/_acquisition_body.html' acq=acq summary_list=summary_list footer_template='acquisitions/_acquisition_footer.html' extra_attrs='data-bs-toggle="modal" data-bs-target="#acq'|add:acq.pk|stringformat:'s'|add:'Modal"' %}
+  {% endif %}
   {% if not acq.category == 'insurance' %}
   <div class="modal fade" id="acq{{ acq.pk }}Modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable">

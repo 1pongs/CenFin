@@ -30,18 +30,8 @@
   <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
       {% for e in entities %}
         <div class="col">
-          <a href="{% url 'entities:accounts' e.pk %}" class="card h-100 text-reset text-decoration-none">
-            <div class="card-body">
-              <span class="badge text-bg-secondary mb-2">{{ e.get_entity_type_display }}</span>
-              <h5 class="card-title mb-2">{{ e.entity_name }}</h5>
-              <p class="mb-1 small">Liquid:
-                <span class="amount-display" data-prefix="₱" data-decimals="0">{{ e.liquid_total|floatformat:0|intcomma }}</span>
-              </p>
-              <p class="mb-0 small">Non-Liquid:
-                <span class="amount-display" data-prefix="₱" data-decimals="0">{{ e.non_liquid_total|floatformat:0|intcomma }}</span>
-              </p>
-            </div>
-           </a>
+           {% url 'entities:accounts' e.pk as acc_url %}
+          {% include 'includes/card.html' with link=acc_url modifier='card-entity h-100' badge=e.get_entity_type_display title=e.entity_name body_template='entities/_entity_card_body.html' entity=e %}
         </div>
       {% empty %}
         <p class="text-center">No entities.</p>
