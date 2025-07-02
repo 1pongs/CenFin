@@ -212,16 +212,9 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         kwargs = super().get_form_kwargs()
         if self.request.method in ("GET", "HEAD"):
             tx = self.object.purchase_tx
-            kwargs["initial"] = {
+            initial = {
                 "name": self.object.name,
                 "category": self.object.category,
-                "date": tx.date,
-                "amount": tx.amount,
-                "account_source": tx.account_source_id,
-                "account_destination": tx.account_destination_id,
-                "entity_source": tx.entity_source_id,
-                "entity_destination": tx.entity_destination_id,
-                "remarks": tx.remarks,
                 "current_value": self.object.current_value,
                 "market": self.object.market,
                 "expected_lifespan_years": self.object.expected_lifespan_years,
@@ -236,11 +229,29 @@ class AcquisitionUpdateView(AcquisitionCreateView):
                 "maturity_date": self.object.maturity_date,
                 "provider": self.object.provider,
             }
+            if tx:
+                initial.update(
+                    {
+                        "date": tx.date,
+                        "amount": tx.amount,
+                        "account_source": tx.account_source_id,
+                        "account_destination": tx.account_destination_id,
+                        "entity_source": tx.entity_source_id,
+                        "entity_destination": tx.entity_destination_id,
+                        "remarks": tx.remarks,
+                    }
+                )
+            kwargs["initial"] = initial
         return kwargs
 
     def form_valid(self, form):
         data = form.cleaned_data
         tx = self.object.purchase_tx
+        creating_tx = False
+        if tx is None:
+            tx = Transaction(user=self.request.user, transaction_type="buy acquisition")
+            creating_tx = True
+            
         tx.date = data["date"]
         tx.description = data["name"]
         tx.amount = data["amount"]
@@ -255,6 +266,8 @@ class AcquisitionUpdateView(AcquisitionCreateView):
             form.add_error(None, e.message or e.messages)
             return self.form_invalid(form)
         tx.save()
+        if creating_tx:
+            self.object.purchase_tx = tx
         acq = self.object
         acq.name = data["name"]
         acq.category = data["category"]
