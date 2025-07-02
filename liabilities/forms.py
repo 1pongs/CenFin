@@ -67,6 +67,13 @@ class LoanForm(forms.ModelForm):
             self.fields['entity_destination'].queryset = Entity.objects.filter(pk=account_ent.pk)
             self.fields['entity_destination'].initial = account_ent
 
+        if self.instance.pk and getattr(self.instance, "disbursement_tx_id", None):
+            tx = self.instance.disbursement_tx
+            self.fields["account_destination"].initial = tx.account_destination_id
+            self.fields["account_source"].initial = tx.account_source_id
+            self.fields["entity_source"].initial = tx.entity_source_id
+            self.fields["entity_destination"].initial = tx.entity_destination_id
+
         for fld in ['principal_amount', 'interest_rate']:
             attrs = self.fields[fld].widget.attrs
             css = attrs.get('class', '')
