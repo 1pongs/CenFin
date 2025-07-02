@@ -117,6 +117,16 @@ class LiabilityListView(TemplateView):
             "sort": self.request.GET.get("sort", "name"),
             "entities": Lender.objects.all().order_by("name"),
         })
+        for loan in ctx.get("loans", []):
+            loan.field_tags = [
+                ("Rate", f"{loan.interest_rate}%"),
+                ("Maturity", loan.maturity_date.strftime("%b %d, %Y") if loan.maturity_date else "-")
+            ]
+        for card in ctx.get("credit_cards", []):
+            card.field_tags = [
+                ("Limit", f"{card.credit_limit:,.2f}"),
+                ("Rate", f"{card.interest_rate}%")
+            ]
         return ctx
     
 class CreditCardCreateView(CreateView):

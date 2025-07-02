@@ -31,7 +31,7 @@
       {% for e in entities %}
         <div class="col">
            {% url 'entities:accounts' e.pk as acc_url %}
-          {% include 'includes/card.html' with link=acc_url modifier='card-entity h-100' badge=e.get_entity_type_display title=e.entity_name body_template='entities/_entity_card_body.html' entity=e %}
+          {% include 'includes/card.html' with link=acc_url modifier='card-entity' badge=e.get_entity_type_display title=e.entity_name body_template='entities/_entity_card_body.html' entity=e %}
         </div>
       {% empty %}
         <p class="text-center">No entities.</p>

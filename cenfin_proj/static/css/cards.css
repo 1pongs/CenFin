@@ -1,7 +1,6 @@
 .cenfin-card {
   width: 100%;
   max-width: 100%;
-  min-height: 8rem;
   padding: 1rem;
   border-radius: 0.5rem;
   background-color: #fff;
@@ -27,6 +26,18 @@
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
+}
+
+/* Smaller typography inside cards for better content fit */
+.cenfin-card h5 {
+  font-size: 1rem;
+}
+.cenfin-card h6,
+.cenfin-card p,
+.cenfin-card dl,
+.cenfin-card dt,
+.cenfin-card dd {
+  font-size: 0.875rem;
 }
 
 .cenfin-card.card-credit { background-color: #cff4fc; }

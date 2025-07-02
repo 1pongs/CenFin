@@ -8,6 +8,11 @@
   {% if buttons %}<div class="card-buttons">{{ buttons|safe }}</div>{% endif %}
   {% if subtitle %}<h6 class="text-muted small mb-1">{{ subtitle }}</h6>{% endif %}
   <h5 class="mb-2">{{ title }}</h5>
+  {% if field_tags %}
+    {% for label, value in field_tags %}
+      <p class="mb-1 small"><span class="text-muted">{{ label }}:</span> {{ value }}</p>
+    {% endfor %}
+  {% endif %}
   {% if body_template %}
     {% include body_template %}
   {% elif body %}

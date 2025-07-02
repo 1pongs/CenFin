@@ -10,12 +10,21 @@ def render_acquisition_card(context, acq, urgent=False):
     field_list = CARD_FIELDS_BY_CATEGORY.get(acq.category, [])
     summary_list = CARD_SUMMARY_FIELDS_BY_CATEGORY.get(acq.category, [])
     insurance = None
+    field_tags = []
     if acq.category == 'insurance':
         insurance = acq.insurances.first()
+        if insurance:
+            if insurance.policy_owner:
+                field_tags.append(("Policy Owner", insurance.policy_owner))
+            if insurance.person_insured:
+                field_tags.append(("Insured", insurance.person_insured))
+            if insurance.provider:
+                field_tags.append(("Provider", insurance.provider))
     return {
         'acq': acq,
         'field_list': field_list,
         'summary_list': summary_list,
+        'field_tags': field_tags,
         'urgent': urgent,
         'insurance': insurance,
         'request': context.get('request'),

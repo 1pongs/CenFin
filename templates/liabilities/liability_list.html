@@ -9,25 +9,33 @@
 <div class="row">
   <div class="col-lg-8 mb-4">
     {% if tab == 'loans' %}
-      {% for loan in loans %}
-        {% url 'liabilities:loan-edit' loan.pk as edit_url %}
-        {% include 'includes/card.html' with link=edit_url title=loan.lender.name subtitle=loan.principal_amount|floatformat:2|intcomma buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan mb-3' %}
-      {% empty %}
-        <div class="card text-center p-5">
-          <i class="bi bi-wallet2 fs-1 mb-3 text-muted"></i>
-          <p class="mb-0">No loans.</p>
-     </div>
-      {% endfor %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3 mb-4">
+        {% for loan in loans %}
+          <div class="col">
+            {% url 'liabilities:loan-edit' loan.pk as edit_url %}
+            {% include 'includes/card.html' with link=edit_url title=loan.lender.name subtitle=loan.principal_amount|floatformat:2|intcomma field_tags=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          </div>
+        {% empty %}
+          <div class="card text-center p-5">
+            <i class="bi bi-wallet2 fs-1 mb-3 text-muted"></i>
+            <p class="mb-0">No loans.</p>
+          </div>
+        {% endfor %}
+      </div>
     {% else %}
-      {% for card in credit_cards %}
-        {% url 'liabilities:credit-edit' card.pk as edit_url %}
-        {% include 'includes/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name buttons='<span class="btn btn-sm btn-primary">Pay</span>' modifier='card-credit mb-3' %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3 mb-4">
+        {% for card in credit_cards %}
+          <div class="col">
+            {% url 'liabilities:credit-edit' card.pk as edit_url %}
+            {% include 'includes/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name field_tags=card.field_tags buttons='<span class="btn btn-sm btn-primary">Pay</span>' modifier='card-credit' %}
+          </div>
         {% empty %}
         <div class="card text-center p-5">
-          <i class="bi bi-credit-card fs-1 mb-3 text-muted"></i>
-          <p class="mb-0">No credit cards.</p>
-        </div>
-      {% endfor %}
+            <i class="bi bi-credit-card fs-1 mb-3 text-muted"></i>
+            <p class="mb-0">No credit cards.</p>
+          </div>
+        {% endfor %}
+      </div>
     {% endif %}
   </div>
   <aside class="col-lg-4">
