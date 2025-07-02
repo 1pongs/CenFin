@@ -1,5 +1,4 @@
 .cenfin-card {
-  min-height: 256px;
   padding: 0.9rem 1rem;
   border-radius: .5rem;
   border: 1px solid #e1e5eb;
@@ -36,7 +35,6 @@
 .card-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
   gap: 1.25rem; /* gap-5 */
 }
 
