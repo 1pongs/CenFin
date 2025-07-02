@@ -27,7 +27,7 @@
       {% endfor %}
     </ul>
 
-  <div class="card-grid">
+  <div class="card-grid grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-fr">
       {% for e in entities %}
         {% url 'entities:accounts' e.pk as acc_url %}
         {% include 'components/card.html' with link=acc_url modifier='card-entity clickable-card' category_badge=e.get_entity_type_display title=e.entity_name rows=e.card_rows %}

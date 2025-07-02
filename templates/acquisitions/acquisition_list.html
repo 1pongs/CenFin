@@ -36,14 +36,14 @@
 
     {% if urgent_qs %}
     <h5 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>Coming up for sale</h5>
-    <div class="card-grid mb-4">
+    <div class="card-grid grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-fr mb-4">
       {% for acq in urgent_qs %}
         {% render_acquisition_card acq urgent=True %}
       {% endfor %}
     </div>
     {% endif %}
 
-    <div class="card-grid">
+    <div class="card-grid grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-fr">
       {% for acq in acquisitions %}
         {% render_acquisition_card acq %}
       {% empty %}
