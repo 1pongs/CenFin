@@ -72,14 +72,22 @@
 
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.toast').forEach(el => {
-      bootstrap.Toast.getOrCreateInstance(el, {
-        delay: 4000,      // 4 s auto-hide; adjust mo kung gusto
-        autohide: true
-      }).show();
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.toast').forEach(el => {
+        bootstrap.Toast.getOrCreateInstance(el, {
+          delay: 4000,      // 4 s auto-hide; adjust mo kung gusto
+          autohide: true
+        }).show();
+      });
+
+      document.querySelectorAll('.clickable-card[data-href]').forEach(card => {
+        card.addEventListener('click', e => {
+          if (e.target.closest('a, button')) return;
+          const url = card.dataset.href;
+          if (url) window.location = url;
+        });
+      });
     });
-  });
-</script>
+  </script>
 </body>
 </html>
