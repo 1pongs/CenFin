@@ -1,30 +1,40 @@
 from django import template
 from ..views import CARD_FIELDS_BY_CATEGORY, CARD_SUMMARY_FIELDS_BY_CATEGORY
 from insurance.models import Insurance
+from django.template.defaultfilters import floatformat
+from django.contrib.humanize.templatetags.humanize import intcomma
 
 register = template.Library()
 
 @register.inclusion_tag('acquisitions/_acquisition_card.html', takes_context=True)
 def render_acquisition_card(context, acq, urgent=False):
     """Render an acquisition card and include related insurance when needed."""
-    field_list = CARD_FIELDS_BY_CATEGORY.get(acq.category, [])
-    summary_list = CARD_SUMMARY_FIELDS_BY_CATEGORY.get(acq.category, [])
     insurance = None
-    field_tags = []
+    extra_rows = []
     if acq.category == 'insurance':
         insurance = acq.insurances.first()
         if insurance:
             if insurance.policy_owner:
-                field_tags.append(("Policy Owner", insurance.policy_owner))
+                extra_rows.append(("Policy Owner", insurance.policy_owner))
             if insurance.person_insured:
-                field_tags.append(("Insured", insurance.person_insured))
+                extra_rows.append(("Insured", insurance.person_insured))
             if insurance.provider:
-                field_tags.append(("Provider", insurance.provider))
+                extra_rows.append(("Provider", insurance.provider))
+
+    def _fmt_amt(val):
+        if val is None:
+            return None
+        return f"₱{intcomma(floatformat(val, 2))}"
+
+    rows = [
+        ("Type", acq.get_category_display()),
+        ("Date Bought", acq.purchase_tx.date if acq.purchase_tx else None),
+        ("Amount", _fmt_amt(acq.purchase_tx.amount if acq.purchase_tx else None)),
+        ("Status", "Sold" if acq.sell_tx else acq.get_status_display()),
+    ] + extra_rows
     return {
         'acq': acq,
-        'field_list': field_list,
-        'summary_list': summary_list,
-        'field_tags': field_tags,
+        'rows': rows,
         'urgent': urgent,
         'insurance': insurance,
         'request': context.get('request'),

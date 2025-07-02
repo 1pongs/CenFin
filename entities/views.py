@@ -6,6 +6,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import date, timedelta
+from django.template.defaultfilters import floatformat
+from django.contrib.humanize.templatetags.humanize import intcomma
 
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField, Count
 from collections import defaultdict
@@ -371,6 +373,13 @@ class EntityListView(TemplateView):
             data = totals_map.get(ent.pk, {})
             ent.liquid_total = data.get("total_liquid", 0)
             ent.non_liquid_total = data.get("total_non_liquid", 0)
+            def _fmt(val):
+                return f"₱{intcomma(floatformat(val, 2))}"
+
+            ent.card_rows = [
+                ("Liquid", _fmt(ent.liquid_total)),
+                ("Non-Liquid", _fmt(ent.non_liquid_total)),
+            ]
 
         ctx["entities"] = qs
         ctx["search"] = search

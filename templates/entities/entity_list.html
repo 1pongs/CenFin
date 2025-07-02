@@ -27,12 +27,10 @@
       {% endfor %}
     </ul>
 
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
+  <div class="card-grid">
       {% for e in entities %}
-        <div class="col">
-           {% url 'entities:accounts' e.pk as acc_url %}
-          {% include 'includes/card.html' with link=acc_url modifier='card-entity' badge=e.get_entity_type_display title=e.entity_name body_template='entities/_entity_card_body.html' entity=e %}
-        </div>
+        {% url 'entities:accounts' e.pk as acc_url %}
+        {% include 'components/card.html' with link=acc_url modifier='card-entity clickable-card' category_badge=e.get_entity_type_display title=e.entity_name rows=e.card_rows %}
       {% empty %}
         <p class="text-center">No entities.</p>
       {% endfor %}

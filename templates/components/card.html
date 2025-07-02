@@ -1,0 +1,25 @@
+{% comment %}Reusable simple card component{% endcomment %}
+{% if link %}
+<a href="{{ link }}" class="cenfin-card text-reset text-decoration-none d-block  {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+{% else %}
+<div class="cenfin-card {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+{% endif %}
+  {% if category_badge %}<span class="badge bg-secondary">{{ category_badge }}</span>{% endif %}
+  <h6 class="card-title mb-2">{{ title }}</h6>
+  {% if rows %}
+    {% for label,value in rows %}
+      {% if value %}
+      <p class="mb-1"><span class="field-label">{{ label }}:</span> <span class="field-value">{{ value }}</span></p>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% if action_btn %}
+    <div class="mt-auto text-end">{{ action_btn|safe }}</div>
+  {% elif action_btn_template %}
+    <div class="mt-auto text-end">{% include action_btn_template %}</div>
+  {% endif %}
+{% if link %}
+</a>
+{% else %}
+</div>
+{% endif %}
