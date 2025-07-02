@@ -63,6 +63,9 @@ class InsuranceCreateView(CreateView):
         return response
     
     def get_success_url(self):
+        next_url = self.request.GET.get("next") or self.request.POST.get("next")
+        if next_url:
+            return next_url
         if self.object.entity_id:
             return reverse("entities:detail", args=[self.object.entity_id])
         return super().get_success_url()
@@ -163,6 +166,9 @@ class InsuranceUpdateView(UpdateView):
         return response
 
     def get_success_url(self):
+        next_url = self.request.GET.get("next") or self.request.POST.get("next")
+        if next_url:
+            return next_url
         if self.object.entity_id:
             return reverse("entities:detail", args=[self.object.entity_id])
         return super().get_success_url()
@@ -182,6 +188,9 @@ class InsuranceDeleteView(DeleteView):
         return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
+        next_url = self.request.GET.get("next") or self.request.POST.get("next")
+        if next_url:
+            return next_url
         if self.object.entity_id:
             return reverse("entities:detail", args=[self.object.entity_id])
         return super().get_success_url()

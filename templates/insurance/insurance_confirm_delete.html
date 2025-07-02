@@ -9,8 +9,9 @@
   <p>Are you sure you want to delete "{{ object }}"?</p>
   <form method="post">
     {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.GET.next }}">
     <div class="d-flex justify-content-end gap-2 mt-3">
-      <a href="{% url 'insurance:edit' object.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      <a href="{% url 'insurance:edit' object.pk %}?next={{ request.GET.next }}" class="btn btn-outline-secondary">Cancel</a>
       <button type="submit" class="btn btn-danger">Delete</button>
     </div>
   </form>

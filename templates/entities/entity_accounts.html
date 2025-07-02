@@ -83,6 +83,7 @@
         {% for ins in insurances %}
           <div class="col">
             <div class="card h-100">
+              <a href="{% url 'insurance:edit' ins.pk %}?next={{ request.get_full_path }}" class="text-decoration-none text-reset clickable-card">
               <div class="card-body">
                 <h6 class="card-subtitle text-muted small mb-1">{{ ins.get_insurance_type_display }}</h6>
                 <h5 class="card-title mb-2">{{ ins.policy_owner|default:ins.person_insured }}</h5>
@@ -91,6 +92,7 @@
                   <dd class="col-7">{{ ins.get_status_display }}</dd>
                 </dl>
               </div>
+              </a>
               <div class="card-footer bg-transparent border-0 text-end">
                 <a href="{% url 'insurance:pay-premium' ins.pk %}" class="btn btn-sm btn-primary">Pay Premium</a>
               </div>

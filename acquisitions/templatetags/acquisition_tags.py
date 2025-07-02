@@ -1,17 +1,24 @@
 from django import template
 from ..views import CARD_FIELDS_BY_CATEGORY, CARD_SUMMARY_FIELDS_BY_CATEGORY
+from insurance.models import Insurance
 
 register = template.Library()
 
-@register.inclusion_tag('acquisitions/_acquisition_card.html')
-def render_acquisition_card(acq, urgent=False):
+@register.inclusion_tag('acquisitions/_acquisition_card.html', takes_context=True)
+def render_acquisition_card(context, acq, urgent=False):
+    """Render an acquisition card and include related insurance when needed."""
     field_list = CARD_FIELDS_BY_CATEGORY.get(acq.category, [])
     summary_list = CARD_SUMMARY_FIELDS_BY_CATEGORY.get(acq.category, [])
+    insurance = None
+    if acq.category == 'insurance':
+        insurance = acq.insurances.first()
     return {
         'acq': acq,
         'field_list': field_list,
         'summary_list': summary_list,
         'urgent': urgent,
+        'insurance': insurance,
+        'request': context.get('request'),
     }
 
 @register.filter

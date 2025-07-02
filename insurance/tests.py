@@ -85,8 +85,14 @@ class InsuranceEditDeleteTest(TestCase):
         )
 
     def test_edit_and_delete(self):
+        next_url = "/return/"
+        edit_url = reverse("insurance:edit", args=[self.ins.pk]) + f"?next={next_url}"
+
+        get_resp = self.client.get(edit_url)
+        self.assertEqual(get_resp.status_code, 200)
+
         resp = self.client.post(
-            reverse("insurance:edit", args=[self.ins.pk]),
+            edit_url,
             {
                 "policy_owner": "Owner 2",
                 "person_insured": "",
@@ -94,14 +100,16 @@ class InsuranceEditDeleteTest(TestCase):
                 "sum_assured": "2000",
                 "premium_mode": "annual",
                 "premium_amount": "150",
+                "next": next_url,
             },
         )
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp.url, reverse("insurance:list"))
+        self.assertEqual(resp.url, next_url)
         self.ins.refresh_from_db()
         self.assertEqual(self.ins.sum_assured, Decimal("2000"))
 
-        resp = self.client.post(reverse("insurance:delete", args=[self.ins.pk]))
+        delete_url = reverse("insurance:delete", args=[self.ins.pk]) + f"?next={next_url}"
+        resp = self.client.post(delete_url, {"next": next_url})
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp.url, reverse("insurance:list"))
+        self.assertEqual(resp.url, next_url)
         self.assertFalse(Insurance.objects.filter(pk=self.ins.pk).exists())
