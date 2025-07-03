@@ -18,7 +18,6 @@ class AcquisitionForm(forms.Form):
             ("product", "Product"),
             ("stock_bond", "Stock/Bond"),
             ("property", "Property"),
-            ("insurance", "Insurance"),
             ("equipment", "Equipment"),
             ("vehicle", "Vehicle"),
         ]

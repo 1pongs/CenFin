@@ -41,6 +41,19 @@ class InsuranceCreateView(CreateView):
         if acq:
             initial["acquisition"] = acq
         return initial
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        next_url = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER", "")
+        if next_url:
+            context["back_url"] = next_url
+        else:
+            ent = self.request.GET.get("entity")
+            if ent:
+                context["back_url"] = reverse("entities:accounts", args=[ent]) + "?category=insurance"
+            else:
+                context["back_url"] = reverse("insurance:list")
+        return context
 
     def form_valid(self, form):
         form.instance.user = self.request.user
@@ -164,6 +177,17 @@ class InsuranceUpdateView(UpdateView):
         response = super().form_valid(form)
         messages.success(self.request, "Insurance policy updated successfully!")
         return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        next_url = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER", "")
+        if next_url:
+            context["back_url"] = next_url
+        elif self.object and self.object.entity_id:
+            context["back_url"] = reverse("entities:accounts", args=[self.object.entity_id]) + "?category=insurance"
+        else:
+            context["back_url"] = reverse("insurance:list")
+        return context
 
     def get_success_url(self):
         next_url = self.request.GET.get("next") or self.request.POST.get("next")

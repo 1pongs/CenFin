@@ -29,9 +29,6 @@
       <li class="nav-item">
         <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="?category=equipment{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Equipment</a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="?category=insurance{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if entity_id %}&entity={{ entity_id }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q }}{% endif %}">Insurance</a>
-      </li>
     </ul>
 
     <div class="card-grid grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-fr">
