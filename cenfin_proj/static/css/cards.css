@@ -45,4 +45,7 @@
 .cenfin-card.card-credit { background-color: #cff4fc; }
 .cenfin-card.card-loan { background-color: #ffe5cc; }
 .cenfin-card.card-entity { background-color: #f8f9fa; }
-.cenfin-card.card-acquisition { background-color: #f8f9fa; }
+.cenfin-card.card-acquisition {
+  background-color: #f8f9fa;
+  min-height: 180px;
+}

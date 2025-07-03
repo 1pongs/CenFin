@@ -7,7 +7,7 @@ from django.contrib.humanize.templatetags.humanize import intcomma
 register = template.Library()
 
 @register.inclusion_tag('acquisitions/_acquisition_card.html', takes_context=True)
-def render_acquisition_card(context, acq, urgent=False):
+def render_acquisition_card(context, acq):
     """Render an acquisition card and include related insurance when needed."""
     insurance = None
     extra_rows = []
@@ -35,7 +35,6 @@ def render_acquisition_card(context, acq, urgent=False):
     return {
         'acq': acq,
         'rows': rows,
-        'urgent': urgent,
         'insurance': insurance,
         'request': context.get('request'),
     }

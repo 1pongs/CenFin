@@ -1,9 +1,8 @@
 {% comment %}Reusable simple card component with optional subtitle, buttons and footer{% endcomment %}
-{% if link %}
-<a href="{{ link }}" class="cenfin-card text-reset text-decoration-none d-block {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
-{% else %}
 <div class="cenfin-card {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
-{% endif %}
+  {% if link %}
+  <a href="{{ link }}" class="stretched-link text-reset text-decoration-none"></a>
+  {% endif %}
   {% if badge %}
     <span class="badge bg-secondary">{{ badge }}</span>
   {% elif category_badge %}
@@ -31,12 +30,8 @@
     <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">{{ footer|safe }}</div>
   {% endif %}
   {% if action_btn %}
-    <div class="mt-auto text-end">{{ action_btn|safe }}</div>
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">{{ action_btn|safe }}</div>
   {% elif action_btn_template %}
-    <div class="mt-auto text-end">{% include action_btn_template %}</div>
+    <div class="card-footer bg-transparent border-0 p-0 mt-2 text-end">{% include action_btn_template %}</div>
   {% endif %}
-{% if link %}
-</a>
-{% else %}
 </div>
-{% endif %}
