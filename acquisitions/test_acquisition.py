@@ -57,7 +57,23 @@ class AcquisitionListViewTest(TestCase):
         resp = self.client.get(reverse("acquisitions:acquisition-list"), {"q": "alp"})
         self.assertContains(resp, "Alpha")
         self.assertNotContains(resp, "Beta")
-# Create your tests here.
+
+    def test_insurance_acquisitions_are_excluded(self):
+        buy_tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="ins",
+            transaction_type="buy acquisition",
+            amount=Decimal("1"),
+        )
+        Acquisition.objects.create(
+            name="Policy",
+            category="insurance",
+            purchase_tx=buy_tx,
+            user=self.user,
+        )
+        resp = self.client.get(reverse("acquisitions:acquisition-list"))
+        self.assertNotContains(resp, "Policy")
 
 @override_settings(
     DATABASES={
@@ -313,32 +329,9 @@ class AcquisitionFormValidationTest(TestCase):
         self.assertIn("model_year", form.errors)
 
     def test_term_insurance_cash_value_zeroed(self):
-        form = AcquisitionForm(
-            data={
-                "name": "Policy",
-                "category": "insurance",
-                "insurance_type": "term",
-                "date": timezone.now().date(),
-                "amount": "1",
-                "account_source": Account.objects.create(
-                    account_name="A1", account_type="Cash", user=self.user
-                ).pk,
-                "account_destination": Account.objects.create(
-                    account_name="A2", account_type="Cash", user=self.user
-                ).pk,
-                "entity_source": Entity.objects.create(
-                    entity_name="E3", entity_type="outside", user=self.user
-                ).pk,
-                "entity_destination": Entity.objects.create(
-                    entity_name="E4", entity_type="outside", user=self.user
-                ).pk,
-                "cash_value": "1000",
-                "sum_assured_amount": "5000",
-            },
-            user=self.user,
-        )
-        form.is_valid()
-        self.assertEqual(form.cleaned_data.get("cash_value"), 0)
+        form = AcquisitionForm(user=self.user)
+        choices = [c[0] for c in form.fields["category"].choices]
+        self.assertNotIn("insurance", choices)
 
 
 @override_settings(

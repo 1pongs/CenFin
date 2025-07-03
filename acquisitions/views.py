@@ -48,6 +48,8 @@ class AcquisitionListView(ListView):
             Acquisition.objects.select_related("purchase_tx", "sell_tx")
             .filter(user=self.request.user)
         )
+        
+        qs = qs.exclude(category=Acquisition.CATEGORY_INSURANCE)
 
         cat = self.request.GET.get("category")
         if cat:
