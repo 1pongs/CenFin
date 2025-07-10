@@ -97,3 +97,38 @@ class FrankfurterServiceTests(TestCase):
             self.assertEqual(data1, sample)
             self.assertEqual(data2, sample)
             mock_get.assert_called_once()
+
+    def test_error_uses_cache_then_raises(self):
+        Currency.objects.create(code="EUR", name="Euro")
+        cache.set(services.FRANKFURTER_CACHE_KEY, {"EUR": "Euro"}, 86400)
+        with patch("currencies.services.requests.get", side_effect=Exception("x")):
+            data = services.get_frankfurter_currencies()
+            self.assertEqual(data, {"EUR": "Euro"})
+        cache.clear()
+        with patch("currencies.services.requests.get", side_effect=Exception("x")):
+            with self.assertRaises(services.CurrencySourceError):
+                services.get_frankfurter_currencies()
+
+
+class ApiCurrenciesViewTests(TestCase):
+    def setUp(self):
+        self.cur = Currency.objects.create(code="USD", name="US Dollar")
+        User = get_user_model()
+        self.user = User.objects.create_user(username="v", password="p")
+        self.client.force_login(self.user)
+
+    def test_frankfurter_success(self):
+        sample = {"USD": "US Dollar"}
+        with patch("currencies.services.requests.get") as mock_get:
+            mock_resp = mock_get.return_value
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = sample
+            resp = self.client.get(reverse("api_currencies") + "?source=FRANKFURTER")
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.json(), sample)
+
+    def test_frankfurter_failure(self):
+        with patch("currencies.services.requests.get", side_effect=Exception("x")):
+            resp = self.client.get(reverse("api_currencies") + "?source=FRANKFURTER")
+            self.assertEqual(resp.status_code, 502)
+            self.assertEqual(resp.json(), {})

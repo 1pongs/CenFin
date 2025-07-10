@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     bootstrap.Toast.getOrCreateInstance(div, {delay:4000, autohide:true}).show();
   }
 
+  function clearToasts(){
+    const container = document.querySelector('.toast-container');
+    if(!container) return;
+    container.querySelectorAll('.toast').forEach(t => t.remove());
+  }
+
   function renderOptions(map){
       const currentFrom = fromSel.value;
       const currentTo = toSel.value;
@@ -29,32 +35,46 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-  async function loadCurrencies(){
+  function renderEmpty(){
+      fromSel.innerHTML = '<option value="">No currencies available</option>';
+      toSel.innerHTML = '<option value="">No currencies available</option>';
+  }
+
+  function updateSaveState(){
+      if(!saveBtn) return;
+      saveBtn.disabled = !(fromSel.value && toSel.value);
+  }
+  
+    async function loadCurrencies(){
     const source = srcSel.value;
     if(!source){
       fromSel.innerHTML = '';
       toSel.innerHTML = '';
-      if(saveBtn) saveBtn.disabled = true;
+      updateSaveState();
       return;
     }
-    if(saveBtn) saveBtn.disabled = true;
+    updateSaveState();
     try{
         const resp = await fetch(`/api/currencies?source=${encodeURIComponent(source)}`);
       if(!resp.ok) throw new Error('bad');
       const data = await resp.json();
         if(data && Object.keys(data).length){
             renderOptions(data);
-        if(saveBtn) saveBtn.disabled = false;
-      }else{
-        throw new Error('bad');
-      }
+        }else{
+            renderEmpty();
+        }
+      clearToasts();
+      updateSaveState();
     }catch(err){
       showToast('Error loading currencies');
-      if(saveBtn) saveBtn.disabled = true;
+      renderEmpty();
+      updateSaveState();
     }
   }
 
   srcSel.addEventListener('change', loadCurrencies);
+  fromSel.addEventListener('change', updateSaveState);
+  toSel.addEventListener('change', updateSaveState);
   if(srcSel.value){
     loadCurrencies();
   }

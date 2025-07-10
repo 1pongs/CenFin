@@ -1,6 +1,5 @@
-import os
 import logging
-from typing import Dict, List
+from typing import Dict
 
 import requests
 from django.core.cache import cache
@@ -9,8 +8,14 @@ from .models import Currency
 
 logger = logging.getLogger(__name__)
 
-FRANKFURTER_CACHE_KEY = "frankfurter_currency_list"
+FRANKFURTER_CACHE_KEY = "frankfurter_currencies"
 FRANKFURTER_CACHE_TIMEOUT = 24 * 60 * 60  # 1 day
+
+
+class CurrencySourceError(Exception):
+    """Raised when an external currency source fails."""
+
+    pass
 
 def _map_existing(currencies: Dict[str, str]) -> Dict[str, str]:
     """Return subset of currencies that exist in the DB."""
@@ -42,12 +47,14 @@ def get_frankfurter_currencies() -> Dict[str, str]:
         resp = requests.get("https://api.frankfurter.dev/v1/currencies", timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError("Unexpected response")
     except Exception as exc:  # pragma: no cover - network error path
         logger.exception("Failed to fetch Frankfurter currencies: %s", exc)
-        raise
+        if cached:
+            return cached
+        raise CurrencySourceError("Frankfurter unavailable") from exc
 
-    if not isinstance(data, dict):
-        data = {}
     mapped = _map_existing(data)
     cache.set(FRANKFURTER_CACHE_KEY, mapped, FRANKFURTER_CACHE_TIMEOUT)
     return mapped

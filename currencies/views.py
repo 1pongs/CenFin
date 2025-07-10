@@ -88,6 +88,6 @@ def api_currencies(request):
         else:
             data = {}
         return JsonResponse(data)
-    except Exception:
+    except services.CurrencySourceError:
         logger.exception("Unable to load currencies")
         return JsonResponse({}, status=502)
