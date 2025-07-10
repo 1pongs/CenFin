@@ -33,7 +33,9 @@ class ExchangeRateFormTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(ExchangeRate.objects.count(), 1)
-        self.assertTrue(Currency.objects.filter(code="KRW").exists())
+        rate = ExchangeRate.objects.first()
+        self.assertIsInstance(rate.currency_from, Currency)
+        self.assertEqual(rate.currency_from.code, "KRW")
 
     @patch("currencies.services.get_frankfurter_currencies")
     def test_invalid_code_shows_error(self, mock_frank):

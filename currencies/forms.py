@@ -83,6 +83,15 @@ class ExchangeRateForm(forms.ModelForm):
                 self.error_messages["invalid_choice"],
                 code="invalid_choice",
             )
+            
+    def _code_to_currency(self, code: str, field: str) -> Currency:
+        """Return Currency instance for `code`, or raise ValidationError."""
+        try:
+            return Currency.objects.get(code=code)
+        except Currency.DoesNotExist:
+            raise forms.ValidationError(
+                self.error_messages["invalid_choice"], code="invalid_choice"
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -94,3 +103,16 @@ class ExchangeRateForm(forms.ModelForm):
             if code:
                 cleaned_data[field] = self._get_currency(code)
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        for attr in ("currency_from", "currency_to"):
+            value = getattr(instance, attr)
+            if isinstance(value, str):
+                setattr(instance, attr, self._code_to_currency(value, attr))
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance

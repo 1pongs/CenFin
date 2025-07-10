@@ -173,6 +173,9 @@ class ExchangeRateServerValidationTests(TestCase):
             )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(ExchangeRate.objects.count(), 1)
+        rate = ExchangeRate.objects.first()
+        self.assertIsInstance(rate.currency_from, Currency)
+        self.assertEqual(rate.currency_from.code, "PHP")
 
     def test_invalid_currency_shows_error(self):
         with patch("currencies.forms.services.get_frankfurter_currencies") as mock:
