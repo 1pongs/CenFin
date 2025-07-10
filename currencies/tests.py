@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from unittest.mock import patch
 from django.core.cache import cache
 
@@ -128,7 +129,22 @@ class ApiCurrenciesViewTests(TestCase):
             self.assertEqual(resp.json(), sample)
 
     def test_frankfurter_failure(self):
+        cache.clear()
         with patch("currencies.services.requests.get", side_effect=Exception("x")):
             resp = self.client.get(reverse("api_currencies") + "?source=FRANKFURTER")
             self.assertEqual(resp.status_code, 502)
             self.assertEqual(resp.json(), {})
+
+    def test_authenticated_get(self):
+        with patch("currencies.services.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {"USD": "US Dollar"}
+            resp = self.client.get(reverse("api_currencies") + "?source=FRANKFURTER")
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.json(), {"USD": "US Dollar"})
+
+    def test_login_required(self):
+        self.client.logout()
+        resp = self.client.get(reverse("api_currencies"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse(settings.LOGIN_URL), resp["Location"]) 

@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.querySelector('input[name="save"], button[name="save"]');
   if(!srcSel || !fromSel || !toSel) return;
 
+  function getCookie(name){
+    const value = document.cookie
+      .split(';')
+      .map(v => v.trim())
+      .find(v => v.startsWith(name + '='));
+    return value ? decodeURIComponent(value.split('=')[1]) : null;
+  }
+
   function showToast(msg, type='danger'){
     const container = document.querySelector('.toast-container');
     if(!container) return;
@@ -55,7 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateSaveState();
     try{
-        const resp = await fetch(`/api/currencies?source=${encodeURIComponent(source)}`);
+        const url = `/api/currencies?source=${encodeURIComponent(source)}`;
+        const resp = await fetch(url, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Accept': 'application/json'
+          }
+        });
       if(!resp.ok) throw new Error('bad');
       const data = await resp.json();
         if(data && Object.keys(data).length){
