@@ -12,7 +12,7 @@
           <h2 class="fs-4 mb-0">Account Settings</h2>
         </div>
         <div class="card-body">
-          <form method="post" novalidate>
+          <form method="post" novalidate id="account-settings-form">
             {% csrf_token %}
             {% crispy form %}
           </form>
@@ -21,4 +21,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/account_settings.js' %}"></script>
 {% endblock %}
