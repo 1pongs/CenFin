@@ -30,17 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
     container.querySelectorAll('.toast').forEach(t => t.remove());
   }
 
-  function renderOptions(map){
+  function populateSelects(data){
       const currentFrom = fromSel.value;
       const currentTo = toSel.value;
-      fromSel.innerHTML = '';
-      toSel.innerHTML = '';
-      Object.entries(map).forEach(([code, name]) => {
-        const opt1 = new Option(`${code} – ${name}`, code, false, code == currentFrom);
-        const opt2 = new Option(`${code} – ${name}`, code, false, code == currentTo);
-        fromSel.appendChild(opt1);
-        toSel.appendChild(opt2.cloneNode(true));
-      });
+      const opts = Object.entries(data)
+          .map(([code, name]) => `<option value="${code}">${code} — ${name}</option>`)
+          .join('');
+      fromSel.innerHTML = toSel.innerHTML = opts;
+      if(currentFrom) fromSel.value = currentFrom;
+      if(currentTo) toSel.value = currentTo;
     }
 
   function renderEmpty(){
@@ -75,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if(!resp.ok) throw new Error('bad');
       const data = await resp.json();
         if(data && Object.keys(data).length){
-            renderOptions(data);
+            populateSelects(data);
         }else{
             renderEmpty();
         }
