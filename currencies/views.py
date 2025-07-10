@@ -7,6 +7,8 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.views.decorators.http import require_POST
 
+from . import services
+
 from users.access import AccessRequiredMixin
 from .models import ExchangeRate, Currency
 from .forms import ExchangeRateForm
@@ -68,3 +70,20 @@ def active_currencies(request):
         Currency.objects.filter(is_active=True).values("id", "code", "name")
     )
     return JsonResponse({"currencies": data})
+
+
+@login_required
+def currency_list(request, source):
+    """Return currencies for the given exchange rate source."""
+    try:
+        if source == "XE":
+            data = services.get_xe_currencies()
+        elif source == "RC_A":
+            data = services.get_rc_a_currencies()
+        else:
+            data = list(
+                Currency.objects.filter(is_active=True).values("id", "code", "name")
+            )
+        return JsonResponse({"currencies": data})
+    except Exception:
+        return JsonResponse({"error": "Unable to load currencies"}, status=500)

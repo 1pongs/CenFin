@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from unittest.mock import patch
 
 from .models import Currency, ExchangeRate
 
@@ -52,3 +53,27 @@ class ExchangeRateCRUDTests(TestCase):
         resp = self.client.post(reverse("currencies:rate-delete", args=[self.rate.pk]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(ExchangeRate.objects.filter(pk=self.rate.pk).exists())
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class CurrencyListBySourceTests(TestCase):
+    def setUp(self):
+        self.usd = Currency.objects.create(code="USD", name="US Dollar")
+        self.php = Currency.objects.create(code="PHP", name="Peso")
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u", password="p", email="u@example.com")
+        self.client.force_login(self.user)
+
+    def test_rc_a_list(self):
+        with patch("currencies.views.services.get_rc_a_currencies") as mock:
+            mock.return_value = [{"id": self.usd.id, "code": "USD", "name": "US Dollar"}]
+            resp = self.client.get(reverse("currencies:currency-list", args=["RC_A"]))
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.json()["currencies"], mock.return_value)
+
+    def test_xe_list(self):
+        with patch("currencies.views.services.get_xe_currencies") as mock:
+            mock.return_value = [{"id": self.php.id, "code": "PHP", "name": "Peso"}]
+            resp = self.client.get(reverse("currencies:currency-list", args=["XE"]))
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.json()["currencies"], mock.return_value)
