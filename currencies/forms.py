@@ -1,6 +1,7 @@
 """Forms for managing currencies and exchange rates."""
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
@@ -12,6 +13,8 @@ from .models import Currency, ExchangeRate, RATE_SOURCE_CHOICES
 
 class ExchangeRateForm(forms.ModelForm):
     """Form for creating/updating :class:`ExchangeRate` instances."""
+    
+    error_messages = {"invalid_choice": _("Select a valid currency code.")}
 
     # Use simple CharFields so we can rebuild the <select> options
     # dynamically every time the form is instantiated.
@@ -77,7 +80,7 @@ class ExchangeRateForm(forms.ModelForm):
             return Currency.objects.get(code=code)
         except Currency.DoesNotExist:
             raise forms.ValidationError(
-                self.fields["currency_from"].error_messages["invalid_choice"],
+                self.error_messages["invalid_choice"],
                 code="invalid_choice",
             )
 
@@ -86,7 +89,7 @@ class ExchangeRateForm(forms.ModelForm):
         for field in ("currency_from", "currency_to"):
             code = (cleaned_data.get(field) or "").upper()
             if self.currency_map and code not in self.currency_map:
-                self.add_error(field, self.fields[field].error_messages["invalid_choice"])
+                self.add_error(field, self.error_messages["invalid_choice"])
                 continue
             if code:
                 cleaned_data[field] = self._get_currency(code)

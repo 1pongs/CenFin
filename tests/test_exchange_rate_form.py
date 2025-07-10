@@ -33,3 +33,24 @@ class ExchangeRateFormTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(ExchangeRate.objects.count(), 1)
+
+    @patch("currencies.services.get_frankfurter_currencies")
+    def test_invalid_code_shows_error(self, mock_frank):
+        mock_frank.return_value = {
+            "KRW": "South Korean Won",
+            "PHP": "Philippine Peso",
+        }
+        resp = self.client.post(
+            reverse("currencies:rate-create"),
+            {
+                "source": "FRANKFURTER",
+                "currency_from": "XXX",
+                "currency_to": "PHP",
+                "rate": "0.04096",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.context["form"].errors["currency_from"],
+            ["Select a valid currency code."],
+        )

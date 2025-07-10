@@ -187,5 +187,7 @@ class ExchangeRateServerValidationTests(TestCase):
                 },
             )
         self.assertEqual(resp.status_code, 200)
-        error = resp.context["form"].errors["currency_from"][0]
-        self.assertIn("Select a valid choice", error)
+        self.assertEqual(
+            resp.context["form"].errors["currency_from"],
+            ["Select a valid currency code."],
+        )
