@@ -13,10 +13,10 @@ from .models import Currency, ExchangeRate, RATE_SOURCE_CHOICES
 class ExchangeRateForm(forms.ModelForm):
     """Form for creating/updating :class:`ExchangeRate` instances."""
 
-    # Use plain ChoiceFields so the list of valid options can be replaced
-    # dynamically based on the selected ``source``.
-    currency_from = forms.ChoiceField(choices=())
-    currency_to = forms.ChoiceField(choices=())
+    # Use simple CharFields so we can rebuild the <select> options
+    # dynamically every time the form is instantiated.
+    currency_from = forms.CharField(widget=forms.Select())
+    currency_to = forms.CharField(widget=forms.Select())
     
     class Meta:
         model = ExchangeRate
@@ -31,26 +31,16 @@ class ExchangeRateForm(forms.ModelForm):
         show_actions = kwargs.pop("show_actions", True)
         super().__init__(*args, **kwargs)
         
-        source = ""
-        if self.data:
-            source = (self.data.get("source") or "").upper()
-        elif self.initial.get("source"):
-            source = (self.initial["source"] or "").upper()
-        elif self.instance.pk:
-            source = self.instance.source
-            
-        # Load currencies from the services layer depending on the source.
-        if source == "FRANKFURTER":
-            data = services.get_frankfurter_currencies()
-        elif source == "REM_A":
-            data = services.get_rem_a_currencies()
-        else:
-            data = {}
-
-        choices = [(c, f"{c} — {n}") for c, n in data.items()] if data else []
-
-        self.fields["currency_from"].choices = choices
-        self.fields["currency_to"].choices = choices
+        source_raw = (self.data.get("source") or getattr(self.instance, "source", "")).upper()
+        currency_map = (
+            services.get_frankfurter_currencies() if source_raw == "FRANKFURTER"
+            else services.get_rem_a_currencies() if source_raw == "REM_A"
+            else {}
+        )
+        choices = [(c, f"{c} — {n}") for c, n in currency_map.items()] or [("", "None")]
+        self.currency_map = currency_map
+        self.fields["currency_from"].widget.choices = choices
+        self.fields["currency_to"].widget.choices = choices
         
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -91,10 +81,13 @@ class ExchangeRateForm(forms.ModelForm):
                 code="invalid_choice",
             )
 
-    def clean_currency_from(self) -> Currency:
-        code = self.cleaned_data.get("currency_from")
-        return self._get_currency(code)
-
-    def clean_currency_to(self) -> Currency:
-        code = self.cleaned_data.get("currency_to")
-        return self._get_currency(code)
+    def clean(self):
+        cleaned_data = super().clean()
+        for field in ("currency_from", "currency_to"):
+            code = (cleaned_data.get(field) or "").upper()
+            if self.currency_map and code not in self.currency_map:
+                self.add_error(field, self.fields[field].error_messages["invalid_choice"])
+                continue
+            if code:
+                cleaned_data[field] = self._get_currency(code)
+        return cleaned_data
