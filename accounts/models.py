@@ -62,9 +62,10 @@ class Account(models.Model):
         ('Banks', 'Banks'),
         ('E-Wallet', 'E-Wallet'),
         ('Cash','Cash'),
-        ('Outside','Outside'),
+        ('Crypto Wallet', 'Crypto Wallet'),
         ('Entity','Entity'),
         ('Credit', 'Credit'),
+        ('Outside','Outside'),
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)

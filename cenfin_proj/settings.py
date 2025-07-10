@@ -106,7 +106,7 @@ else:
             'ENGINE': 'django.db.backends.mysql',
             'NAME': 'cenfin_db',
             'USER': 'root',
-            'PASSWORD': 'Malhi@11#29',
+            'PASSWORD': 'mangaawit',
             'HOST': 'localhost',
             'PORT': '3306',
             'OPTIONS': {
