@@ -11,12 +11,12 @@ from .models import Currency, ExchangeRate, RATE_SOURCE_CHOICES
 
 
 class ExchangeRateForm(forms.ModelForm):
-    currency_from = forms.ModelChoiceField(
-        queryset=Currency.objects.filter(is_active=True), to_field_name="code"
-    )
-    currency_to = forms.ModelChoiceField(
-        queryset=Currency.objects.filter(is_active=True), to_field_name="code"
-    )
+    """Form for creating/updating :class:`ExchangeRate` instances."""
+
+    # Use plain ChoiceFields so the list of valid options can be replaced
+    # dynamically based on the selected ``source``.
+    currency_from = forms.ChoiceField(choices=())
+    currency_to = forms.ChoiceField(choices=())
     
     class Meta:
         model = ExchangeRate
@@ -34,9 +34,12 @@ class ExchangeRateForm(forms.ModelForm):
         source = ""
         if self.data:
             source = (self.data.get("source") or "").upper()
+        elif self.initial.get("source"):
+            source = (self.initial["source"] or "").upper()
         elif self.instance.pk:
             source = self.instance.source
-
+            
+        # Load currencies from the services layer depending on the source.
         if source == "FRANKFURTER":
             data = services.get_frankfurter_currencies()
         elif source == "REM_A":
@@ -44,10 +47,7 @@ class ExchangeRateForm(forms.ModelForm):
         else:
             data = {}
 
-        if data:
-            choices = [(c, f"{c} — {n}") for c, n in data.items()]
-        else:
-            choices = [("", "No currencies available")]
+        choices = [(c, f"{c} — {n}") for c, n in data.items()] if data else []
 
         self.fields["currency_from"].choices = choices
         self.fields["currency_to"].choices = choices
@@ -80,3 +80,21 @@ class ExchangeRateForm(forms.ModelForm):
             )
 
         self.helper.layout = Layout(*layout_fields)
+
+    def _get_currency(self, code: str) -> Currency:
+        """Return the :class:`Currency` instance matching ``code`` or raise."""
+        try:
+            return Currency.objects.get(code=code)
+        except Currency.DoesNotExist:
+            raise forms.ValidationError(
+                self.fields["currency_from"].error_messages["invalid_choice"],
+                code="invalid_choice",
+            )
+
+    def clean_currency_from(self) -> Currency:
+        code = self.cleaned_data.get("currency_from")
+        return self._get_currency(code)
+
+    def clean_currency_to(self) -> Currency:
+        code = self.cleaned_data.get("currency_to")
+        return self._get_currency(code)
