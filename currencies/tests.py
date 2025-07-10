@@ -2,8 +2,10 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from unittest.mock import patch
+from django.core.cache import cache
 
 from .models import Currency, ExchangeRate
+from . import services
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -64,16 +66,34 @@ class CurrencyListBySourceTests(TestCase):
         self.user = User.objects.create_user(username="u", password="p", email="u@example.com")
         self.client.force_login(self.user)
 
-    def test_rc_a_list(self):
-        with patch("currencies.views.services.get_rc_a_currencies") as mock:
-            mock.return_value = [{"id": self.usd.id, "code": "USD", "name": "US Dollar"}]
-            resp = self.client.get(reverse("currencies:currency-list", args=["RC_A"]))
+    def test_rem_a_list(self):
+        with patch("currencies.views.services.get_rem_a_currencies") as mock:
+            mock.return_value = {"USD": "US Dollar"}
+            resp = self.client.get(reverse("currencies:currency-list") + "?source=REM_A")
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.json()["currencies"], mock.return_value)
+            self.assertEqual(resp.json(), mock.return_value)
 
-    def test_xe_list(self):
-        with patch("currencies.views.services.get_xe_currencies") as mock:
-            mock.return_value = [{"id": self.php.id, "code": "PHP", "name": "Peso"}]
-            resp = self.client.get(reverse("currencies:currency-list", args=["XE"]))
+    def test_frankfurter_list(self):
+        with patch("currencies.views.services.get_frankfurter_currencies") as mock:
+            mock.return_value = {"PHP": "Peso"}
+            resp = self.client.get(reverse("currencies:currency-list") + "?source=FRANKFURTER")
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.json()["currencies"], mock.return_value)
+            self.assertEqual(resp.json(), mock.return_value)
+            
+            
+class FrankfurterServiceTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_fetch_and_cache(self):
+        sample = {"EUR": "Euro"}
+        Currency.objects.create(code="EUR", name="Euro")
+        with patch("currencies.services.requests.get") as mock_get:
+            mock_resp = mock_get.return_value
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = sample
+            data1 = services.get_frankfurter_currencies()
+            data2 = services.get_frankfurter_currencies()
+            self.assertEqual(data1, sample)
+            self.assertEqual(data2, sample)
+            mock_get.assert_called_once()

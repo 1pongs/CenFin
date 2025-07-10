@@ -18,8 +18,8 @@ class Currency(models.Model):
 
 RATE_SOURCE_CHOICES = [
     ("USER", "User-defined"),
-    ("XE", "XE.com"),
-    ("RC_A", "Remittance Center A"),
+    ("FRANKFURTER", "Frankfurter"),
+    ("REM_A", "Remittance Center A"),
 ]
 
 

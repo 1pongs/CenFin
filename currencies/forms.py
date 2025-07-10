@@ -9,6 +9,13 @@ from .models import Currency, ExchangeRate, RATE_SOURCE_CHOICES
 
 
 class ExchangeRateForm(forms.ModelForm):
+    currency_from = forms.ModelChoiceField(
+        queryset=Currency.objects.filter(is_active=True), to_field_name="code"
+    )
+    currency_to = forms.ModelChoiceField(
+        queryset=Currency.objects.filter(is_active=True), to_field_name="code"
+    )
+    
     class Meta:
         model = ExchangeRate
         fields = [

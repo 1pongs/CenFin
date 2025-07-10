@@ -12,5 +12,5 @@ class User(AbstractUser):
         Currency, on_delete=models.PROTECT, null=True, blank=True
     )
     preferred_rate_source = models.CharField(
-        max_length=20, choices=RATE_SOURCE_CHOICES, default="XE"
+        max_length=20, choices=RATE_SOURCE_CHOICES, default="FRANKFURTER"
     )

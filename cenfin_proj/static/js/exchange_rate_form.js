@@ -16,18 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
     bootstrap.Toast.getOrCreateInstance(div, {delay:4000, autohide:true}).show();
   }
 
-  function renderOptions(list){
-    const currentFrom = fromSel.value;
-    const currentTo = toSel.value;
-    fromSel.innerHTML = '';
-    toSel.innerHTML = '';
-    list.forEach(item => {
-      const opt1 = new Option(`${item.code} – ${item.name}`, item.id, false, item.id == currentFrom);
-      const opt2 = new Option(`${item.code} – ${item.name}`, item.id, false, item.id == currentTo);
-      fromSel.appendChild(opt1);
-      toSel.appendChild(opt2.cloneNode(true));
-    });
-  }
+  function renderOptions(map){
+      const currentFrom = fromSel.value;
+      const currentTo = toSel.value;
+      fromSel.innerHTML = '';
+      toSel.innerHTML = '';
+      Object.entries(map).forEach(([code, name]) => {
+        const opt1 = new Option(`${code} – ${name}`, code, false, code == currentFrom);
+        const opt2 = new Option(`${code} – ${name}`, code, false, code == currentTo);
+        fromSel.appendChild(opt1);
+        toSel.appendChild(opt2.cloneNode(true));
+      });
+    }
 
   async function loadCurrencies(){
     const source = srcSel.value;
@@ -39,11 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(saveBtn) saveBtn.disabled = true;
     try{
-      const resp = await fetch(`/currencies/list/${source}/`);
+        const resp = await fetch(`/api/currencies?source=${encodeURIComponent(source)}`);
       if(!resp.ok) throw new Error('bad');
       const data = await resp.json();
-      if(data.currencies){
-        renderOptions(data.currencies);
+        if(data && Object.keys(data).length){
+            renderOptions(data);
         if(saveBtn) saveBtn.disabled = false;
       }else{
         throw new Error('bad');

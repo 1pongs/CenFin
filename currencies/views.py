@@ -2,6 +2,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+import logging
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -72,18 +73,21 @@ def active_currencies(request):
     return JsonResponse({"currencies": data})
 
 
+logger = logging.getLogger(__name__)
+
+
 @login_required
-def currency_list(request, source):
+def api_currencies(request):
     """Return currencies for the given exchange rate source."""
+    source = request.GET.get("source")
     try:
-        if source == "XE":
-            data = services.get_xe_currencies()
-        elif source == "RC_A":
-            data = services.get_rc_a_currencies()
+        if source == "FRANKFURTER":
+            data = services.get_frankfurter_currencies()
+        elif source == "REM_A":
+            data = services.get_rem_a_currencies()
         else:
-            data = list(
-                Currency.objects.filter(is_active=True).values("id", "code", "name")
-            )
-        return JsonResponse({"currencies": data})
+            data = {}
+        return JsonResponse(data)
     except Exception:
-        return JsonResponse({"error": "Unable to load currencies"}, status=500)
+        logger.exception("Unable to load currencies")
+        return JsonResponse({}, status=502)

@@ -9,5 +9,5 @@ urlpatterns = [
     path('rates/<int:pk>/edit/', views.ExchangeRateUpdateView.as_view(), name='rate-edit'),
     path('rates/<int:pk>/delete/', views.ExchangeRateDeleteView.as_view(), name='rate-delete'),
     path('active/', views.active_currencies, name='active-currencies'),
-    path('list/<str:source>/', views.currency_list, name='currency-list'),
+    path('api/currencies/', views.api_currencies, name='currency-list'),
 ]

@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/lenders/search/', lender_search, name='api_lender_search'),
     path('api/lenders/create/', lender_create, name='api_lender_create'),
     path('api/lenders/search-or-create/', lender_search_or_create, name='api_lender_search_create'),
+    path('api/currencies/', currency_views.api_currencies, name='api_currencies'),
     path('api/issuers/search-or-create/', lender_search_or_create, name='api_issuer_search_create'),
     path('ajax/lender/search/', ajax_lender_search, name='ajax_lender_search'),
     path('ajax/lender/create/', ajax_lender_create, name='ajax_lender_create'),
