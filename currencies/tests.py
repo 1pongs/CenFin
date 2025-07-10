@@ -101,7 +101,7 @@ class FrankfurterServiceTests(TestCase):
 
     def test_error_uses_cache_then_raises(self):
         Currency.objects.create(code="EUR", name="Euro")
-        cache.set(services.FRANKFURTER_CACHE_KEY, {"EUR": "Euro"}, 86400)
+        cache.set(services._CACHE_KEY, {"EUR": "Euro"}, 86400)
         with patch("currencies.services.requests.get", side_effect=Exception("x")):
             data = services.get_frankfurter_currencies()
             self.assertEqual(data, {"EUR": "Euro"})
