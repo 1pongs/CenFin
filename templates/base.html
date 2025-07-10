@@ -31,8 +31,18 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'entities:list' %}">Entities</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'liabilities:list' %}">Liabilities</a></li>
       </ul>
-      <ul class="navbar-nav ms-auto">
+      <ul class="navbar-nav ms-auto align-items-center">
         {% if user.is_authenticated %}
+          <li class="nav-item me-2">
+            <form method="post" action="{% url 'set_currency' %}" class="d-flex">
+              {% csrf_token %}
+              <select name="code" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for c in currency_options %}
+                  <option value="{{ c.code }}" {% if active_currency and c.code == active_currency.code %}selected{% endif %}>{{ c.code }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </li>
           <li class="nav-item"><a class="nav-link" href="{% url 'users:settings' %}">Settings</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'users:logout' %}">Logout</a></li>
         {% else %}

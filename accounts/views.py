@@ -36,7 +36,9 @@ def account_list(request):
     else:
         qs = qs.order_by("account_name")
         
-    base_cur = request.user.base_currency.code if request.user.base_currency else None
+    base_cur = request.session.get("currency")
+    if not base_cur and request.user.base_currency:
+        base_cur = request.user.base_currency.code
     converted = []
     if base_cur:
         for a in qs:

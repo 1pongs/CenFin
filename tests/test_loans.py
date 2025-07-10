@@ -83,7 +83,7 @@ class LoanUpdateTransactionTest(TestCase):
     def test_update_changes_transaction(self):
         from django.urls import reverse
         resp = self.client.post(
-            reverse("liabilities:loan-update", args=[self.loan.pk]),
+            reverse("liabilities:loan-edit", args=[self.loan.pk]),
             {
                 "lender_id": self.lender.pk,
                 "lender_text": self.lender.name,

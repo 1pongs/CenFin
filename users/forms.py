@@ -19,6 +19,8 @@ class UserSettingsForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop("show_actions", True)
         super().__init__(*args, **kwargs)
+        from currencies.models import Currency
+        self.fields["base_currency"].queryset = Currency.objects.filter(is_active=True)
         self.helper = FormHelper()
         self.helper.form_tag = False
 

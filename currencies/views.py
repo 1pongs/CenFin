@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView
-
+from django.views.decorators.http import require_POST
 from .models import ExchangeRate
 from .forms import ExchangeRateForm
 
@@ -37,3 +37,13 @@ class ExchangeRateUpdateView(UpdateView):
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user)
+
+
+@require_POST
+def set_currency(request):
+    """Update the active currency stored in the session."""
+    code = request.POST.get("code")
+    from .models import Currency
+    if Currency.objects.filter(code=code, is_active=True).exists():
+        request.session["currency"] = code
+    return redirect(request.META.get("HTTP_REFERER", "/"))
