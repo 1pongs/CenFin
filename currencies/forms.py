@@ -5,6 +5,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 
+from . import services
+
 from .models import Currency, ExchangeRate, RATE_SOURCE_CHOICES
 
 
@@ -28,6 +30,28 @@ class ExchangeRateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop("show_actions", True)
         super().__init__(*args, **kwargs)
+        
+        source = ""
+        if self.data:
+            source = (self.data.get("source") or "").upper()
+        elif self.instance.pk:
+            source = self.instance.source
+
+        if source == "FRANKFURTER":
+            data = services.get_frankfurter_currencies()
+        elif source == "REM_A":
+            data = services.get_rem_a_currencies()
+        else:
+            data = {}
+
+        if data:
+            choices = [(c, f"{c} — {n}") for c, n in data.items()]
+        else:
+            choices = [("", "No currencies available")]
+
+        self.fields["currency_from"].choices = choices
+        self.fields["currency_to"].choices = choices
+        
         self.helper = FormHelper()
         self.helper.form_tag = False
 

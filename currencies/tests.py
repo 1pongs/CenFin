@@ -147,4 +147,45 @@ class ApiCurrenciesViewTests(TestCase):
         self.client.logout()
         resp = self.client.get(reverse("api_currencies"))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn(reverse(settings.LOGIN_URL), resp["Location"]) 
+        self.assertIn(reverse(settings.LOGIN_URL), resp["Location"])
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class ExchangeRateServerValidationTests(TestCase):
+    def setUp(self):
+        self.php = Currency.objects.create(code="PHP", name="Philippine Peso")
+        self.usd = Currency.objects.create(code="USD", name="US Dollar")
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u", password="p")
+        self.client.force_login(self.user)
+
+    def test_valid_post_creates_rate(self):
+        with patch("currencies.forms.services.get_frankfurter_currencies") as mock:
+            mock.return_value = {"PHP": "Philippine Peso", "USD": "US Dollar"}
+            resp = self.client.post(
+                reverse("currencies:rate-create"),
+                {
+                    "source": "FRANKFURTER",
+                    "currency_from": "PHP",
+                    "currency_to": "USD",
+                    "rate": "1.0",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(ExchangeRate.objects.count(), 1)
+
+    def test_invalid_currency_shows_error(self):
+        with patch("currencies.forms.services.get_frankfurter_currencies") as mock:
+            mock.return_value = {"PHP": "Philippine Peso", "USD": "US Dollar"}
+            resp = self.client.post(
+                reverse("currencies:rate-create"),
+                {
+                    "source": "FRANKFURTER",
+                    "currency_from": "XXX",
+                    "currency_to": "USD",
+                    "rate": "1.0",
+                },
+            )
+        self.assertEqual(resp.status_code, 200)
+        error = resp.context["form"].errors["currency_from"][0]
+        self.assertIn("Select a valid choice", error)
