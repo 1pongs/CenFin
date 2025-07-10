@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.db.models.functions import Coalesce
+from currencies.models import Currency, RATE_SOURCE_CHOICES, get_rate
+
 
 # Create your models here.
 
@@ -69,6 +71,12 @@ class Account(models.Model):
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)
+    currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="accounts",
+        null=True,
+    )
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
@@ -76,6 +84,14 @@ class Account(models.Model):
     objects = AccountManager()
 
     def save(self, *args, **kwargs):
+        if self.currency_id is None:
+            default_cur = None
+            if self.user and getattr(self.user, "base_currency_id", None):
+                default_cur = self.user.base_currency
+            else:
+                default_cur = Currency.objects.filter(code="PHP").first()
+            self.currency = default_cur
+        
         if self._state.adding:
             qs = Account.objects.filter(account_name__iexact=self.account_name, user=self.user)
             if qs.filter(is_active=True).exists():
@@ -109,3 +125,13 @@ class Account(models.Model):
 
     def current_balance(self):
         return self.get_current_balance()
+
+    def balance_in_currency(self, currency_code, source=None):
+        """Return balance converted to the given currency."""
+        if source is None and hasattr(self.user, "preferred_rate_source"):
+            source = self.user.preferred_rate_source
+        target = Currency.objects.get(code=currency_code)
+        rate = get_rate(self.currency, target, source, self.user)
+        if rate is None:
+            return None
+        return self.get_current_balance() * rate

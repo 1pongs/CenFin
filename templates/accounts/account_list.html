@@ -38,7 +38,7 @@
       </span>
     </div>
 
-    {% for a in accounts %}
+    {% for a, conv in accounts_converted %}
        <div class="card shadow-sm rounded-lg mb-3 p-3">
         <div class="d-flex align-items-center">
           <div class="me-3 icon-box flex-shrink-0">
@@ -50,10 +50,21 @@
             </div>
             <small class="text-muted">{{ a.account_type }}</small>
           </div>
-          <div class="ms-auto fw-bold">
-            <span class="amount-display" data-prefix="₱" data-decimals="2">
-              {{ a.net_total|floatformat:2|intcomma }}
-            </span>
+          <div class="ms-auto text-end">
+            <div class="fw-bold">
+              <span class="amount-display" data-prefix="₱" data-decimals="2">
+                {{ a.net_total|floatformat:2|intcomma }}
+              </span>
+              <small class="text-muted">{{ a.currency.code }}</small>
+            </div>
+            {% if conv %}
+            <div>
+              <small class="text-muted">{{ base_currency }}:</small>
+              <span class="amount-display" data-prefix="" data-decimals="2">
+                {{ conv|floatformat:2|intcomma }}
+              </span>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>

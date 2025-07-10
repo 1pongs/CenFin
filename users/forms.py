@@ -8,7 +8,13 @@ from crispy_forms.bootstrap import FormActions
 class UserSettingsForm(forms.ModelForm):
     class Meta:
         model = get_user_model()
-        fields = ["first_name", "last_name", "email"]
+        fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "base_currency",
+            "preferred_rate_source",
+        ]
 
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop("show_actions", True)
@@ -23,7 +29,9 @@ class UserSettingsForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("email", css_class="col-md-12"),
+                Column("email", css_class="col-md-6"),
+                Column("base_currency", css_class="col-md-3"),
+                Column("preferred_rate_source", css_class="col-md-3"),
                 css_class="g-3",
             ),
         ]

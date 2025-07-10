@@ -11,7 +11,7 @@ soft_delete_selected.short_description=_("Soft delete selected %(verbose_name_pl
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display=('account_name','is_active')
+    list_display=("account_name", "currency", "is_active")
 
     actions=['soft_delete_selected']
 

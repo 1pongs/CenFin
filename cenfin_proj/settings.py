@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'transactions',
     'accounts',
     'entities',
+    'currencies',
     'acquisitions.apps.AcquisitionsConfig',
     'insurance.apps.InsuranceConfig',
     'liabilities',

@@ -9,6 +9,7 @@ from django.db.models import Sum, F, Value, DecimalField
 from decimal import Decimal
 
 from accounts.models import Account
+from currencies.models import RATE_SOURCE_CHOICES
 from .forms import AccountForm
 from transactions.models import Transaction
 
@@ -34,14 +35,24 @@ def account_list(request):
         qs = qs.order_by("account_type", "account_name")
     else:
         qs = qs.order_by("account_name")
+        
+    base_cur = request.user.base_currency.code if request.user.base_currency else None
+    converted = []
+    if base_cur:
+        for a in qs:
+            conv = a.balance_in_currency(base_cur)
+            converted.append((a, conv))
+    else:
+        converted = [(a, None) for a in qs]
 
     total_balance = qs.aggregate(total=Sum("net_total"))["total"] or Decimal("0.00")
 
     context = {
-        "accounts": qs,
+        "accounts_converted": converted,
         "search": search,
         "sort": sort,
         "total_balance": total_balance,
+        "base_currency": base_cur,
     }
     return render(request, "accounts/account_list.html", context)
 
