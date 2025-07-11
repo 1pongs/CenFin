@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from liabilities.models import CreditCard, Lender
 from accounts.models import Account
+from django.core.exceptions import ValidationError
 from transactions.forms import TransactionForm
 from entities.models import Entity
 from entities.utils import ensure_fixed_entities
@@ -19,6 +20,7 @@ class CreditCardAccountTests(TestCase):
         self.entity = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
         self.outside_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
+        self.client.force_login(self.user)
 
     def test_account_auto_created(self):
         card = CreditCard.objects.create(
@@ -90,3 +92,57 @@ class CreditCardAccountTests(TestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn("account_source", form.errors)
+
+    def test_soft_delete_then_readd(self):
+        card = CreditCard.objects.create(
+            user=self.user,
+            issuer=self.lender,
+            card_name="Visa",
+            credit_limit=Decimal("1000"),
+            interest_rate=Decimal("1"),
+            statement_day=1,
+            payment_due_day=10,
+        )
+        acc_id = card.account_id
+        card.delete()
+
+        resp = self.client.post(
+            reverse("liabilities:credit-create"),
+            {
+                "issuer_id": self.lender.pk,
+                "issuer_text": self.lender.name,
+                "card_name": "Visa",
+                "credit_limit": "1000",
+                "interest_rate": "1",
+                "statement_day": "1",
+                "payment_due_day": "10",
+            },
+        )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            Account.objects.filter(
+                account_name="Visa", user=self.user, is_active=True
+            ).count(),
+            1,
+        )
+        acc = Account.objects.get(account_name="Visa", user=self.user)
+        self.assertEqual(acc.pk, acc_id)
+
+    def test_active_conflict(self):
+        Account.objects.create(
+            account_name="Master", account_type="Cash", user=self.user
+        )
+        with self.assertRaises(ValidationError):
+            self.client.post(
+                reverse("liabilities:credit-create"),
+                {
+                    "issuer_id": self.lender.pk,
+                    "issuer_text": self.lender.name,
+                    "card_name": "Master",
+                    "credit_limit": "1000",
+                    "interest_rate": "1",
+                    "statement_day": "1",
+                    "payment_due_day": "10",
+                },
+            )

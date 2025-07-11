@@ -174,41 +174,70 @@ class CreditCard(models.Model):
     def save(self, *args, **kwargs):
         new = self._state.adding
         from currencies.models import Currency
+        from accounts.models import Account
+
         if not self.currency:
             if self.user and getattr(self.user, "base_currency_id", None):
                 self.currency = self.user.base_currency.code
             else:
                 cur = Currency.objects.filter(code="PHP").first()
                 self.currency = cur.code if cur else "PHP"
-        super().save(*args, **kwargs)
-        from accounts.models import Account
+        
+        default_cur = None
+        if self.user and getattr(self.user, "base_currency_id", None):
+            default_cur = self.user.base_currency
+        else:
+            default_cur = Currency.objects.filter(code="PHP").first()
 
-        if not self.account_id:
-            default_cur = None
-            if self.user and getattr(self.user, "base_currency_id", None):
-                default_cur = self.user.base_currency
-            else:
-                default_cur = Currency.objects.filter(code="PHP").first()
-            acc = Account(
-                account_name=self.card_name,
-                account_type="Credit",
+        if new:
+            qs = Account.objects.filter(
+                account_name__iexact=self.card_name,
                 user=self.user,
-                currency=default_cur,
             )
-            acc.save()
+            if qs.filter(is_active=True).exists():
+                raise ValidationError({"card_name": "Name already in use."})
+
+            acc = qs.filter(is_active=False).first()
+            if acc:
+                acc.is_active = True
+                acc.account_type = "Credit"
+                if acc.currency_id is None:
+                    acc.currency = default_cur
+                acc.save()
+            else:
+                acc = Account(
+                    account_name=self.card_name,
+                    account_type="Credit",
+                    user=self.user,
+                    currency=default_cur,
+                )
+                acc.save()
             self.account = acc
-            super().save(update_fields=["account"])
+            super().save(*args, **kwargs)
         else:
             acc = self.account
-            updated = False
-            if acc.account_name != self.card_name:
-                acc.account_name = self.card_name
-                updated = True
-            if acc.user != self.user:
-                acc.user = self.user
-                updated = True
-            if updated:
+            if acc:
+                if acc.account_name != self.card_name:
+                    qs = Account.objects.filter(
+                        account_name__iexact=self.card_name,
+                        user=self.user,
+                        is_active=True,
+                    ).exclude(pk=acc.pk)
+                    if qs.exists():
+                        raise ValidationError({"card_name": "Name already in use."})
+                    acc.account_name = self.card_name
+
+                if acc.user != self.user:
+                    acc.user = self.user
+
+                if acc.account_type != "Credit":
+                    acc.account_type = "Credit"
+
+                if acc.currency_id is None:
+                    acc.currency = default_cur
+
                 acc.save()
+            super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         if self.account_id:
