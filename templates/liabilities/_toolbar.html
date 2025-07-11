@@ -15,6 +15,12 @@
       <option value="{{ ent.pk }}" {% if entity_id|default:''|stringformat:'s' == ent.pk|stringformat:'s' %}selected{% endif %}>{{ ent.name }}</option>
     {% endfor %}
   </select>
+  <select name="currency" class="form-select mb-2">
+    <option value="">All currencies</option>
+    {% for cur in currency_options %}
+      <option value="{{ cur.code }}" {% if currency_code == cur.code %}selected{% endif %}>{{ cur.code }}</option>
+    {% endfor %}
+  </select>
 {% endblock %}
 {% block sort_options %}
   <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort by Name</option>

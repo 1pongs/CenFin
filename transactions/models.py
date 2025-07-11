@@ -144,4 +144,5 @@ class Transaction(models.Model):
             if acc and hasattr(acc, "credit_card"):
                 card = acc.credit_card
                 card.current_balance = acc.get_current_balance()
-                card.save(update_fields=["current_balance"])
+                bal = acc.get_current_balance()
+                card.current_balance = abs(bal)

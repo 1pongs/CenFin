@@ -205,7 +205,8 @@ class TransactionForm(forms.ModelForm):
 
         if acc and acc.account_name != "Outside":
             if hasattr(acc, "credit_card"):
-                if acc.get_current_balance() + amt > acc.credit_card.credit_limit:
+                bal = abs(acc.get_current_balance())
+                if bal + amt > acc.credit_card.credit_limit:
                     self.add_error(
                         "account_source",
                         "Credit limit exceeded.",
@@ -214,7 +215,7 @@ class TransactionForm(forms.ModelForm):
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if ent and ent.entity_name != "Outside":
-            if ent.current_balance() < amt:
+            if not getattr(ent, "is_account_entity", False) and ent.current_balance() < amt:
                 self.add_error("entity_source", f"Insufficient funds in {ent}.")
 
         return cleaned

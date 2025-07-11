@@ -37,6 +37,7 @@ class LiabilityListView(TemplateView):
         end = params.get("end", "")
         ent = params.get("entity")
         sort = params.get("sort", "name")
+        currency = params.get("currency")
 
         if tab == "loans":
             qs = Loan.objects.filter(user=self.request.user)
@@ -60,6 +61,8 @@ class LiabilityListView(TemplateView):
                     pass
             if ent:
                 qs = qs.filter(lender_id=ent)
+            if currency:
+                qs = qs.filter(currency=currency)
             if sort == "balance":
                 qs = qs.order_by("-outstanding_balance")
             elif sort == "date":
@@ -88,6 +91,8 @@ class LiabilityListView(TemplateView):
                     pass
             if ent:
                 qs = qs.filter(issuer_id=ent)
+            if currency:
+                qs = qs.filter(currency=currency)
             if sort == "balance":
                 qs = qs.order_by("-current_balance")
             elif sort == "date":
@@ -115,16 +120,18 @@ class LiabilityListView(TemplateView):
             "end": self.request.GET.get("end", ""),
             "entity_id": self.request.GET.get("entity", ""),
             "sort": self.request.GET.get("sort", "name"),
+            "currency_code": self.request.GET.get("currency", ""),
             "entities": Lender.objects.all().order_by("name"),
         })
         for loan in ctx.get("loans", []):
             loan.field_tags = [
                 ("Rate", f"{loan.interest_rate}%"),
-                ("Maturity", loan.maturity_date.strftime("%b %d, %Y") if loan.maturity_date else "-")
+                ("Maturity", loan.maturity_date.strftime("%b %d, %Y") if loan.maturity_date else "-"),
+                ("Currency", loan.currency),
             ]
         for card in ctx.get("credit_cards", []):
             card.field_tags = [
-                ("Limit", f"{card.credit_limit:,.2f}"),
+                ("Limit", f"{card.credit_limit:,.2f} {card.currency}"),
                 ("Rate", f"{card.interest_rate}%")
             ]
         return ctx
@@ -143,6 +150,7 @@ class CreditCardCreateView(CreateView):
         kwargs = super().get_form_kwargs()
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
         kwargs["cancel_url"] = cancel
+        kwargs["user"] = self.request.user
         return kwargs
 
 
@@ -183,6 +191,7 @@ class CreditCardUpdateView(UpdateView):
         kwargs = super().get_form_kwargs()
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
         kwargs["cancel_url"] = cancel
+        kwargs["user"] = self.request.user
         if self.object:
             kwargs.setdefault("initial", {})
             kwargs["initial"].update({

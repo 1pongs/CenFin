@@ -41,6 +41,7 @@ class Loan(models.Model):
     lender = models.ForeignKey(Lender, on_delete=models.CASCADE, related_name="loans")
     principal_amount = models.DecimalField(max_digits=12, decimal_places=2)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)
+    currency = models.CharField(max_length=3, blank=True)
     received_date = models.DateField()
     term_months = models.PositiveIntegerField()
     maturity_date = models.DateField(blank=True, null=True)
@@ -58,6 +59,16 @@ class Loan(models.Model):
 
     def save(self, *args, **kwargs):
         new = self._state.adding
+        from currencies.models import Currency
+        if not self.currency:
+            if self.user and getattr(self.user, "base_currency_id", None):
+                self.currency = self.user.base_currency.code
+            else:
+                cur = Currency.objects.filter(code="PHP").first()
+                if cur:
+                    self.currency = cur.code
+                else:
+                    self.currency = "PHP"
         if not self.maturity_date and self.received_date and self.term_months:
             self.maturity_date = _add_months(self.received_date, self.term_months)
         if not self.term_months and self.received_date and self.maturity_date:
@@ -143,6 +154,7 @@ class CreditCard(models.Model):
     card_name = models.CharField(max_length=100)
     credit_limit = models.DecimalField(max_digits=12, decimal_places=2)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)
+    currency = models.CharField(max_length=3, blank=True)
     statement_day = models.PositiveIntegerField()
     payment_due_day = models.PositiveIntegerField()
     current_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
@@ -161,9 +173,15 @@ class CreditCard(models.Model):
 
     def save(self, *args, **kwargs):
         new = self._state.adding
+        from currencies.models import Currency
+        if not self.currency:
+            if self.user and getattr(self.user, "base_currency_id", None):
+                self.currency = self.user.base_currency.code
+            else:
+                cur = Currency.objects.filter(code="PHP").first()
+                self.currency = cur.code if cur else "PHP"
         super().save(*args, **kwargs)
         from accounts.models import Account
-        from currencies.models import Currency
 
         if not self.account_id:
             default_cur = None

@@ -7,6 +7,7 @@ from accounts.models import Account
 from entities.models import Entity
 from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
+from currencies.models import Currency
 from .models import Loan, CreditCard, Lender
 
 class LoanForm(forms.ModelForm):
@@ -31,12 +32,13 @@ class LoanForm(forms.ModelForm):
         widget=forms.HiddenInput(),
         required=False
     )
+    currency = forms.ChoiceField(choices=[], required=False)
 
     class Meta:
         model = Loan
         fields = [
             'lender_id', 'lender_text', 'principal_amount', 'interest_rate',
-            'received_date', 'term_months'
+            'received_date', 'term_months', 'currency'
         ]
         widgets = {
             'received_date': forms.DateInput(attrs={'type': 'date'}),
@@ -52,6 +54,14 @@ class LoanForm(forms.ModelForm):
         self.fields['lender_id'].required = False
         self.fields['lender_text'].required = False
         self.fields['lender_text'].widget.attrs.update({'list': 'lender-list', 'autocomplete': 'off'})
+        choices = [(c.code, f"{c.code} — {c.name}") for c in Currency.objects.filter(is_active=True)]
+        self.fields['currency'].choices = choices
+        if self.instance.pk:
+            self.fields['currency'].initial = self.instance.currency
+        elif user and getattr(user, 'base_currency_id', None):
+            self.fields['currency'].initial = user.base_currency.code
+        elif choices:
+            self.fields['currency'].initial = choices[0][0]
         if self.instance.pk and self.instance.lender_id:
             self.fields['lender_id'].initial = self.instance.lender_id
             self.fields['lender_text'].initial = self.instance.lender.name
@@ -89,8 +99,9 @@ class LoanForm(forms.ModelForm):
                 css_class='g-3'
             ),
             Row(
-                Column('interest_rate', css_class='col-md-6'),
-                Column('term_months', css_class='col-md-6'),
+                Column('interest_rate', css_class='col-md-4'),
+                Column('term_months', css_class='col-md-4'),
+                Column('currency', css_class='col-md-4'),
                 css_class='g-3'
             ),
             Row(Column('account_destination', css_class='col-md-6'), css_class='g-3'),
@@ -136,19 +147,29 @@ class LoanForm(forms.ModelForm):
 class CreditCardForm(forms.ModelForm):
     issuer_id = forms.ModelChoiceField(queryset=Lender.objects.all(), widget=forms.HiddenInput(), required=False)
     issuer_text = forms.CharField(label="Lender / Issuer", required=False)
+    currency = forms.ChoiceField(choices=[], required=False)
 
     class Meta:
         model = CreditCard
-        fields = ['issuer_id', 'issuer_text', 'card_name', 'credit_limit', 'interest_rate', 'statement_day', 'payment_due_day']
+        fields = ['issuer_id', 'issuer_text', 'card_name', 'credit_limit', 'interest_rate', 'currency', 'statement_day', 'payment_due_day']
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop('show_actions', True)
         cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.fields['issuer_id'].required = False
         self.fields['issuer_text'].required = False
         self.fields['issuer_text'].widget.attrs.update({'list': 'issuer-list', 'autocomplete': 'off'})
+        choices = [(c.code, f"{c.code} — {c.name}") for c in Currency.objects.filter(is_active=True)]
+        self.fields['currency'].choices = choices
+        if self.instance.pk:
+            self.fields['currency'].initial = self.instance.currency
+        elif user and getattr(user, 'base_currency_id', None):
+            self.fields['currency'].initial = user.base_currency.code
+        elif choices:
+            self.fields['currency'].initial = choices[0][0]
         if self.instance.pk and self.instance.issuer_id:
             self.fields['issuer_id'].initial = self.instance.issuer_id
             self.fields['issuer_text'].initial = self.instance.issuer.name
@@ -165,8 +186,9 @@ class CreditCardForm(forms.ModelForm):
                 css_class='g-3'
             ),
             Row(
-                Column('credit_limit', css_class='col-md-6'),
-                Column('interest_rate', css_class='col-md-6'),
+                Column('credit_limit', css_class='col-md-4'),
+                Column('interest_rate', css_class='col-md-4'),
+                Column('currency', css_class='col-md-4'),
                 css_class='g-3'
             ),
             Row(
