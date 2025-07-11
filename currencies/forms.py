@@ -16,8 +16,10 @@ class ExchangeRateForm(forms.ModelForm):
     
     error_messages = {"invalid_choice": _("Select a valid currency code.")}
 
-    # Use simple CharFields so we can rebuild the <select> options
-    # dynamically every time the form is instantiated.
+    # Keep plain CharFields so the <select> values remain simple currency codes
+    # which are rebuilt dynamically by JavaScript.  The ``clean_`` methods
+    # convert the posted code back to a :class:`Currency` instance so that the
+    # model always receives proper FK objects.
     currency_from = forms.CharField(widget=forms.Select())
     currency_to = forms.CharField(widget=forms.Select())
     
@@ -35,11 +37,13 @@ class ExchangeRateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         source_raw = (self.data.get("source") or getattr(self.instance, "source", "")).upper()
-        currency_map = (
-            services.get_frankfurter_currencies() if source_raw == "FRANKFURTER"
-            else services.get_rem_a_currencies() if source_raw == "REM_A"
-            else {}
-        )
+        if source_raw == "FRANKFURTER":
+            currency_map = services.get_frankfurter_currencies()
+        elif source_raw == "REM_A":
+            currency_map = services.get_rem_a_currencies()
+        else:  # USER
+            qs = Currency.objects.filter(is_active=True)
+            currency_map = {c.code: c.name for c in qs}
         choices = [(c, f"{c} — {n}") for c, n in currency_map.items()] or [("", "None")]
         self.currency_map = currency_map
         self.fields["currency_from"].widget.choices = choices
@@ -75,44 +79,26 @@ class ExchangeRateForm(forms.ModelForm):
         self.helper.layout = Layout(*layout_fields)
 
     def _get_currency(self, code: str) -> Currency:
-        """Return the :class:`Currency` instance matching ``code`` or raise."""
+        """Return the active :class:`Currency` matching ``code`` or raise."""
         try:
-            return Currency.objects.get(code=code)
+            return Currency.objects.get(code=code, is_active=True)
         except Currency.DoesNotExist:
             raise forms.ValidationError(
                 self.error_messages["invalid_choice"],
                 code="invalid_choice",
             )
             
-    def _code_to_currency(self, code: str, field: str) -> Currency:
-        """Return Currency instance for `code`, or raise ValidationError."""
-        try:
-            return Currency.objects.get(code=code)
-        except Currency.DoesNotExist:
-            raise forms.ValidationError(
-                self.error_messages["invalid_choice"], code="invalid_choice"
-            )
+    def _clean_currency(self, field: str) -> Currency:
+        """Helper for clean_currency_from/to."""
+        code = (self.cleaned_data.get(field) or "").upper()
+        if self.currency_map and code not in self.currency_map:
+            raise forms.ValidationError(self.error_messages["invalid_choice"], code="invalid_choice")
+        if code:
+            return self._get_currency(code)
+        return None
 
-    def clean(self):
-        cleaned_data = super().clean()
-        for field in ("currency_from", "currency_to"):
-            code = (cleaned_data.get(field) or "").upper()
-            if self.currency_map and code not in self.currency_map:
-                self.add_error(field, self.error_messages["invalid_choice"])
-                continue
-            if code:
-                cleaned_data[field] = self._get_currency(code)
-        return cleaned_data
+    def clean_currency_from(self):
+        return self._clean_currency("currency_from")
 
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-
-        for attr in ("currency_from", "currency_to"):
-            value = getattr(instance, attr)
-            if isinstance(value, str):
-                setattr(instance, attr, self._code_to_currency(value, attr))
-
-        if commit:
-            instance.save()
-            self.save_m2m()
-        return instance
+    def clean_currency_to(self):
+        return self._clean_currency("currency_to")
