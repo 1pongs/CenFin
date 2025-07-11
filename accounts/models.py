@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Lower
+from django.db.models import Q
 from currencies.models import Currency, RATE_SOURCE_CHOICES, get_rate
 
 
@@ -82,6 +83,16 @@ class Account(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
 
     objects = AccountManager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("account_name"),
+                "user",
+                condition=Q(is_active=True),
+                name="uniq_account_name_user_active_ci",
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.currency_id is None:
