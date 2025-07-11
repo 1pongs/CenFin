@@ -95,6 +95,7 @@ class Account(models.Model):
         ]
 
     def save(self, *args, **kwargs):
+        force_insert = kwargs.pop("force_insert", False)
         if self.currency_id is None:
             default_cur = None
             if self.user and getattr(self.user, "base_currency_id", None):
@@ -113,7 +114,7 @@ class Account(models.Model):
                 self.pk = inactive.pk
                 self.is_active = True
                 self._state.adding = False
-        super().save(*args, **kwargs)
+        super().save(force_insert=force_insert if self._state.adding else False, *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         self.is_active=False

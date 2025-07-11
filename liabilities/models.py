@@ -189,12 +189,13 @@ class CreditCard(models.Model):
                 default_cur = self.user.base_currency
             else:
                 default_cur = Currency.objects.filter(code="PHP").first()
-            acc = Account.objects.create(
+            acc = Account(
                 account_name=self.card_name,
                 account_type="Credit",
                 user=self.user,
                 currency=default_cur,
             )
+            acc.save()
             self.account = acc
             super().save(update_fields=["account"])
         else:
@@ -208,3 +209,8 @@ class CreditCard(models.Model):
                 updated = True
             if updated:
                 acc.save()
+
+    def delete(self, *args, **kwargs):
+        if self.account_id:
+            self.account.delete()
+        super().delete(*args, **kwargs)
