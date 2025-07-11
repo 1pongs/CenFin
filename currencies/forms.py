@@ -79,14 +79,27 @@ class ExchangeRateForm(forms.ModelForm):
         self.helper.layout = Layout(*layout_fields)
 
     def _get_currency(self, code: str) -> Currency:
-        """Return the active :class:`Currency` matching ``code`` or raise."""
-        try:
-            return Currency.objects.get(code=code, is_active=True)
-        except Currency.DoesNotExist:
+        """Return an active :class:`Currency` matching ``code``.
+
+        If the currency does not yet exist but the code is part of
+        ``self.currency_map`` we create it on the fly so that valid ISO
+        codes coming from the external services can be saved without
+        requiring manual seed data.
+        """
+        name = self.currency_map.get(code)
+        if not name:
             raise forms.ValidationError(
                 self.error_messages["invalid_choice"],
                 code="invalid_choice",
             )
+
+        currency, _ = Currency.objects.get_or_create(code=code, defaults={"name": name})
+        if not currency.is_active:
+            raise forms.ValidationError(
+                self.error_messages["invalid_choice"],
+                code="invalid_choice",
+            )
+        return currency
             
     def _clean_currency(self, field: str) -> Currency:
         """Helper for clean_currency_from/to."""
