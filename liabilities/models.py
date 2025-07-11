@@ -146,8 +146,47 @@ class CreditCard(models.Model):
     statement_day = models.PositiveIntegerField()
     payment_due_day = models.PositiveIntegerField()
     current_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    account = models.OneToOneField(
+        "accounts.Account",
+        on_delete=models.CASCADE,
+        related_name="credit_card",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.card_name} ({self.issuer})"
+
+    def save(self, *args, **kwargs):
+        new = self._state.adding
+        super().save(*args, **kwargs)
+        from accounts.models import Account
+        from currencies.models import Currency
+
+        if not self.account_id:
+            default_cur = None
+            if self.user and getattr(self.user, "base_currency_id", None):
+                default_cur = self.user.base_currency
+            else:
+                default_cur = Currency.objects.filter(code="PHP").first()
+            acc = Account.objects.create(
+                account_name=self.card_name,
+                account_type="Credit",
+                user=self.user,
+                currency=default_cur,
+            )
+            self.account = acc
+            super().save(update_fields=["account"])
+        else:
+            acc = self.account
+            updated = False
+            if acc.account_name != self.card_name:
+                acc.account_name = self.card_name
+                updated = True
+            if acc.user != self.user:
+                acc.user = self.user
+                updated = True
+            if updated:
+                acc.save()

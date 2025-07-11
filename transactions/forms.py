@@ -57,9 +57,11 @@ class TransactionForm(forms.ModelForm):
             )
 
         if user is not None:
+            allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]
             account_qs = Account.objects.filter(
-                Q(user=user) | Q(user__isnull=True), is_active=True
-            )
+                Q(user=user) | Q(user__isnull=True),
+                is_active=True,
+            ).filter(Q(account_type__in=allowed_types) | Q(account_type="Outside"))
             entity_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
             )
@@ -202,7 +204,13 @@ class TransactionForm(forms.ModelForm):
         ent = cleaned.get("entity_source")
 
         if acc and acc.account_name != "Outside":
-            if acc.get_current_balance() < amt:
+            if hasattr(acc, "credit_card"):
+                if acc.get_current_balance() + amt > acc.credit_card.credit_limit:
+                    self.add_error(
+                        "account_source",
+                        "Credit limit exceeded.",
+                    )
+            elif acc.get_current_balance() < amt:
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if ent and ent.entity_name != "Outside":
@@ -291,9 +299,11 @@ class TemplateForm(forms.ModelForm):
         )
 
         if user is not None:
+            allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]
             account_qs = Account.objects.filter(
-                Q(user=user) | Q(user__isnull=True), is_active=True
-            )
+                Q(user=user) | Q(user__isnull=True),
+                is_active=True,
+            ).filter(Q(account_type__in=allowed_types) | Q(account_type="Outside"))
             entity_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
             )

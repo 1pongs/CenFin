@@ -139,3 +139,9 @@ class Transaction(models.Model):
         self._populate_from_template()
         self._apply_defaults()
         super().save(*args, **kwargs)
+        for acc_field in ["account_source", "account_destination"]:
+            acc = getattr(self, acc_field, None)
+            if acc and hasattr(acc, "credit_card"):
+                card = acc.credit_card
+                card.current_balance = acc.get_current_balance()
+                card.save(update_fields=["current_balance"])
