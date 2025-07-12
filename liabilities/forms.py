@@ -156,6 +156,7 @@ class CreditCardForm(forms.ModelForm):
         show_actions = kwargs.pop('show_actions', True)
         cancel_url = kwargs.pop('cancel_url', reverse_lazy("liabilities:list"))
         user = kwargs.pop('user', None)
+        self.user = user
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -207,6 +208,18 @@ class CreditCardForm(forms.ModelForm):
             )
         self.helper.layout = Layout(*layout_fields)
 
+    def clean_card_name(self):
+        name = (self.cleaned_data.get('card_name') or '').strip()
+        if not name:
+            return name
+        from accounts.models import Account
+        qs = Account.objects.filter(account_name__iexact=name, user=self.user)
+        if self.instance.pk and self.instance.account_id:
+            qs = qs.exclude(pk=self.instance.account_id)
+        if qs.filter(is_active=True).exists():
+            raise forms.ValidationError('Name already in use.')
+        return name
+    
     def clean(self):
         cleaned_data = super().clean()
         issuer = cleaned_data.get('issuer_id')

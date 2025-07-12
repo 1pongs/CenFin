@@ -19,7 +19,7 @@ class SetCurrencyViewTests(TestCase):
         resp = self.client.post(url + "?next=/home/", {"code": self.cur.code})
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], "/home/")
-        self.assertEqual(self.client.session["currency"], self.cur.code)
+        self.assertEqual(self.client.session["active_currency"], self.cur.code)
 
     def test_anonymous_redirects_to_login(self):
         url = reverse("set_currency")

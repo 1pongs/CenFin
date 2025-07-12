@@ -19,7 +19,7 @@ class CurrencySelectorTests(TestCase):
 
     def test_set_currency_updates_session(self):
         self.client.post(reverse("set_currency"), {"code": self.cur_php.code})
-        self.assertEqual(self.client.session["currency"], self.cur_php.code)
+        self.assertEqual(self.client.session["active_currency"], self.cur_php.code)
         resp = self.client.get(reverse("dashboard:dashboard"))
         self.assertEqual(resp.context["active_currency"].code, self.cur_php.code)
 
@@ -34,4 +34,4 @@ class CurrencySelectorTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.user.refresh_from_db()
         self.assertEqual(self.user.base_currency_id, self.cur_php.id)
-        self.assertEqual(self.client.session["currency"], self.cur_php.code)
+        self.assertEqual(self.client.session["active_currency"], self.cur_php.code)

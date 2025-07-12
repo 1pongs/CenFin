@@ -2,7 +2,6 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from django.core.exceptions import ValidationError
 from liabilities.models import Lender
 from accounts.models import Account
 
@@ -35,8 +34,10 @@ class AccountNameReuseTests(TestCase):
 
     def test_active_account_conflict(self):
         Account.objects.create(account_name="Woori Card", account_type="Cash", user=self.user)
-        with self.assertRaises(ValidationError):
-            self._post_card()
+        resp = self._post_card()
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertIn("card_name", form.errors)
 
     def test_soft_delete_then_readd_single_active(self):
         acc = Account.objects.create(account_name="Woori Card", account_type="Cash", user=self.user)

@@ -60,6 +60,7 @@ def set_currency(request):
     """Store the selected currency code in the session."""
     code = (request.POST.get("code") or "").upper()
     if Currency.objects.filter(code=code, is_active=True).exists():
+        request.session["active_currency"] = code
         request.session["currency"] = code
     next_url = request.GET.get("next", "/")
     return redirect(next_url)

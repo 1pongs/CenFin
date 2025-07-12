@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% load humanize %}
+{% load humanize currency_tags %}
 
 {% block title %}Accounts · CENFIN{% endblock %}
 
@@ -31,11 +31,9 @@
     </div>
   </aside>
   <div class="col-md-9">
+    {% display total_balance base_currency as disp_total %}
     <div class="text-end fw-bold mb-2">
-      Total Balance:
-      <span class="amount-display" data-prefix="₱" data-decimals="2">
-        {{ total_balance|floatformat:2|intcomma }}
-      </span>
+      Total Balance: {{ disp_total|floatformat:2|intcomma }}
     </div>
 
     {% for a, conv in accounts_converted %}
@@ -51,18 +49,16 @@
             <small class="text-muted">{{ a.account_type }}</small>
           </div>
           <div class="ms-auto text-end">
+            {% display a.net_total a.currency.code as acc_total %}
             <div class="fw-bold">
-              <span class="amount-display" data-prefix="₱" data-decimals="2">
-                {{ a.net_total|floatformat:2|intcomma }}
-              </span>
+              {{ acc_total|floatformat:2|intcomma }}
               <small class="text-muted">{{ a.currency.code }}</small>
             </div>
             {% if conv %}
+            {% display conv base_currency as conv_disp %}
             <div>
               <small class="text-muted">{{ base_currency }}:</small>
-              <span class="amount-display" data-prefix="" data-decimals="2">
-                {{ conv|floatformat:2|intcomma }}
-              </span>
+              {{ conv_disp|floatformat:2|intcomma }}
             </div>
             {% endif %}
           </div>

@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from accounts.models import Account
 from currencies.models import RATE_SOURCE_CHOICES
+from utils.currency import get_active_currency
 from .forms import AccountForm
 from transactions.models import Transaction
 
@@ -36,9 +37,8 @@ def account_list(request):
     else:
         qs = qs.order_by("account_name")
         
-    base_cur = request.session.get("currency")
-    if not base_cur and request.user.base_currency:
-        base_cur = request.user.base_currency.code
+    active_cur = get_active_currency(request)
+    base_cur = active_cur.code if active_cur else None
     converted = []
     if base_cur:
         for a in qs:
