@@ -167,6 +167,7 @@ class Acquisition(models.Model):
         tx_kwargs = dict(
             user=self.user,
             date=sell_date,
+            currency=self.purchase_tx.currency if self.purchase_tx else None,
             account_source=outside_acc,
             account_destination=account_dest,
             entity_source=outside_ent,

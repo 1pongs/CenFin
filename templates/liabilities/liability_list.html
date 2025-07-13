@@ -1,5 +1,5 @@
 {% extends 'liabilities/base.html' %}
-{% load humanize static %}
+{% load humanize static currency_tags %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -13,7 +13,10 @@
         {% for loan in loans %}
           <div class="col">
             {% url 'liabilities:loan-edit' loan.pk as edit_url %}
-          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan.principal_amount|floatformat:2|intcomma|stringformat:'s'|add:' '|add:loan.currency rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% display loan.principal_amount loan.currency as disp_principal %}
+          {% with '<span class="amount-display" data-prefix="'|add:active_currency_symbol|add:'" data-decimals="2">'|add:disp_principal|floatformat:2|intcomma|add:'</span>' as loan_amt %}
+          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt|safe rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% endwith %}
           </div>
         {% empty %}
           <div class="card text-center p-5">

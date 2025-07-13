@@ -93,6 +93,7 @@ class Loan(models.Model):
                 description=f"Loan from {self.lender.name}",
                 transaction_type="loan_disbursement",
                 amount=self.principal_amount,
+                currency=Currency.objects.filter(code=self.currency).first(),
                 account_source=outside_acc,
                 account_destination=getattr(self, '_account_destination', None),
                 entity_source=outside_ent,
@@ -106,6 +107,7 @@ class Loan(models.Model):
                 tx.date = self.received_date
                 tx.amount = self.principal_amount
                 tx.description = f"Loan from {self.lender.name}"
+                tx.currency = Currency.objects.filter(code=self.currency).first()
                 if getattr(self, "_account_destination", None) is not None:
                     tx.account_destination = self._account_destination
                 if getattr(self, "_account_source", None) is not None:
