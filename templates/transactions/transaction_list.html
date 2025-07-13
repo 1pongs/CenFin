@@ -104,7 +104,7 @@
           <td>{{ txn.account_source }}</td>
           <td>{{ txn.account_destination }}</td>
           <td class="text-end">
-            {% display txn.amount base_currency.code as disp_amt %}
+            {% display txn.amount txn.currency.code as disp_amt %}
             <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">
               {{ disp_amt|floatformat:2|intcomma }}
             </span>

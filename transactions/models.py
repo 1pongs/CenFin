@@ -4,6 +4,7 @@ from django.conf import settings
 from decimal import Decimal
 from accounts.models import Account
 from entities.models import Entity
+from currencies.models import Currency
 from django.db.models import JSONField
 from django.core.exceptions import ValidationError
 from .constants import transaction_type_TX_MAP, TXN_TYPE_CHOICES
@@ -97,6 +98,12 @@ class Transaction(models.Model):
     asset_type_destination = models.CharField(max_length=20, editable=False, blank=True, null=True)
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        null=True,
+    )
     categories = models.ManyToManyField(CategoryTag, related_name="transactions", blank=True)
     remarks = models.TextField(blank=True, null=True)
 
@@ -136,6 +143,14 @@ class Transaction(models.Model):
         ent_id = self.entity_source_id
 
     def save(self, *args, **kwargs):
+        if self.currency_id is None:
+            default_cur = None
+            if self.user and getattr(self.user, "base_currency_id", None):
+                default_cur = self.user.base_currency
+            else:
+                default_cur = Currency.objects.filter(code="PHP").first()
+            self.currency = default_cur
+
         self._populate_from_template()
         self._apply_defaults()
         super().save(*args, **kwargs)

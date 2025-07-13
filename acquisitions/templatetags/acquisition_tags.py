@@ -27,8 +27,10 @@ def render_acquisition_card(context, acq):
     def _fmt_amt(val):
         if val is None:
             return None
-        base_code = request.user.base_currency.code if getattr(request.user, 'base_currency_id', None) else 'PHP'
-        amt = amount_for_display(request, val, base_code) if request else val
+        currency_code = acq.purchase_tx.currency.code if acq.purchase_tx and acq.purchase_tx.currency else (
+            request.user.base_currency.code if getattr(request.user, 'base_currency_id', None) else 'PHP'
+        )
+        amt = amount_for_display(request, val, currency_code) if request else val
         active = get_active_currency(request) if request else None
         symbol = get_currency_symbol(active.code) if active else ''
         return f"{symbol}{intcomma(floatformat(amt, 2))}"

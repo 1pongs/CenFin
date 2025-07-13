@@ -9,6 +9,7 @@ from .constants import TXN_TYPE_CHOICES
 from .models import Transaction, TransactionTemplate, CategoryTag
 from accounts.models import Account
 from entities.models import Entity
+from currencies.models import Currency
 from entities.utils import ensure_fixed_entities
 from accounts.utils import ensure_outside_account
 
@@ -29,6 +30,7 @@ class TransactionForm(forms.ModelForm):
         fields = [
             "template", "date", "description",
             "transaction_type", "amount",
+            "currency",
             "account_source", "account_destination",
             "entity_source", "entity_destination",
             "remarks",
@@ -45,6 +47,18 @@ class TransactionForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.user = user
+
+        # populate currency choices and default
+        self.fields['currency'].queryset = Currency.objects.filter(is_active=True)
+        self.fields['currency'].required = False
+        if self.instance.pk and self.instance.currency_id:
+            self.fields['currency'].initial = self.instance.currency
+        elif user and getattr(user, 'base_currency_id', None):
+            self.fields['currency'].initial = user.base_currency
+        else:
+            first = self.fields['currency'].queryset.first()
+            if first:
+                self.fields['currency'].initial = first
 
          # mark amount field for live comma formatting
         css = self.fields['amount'].widget.attrs.get('class', '')
@@ -147,7 +161,8 @@ class TransactionForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("amount",           css_class="col-md-6"),
+                Column("amount",   css_class="col-md-6"),
+                Column("currency", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(

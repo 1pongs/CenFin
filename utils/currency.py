@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Union
-from currencies.models import Currency, get_rate
+from currencies.models import Currency, ExchangeRate, get_rate
+import requests
 
 # Map a few common currency codes to their display symbols. Used when
 # rendering monetary values in templates and JSON responses.
@@ -44,7 +45,25 @@ def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_
         source = "FRANKFURTER"
     rate = get_rate(orig_currency, target_currency, source, user)
     if rate is None:
-        return amount
+        # attempt live fetch from Frankfurter when missing
+        try:
+            resp = requests.get(
+                f"https://api.frankfurter.app/latest?from={orig_currency.code}&to={target_currency.code}",
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            rate_val = Decimal(str(data["rates"][target_currency.code]))
+            ExchangeRate.objects.update_or_create(
+                source="FRANKFURTER",
+                currency_from=orig_currency,
+                currency_to=target_currency,
+                user=user,
+                defaults={"rate": rate_val},
+            )
+            rate = rate_val
+        except Exception:
+            return amount
     return amount * rate
 
 

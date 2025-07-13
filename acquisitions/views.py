@@ -14,6 +14,7 @@ from decimal import Decimal
 from .models import Acquisition
 from .forms import AcquisitionForm, SellAcquisitionForm
 from transactions.models import Transaction
+from currencies.models import Currency
 from accounts.models import Account
 from accounts.forms import AccountForm
 from entities.models import Entity
@@ -148,6 +149,7 @@ class AcquisitionCreateView(FormView):
             description=data["name"],
             transaction_type="buy acquisition",
             amount=data["amount"],
+            currency=data["currency"],
             account_source=data["account_source"],
             account_destination=data["account_destination"],
             entity_source=data["entity_source"],
@@ -233,6 +235,7 @@ class AcquisitionUpdateView(AcquisitionCreateView):
                     {
                         "date": tx.date,
                         "amount": tx.amount,
+                        "currency": tx.currency_id,
                         "account_source": tx.account_source_id,
                         "account_destination": tx.account_destination_id,
                         "entity_source": tx.entity_source_id,
@@ -254,6 +257,7 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         tx.date = data["date"]
         tx.description = data["name"]
         tx.amount = data["amount"]
+        tx.currency = data["currency"]
         tx.account_source = data["account_source"]
         tx.account_destination = data["account_destination"]
         tx.entity_source = data["entity_source"]

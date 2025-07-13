@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from accounts.models import Account
 from entities.models import Entity
+from currencies.models import Currency
 
 
 class AcquisitionForm(forms.Form):
@@ -29,6 +30,7 @@ class AcquisitionForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"inputmode": "decimal"}),
     )
+    currency = forms.ModelChoiceField(queryset=Currency.objects.none(), required=False)
     account_source = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
     account_destination = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
     entity_source = forms.ModelChoiceField(queryset=Entity.objects.all(), required=False)
@@ -98,6 +100,13 @@ class AcquisitionForm(forms.Form):
             if fld in self.fields:
                 css = self.fields[fld].widget.attrs.get("class", "")
                 self.fields[fld].widget.attrs["class"] = f"{css} amount-input".strip()
+        self.fields["currency"].queryset = Currency.objects.filter(is_active=True)
+        if user and getattr(user, "base_currency_id", None):
+            self.fields["currency"].initial = user.base_currency
+        else:
+            first = self.fields["currency"].queryset.first()
+            if first:
+                self.fields["currency"].initial = first
         if user is not None:
             acct_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -136,8 +145,9 @@ class AcquisitionForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
-                Column("date", css_class="col-md-6"),
-                Column("amount", css_class="col-md-6"),
+                Column("date", css_class="col-md-4"),
+                Column("amount", css_class="col-md-4"),
+                Column("currency", css_class="col-md-4"),
                 css_class="g-3",
             ),
             Row(

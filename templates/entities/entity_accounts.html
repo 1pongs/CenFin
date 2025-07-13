@@ -72,7 +72,7 @@
               <div class="small text-muted">Transactions: {{ a.tx_count }}</div>
             </div>
             <div class="ms-auto fw-bold">
-              {% display a.balance base_currency.code as disp_bal %}
+              {% display a.balance a.currency.code as disp_bal %}
               <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_bal|floatformat:2|intcomma }}</span>
             </div>
           </div>
