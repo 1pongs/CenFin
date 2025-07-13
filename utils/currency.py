@@ -34,9 +34,13 @@ def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_
     if amount is None:
         return amount
     if isinstance(orig_currency, str):
-        orig_currency = Currency.objects.get(code=orig_currency)
+        orig_currency = Currency.objects.filter(code=orig_currency).first()
+        if orig_currency is None:
+            return amount
     if isinstance(target_currency, str):
-        target_currency = Currency.objects.get(code=target_currency)
+        target_currency = Currency.objects.filter(code=target_currency).first()
+        if target_currency is None:
+            return amount
     if orig_currency == target_currency:
         return amount
     if source is None and user is not None and hasattr(user, "preferred_rate_source"):
