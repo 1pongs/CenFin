@@ -21,6 +21,14 @@ class SetCurrencyViewTests(TestCase):
         self.assertEqual(resp["Location"], "/home/")
         self.assertEqual(self.client.session["active_currency"], self.cur.code)
 
+    def test_post_next_field_used_when_present(self):
+        self.client.force_login(self.user)
+        url = reverse("set_currency")
+        resp = self.client.post(url, {"code": self.cur.code, "next": "/here/"})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], "/here/")
+        self.assertEqual(self.client.session["active_currency"], self.cur.code)
+
     def test_anonymous_redirects_to_login(self):
         url = reverse("set_currency")
         resp = self.client.post(url, {"code": self.cur.code})

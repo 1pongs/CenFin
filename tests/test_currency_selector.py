@@ -17,6 +17,11 @@ class CurrencySelectorTests(TestCase):
         resp = self.client.get(reverse("dashboard:dashboard"))
         self.assertEqual(resp.context["active_currency"].code, self.cur_usd.code)
 
+    def test_navbar_form_has_next_field(self):
+        resp = self.client.get(reverse("dashboard:dashboard"))
+        self.assertContains(resp, 'name="next"')
+        self.assertContains(resp, 'value="/"')
+
     def test_set_currency_updates_session(self):
         self.client.post(reverse("set_currency"), {"code": self.cur_php.code})
         self.assertEqual(self.client.session["active_currency"], self.cur_php.code)

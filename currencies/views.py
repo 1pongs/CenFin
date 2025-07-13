@@ -62,7 +62,12 @@ def set_currency(request):
     if Currency.objects.filter(code=code, is_active=True).exists():
         request.session["active_currency"] = code
         request.session["currency"] = code
-    next_url = request.GET.get("next", "/")
+    next_url = (
+        request.POST.get("next")
+        or request.GET.get("next")
+        or request.META.get("HTTP_REFERER")
+        or "/"
+    )
     return redirect(next_url)
 
 

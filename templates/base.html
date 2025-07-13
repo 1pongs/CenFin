@@ -36,6 +36,7 @@
           <li class="nav-item me-2">
             <form method="post" action="{% url 'set_currency' %}" class="d-flex">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
               <select name="code" id="navbar-currency" class="form-select form-select-sm" onchange="this.form.submit()">
                 {% for c in currency_options %}
                   <option value="{{ c.code }}" {% if active_currency and c.code == active_currency.code %}selected{% endif %}>{{ c.code }}</option>
