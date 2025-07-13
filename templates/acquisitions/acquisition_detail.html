@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize currency_tags %}
 {% block title %}Acquisition Detail · CENFIN{% endblock %}
 
 {% block content %}
@@ -21,15 +21,16 @@
     <dt class="col-sm-4">Date Bought</dt>
     <dd class="col-sm-8">{{ object.purchase_tx.date|date:"M d, Y" }}</dd>
     <dt class="col-sm-4">Cost</dt>
-    <dd class="col-sm-8"><span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.purchase_tx.amount|floatformat:2|intcomma }}</span></dd>
+    {% display object.purchase_tx.amount base_currency.code as disp_cost %}
+    <dd class="col-sm-8"><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_cost|floatformat:2|intcomma }}</span></dd>
     <dt class="col-sm-4">Current Value</dt>
     <dd class="col-sm-8">{{ object.current_value|default_if_none:"-" }}</dd>
     <dt class="col-sm-4">Selling Date</dt>
     <dd class="col-sm-8">{% if object.selling_date %}{{ object.selling_date|date:"M d, Y" }}{% else %}-{% endif %}</dd>
     <dt class="col-sm-4">Price Sold</dt>
-    <dd class="col-sm-8">{% if object.price_sold %}<span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.price_sold|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
+    <dd class="col-sm-8">{% if object.price_sold %}{% display object.price_sold base_currency.code as disp_sold %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_sold|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
     <dt class="col-sm-4">Profit</dt>
-    <dd class="col-sm-8">{% if object.profit %}<span class="amount-display" data-prefix="₱" data-decimals="2">{{ object.profit|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
+    <dd class="col-sm-8">{% if object.profit %}{% display object.profit base_currency.code as disp_profit %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_profit|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
   </dl>
 </div>
 {% endblock %}

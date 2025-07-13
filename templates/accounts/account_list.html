@@ -33,7 +33,8 @@
   <div class="col-md-9">
     {% display total_balance base_currency as disp_total %}
     <div class="text-end fw-bold mb-2">
-      Total Balance: {{ disp_total|floatformat:2|intcomma }}
+      Total Balance:
+      <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_total|floatformat:2|intcomma }}</span>
     </div>
 
     {% for a, conv in accounts_converted %}
@@ -51,16 +52,8 @@
           <div class="ms-auto text-end">
             {% display a.net_total a.currency.code as acc_total %}
             <div class="fw-bold">
-              {{ acc_total|floatformat:2|intcomma }}
-              <small class="text-muted">{{ a.currency.code }}</small>
+              <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ acc_total|floatformat:2|intcomma }}</span>
             </div>
-            {% if conv %}
-            {% display conv base_currency as conv_disp %}
-            <div>
-              <small class="text-muted">{{ base_currency }}:</small>
-              {{ conv_disp|floatformat:2|intcomma }}
-            </div>
-            {% endif %}
           </div>
         </div>
       </div>

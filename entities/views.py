@@ -8,6 +8,7 @@ from django.utils import timezone
 from datetime import date, timedelta
 from django.template.defaultfilters import floatformat
 from django.contrib.humanize.templatetags.humanize import intcomma
+from utils.currency import amount_for_display, get_active_currency, get_currency_symbol
 
 from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField, Count
 from collections import defaultdict
@@ -369,12 +370,22 @@ class EntityListView(TemplateView):
             row["the_entity_id"]: row
             for row in get_entity_aggregate_rows(self.request.user)
         }
+        active_cur = get_active_currency(self.request)
+        symbol = get_currency_symbol(active_cur.code) if active_cur else ""
+        base_code = (
+            self.request.user.base_currency.code
+            if getattr(self.request.user, "base_currency_id", None)
+            else ""
+        )
+
         for ent in qs:
             data = totals_map.get(ent.pk, {})
             ent.liquid_total = data.get("total_liquid", 0)
             ent.non_liquid_total = data.get("total_non_liquid", 0)
+            
             def _fmt(val):
-                return f"₱{intcomma(floatformat(val, 2))}"
+                conv = amount_for_display(self.request, val, base_code)
+                return f"{symbol}{intcomma(floatformat(conv, 2))}"
 
             ent.card_rows = [
                 ("Liquid", _fmt(ent.liquid_total)),

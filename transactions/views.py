@@ -15,6 +15,7 @@ from cenfin_proj.utils import (
     get_entity_balance as util_entity_balance,
     get_account_balance,
 )
+from utils.currency import get_active_currency, convert_amount
 
 from .models import Transaction, TransactionTemplate, CategoryTag
 from .forms import TransactionForm, TemplateForm
@@ -313,21 +314,42 @@ def pair_balance(request):
         return JsonResponse({"error": "missing parameters"}, status=400)
 
     balance = get_account_entity_balance(account_id, entity_id, user=request.user)
-    return JsonResponse({"balance": str(balance), "currency": "PHP"})
+    active = get_active_currency(request)
+    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
+    if active:
+        balance = convert_amount(balance, base_code, active.code, user=request.user)
+        cur_code = active.code
+    else:
+        cur_code = base_code
+    return JsonResponse({"balance": str(balance), "currency": cur_code})
 
 
 @require_GET
 def account_balance(request, pk):
     """Return balance for a single account."""
     bal = get_account_balance(pk, user=request.user)
-    return JsonResponse({"balance": str(bal), "currency": "PHP"})
+    active = get_active_currency(request)
+    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
+    if active:
+        bal = convert_amount(bal, base_code, active.code, user=request.user)
+        cur_code = active.code
+    else:
+        cur_code = base_code
+    return JsonResponse({"balance": str(bal), "currency": cur_code})
 
 
 @require_GET
 def entity_balance(request, pk):
     """Return balance for a single entity."""
     bal = util_entity_balance(pk, user=request.user)
-    return JsonResponse({"balance": str(bal), "currency": "PHP"})
+    active = get_active_currency(request)
+    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
+    if active:
+        bal = convert_amount(bal, base_code, active.code, user=request.user)
+        cur_code = active.code
+    else:
+        cur_code = base_code
+    return JsonResponse({"balance": str(bal), "currency": cur_code})
 
 
 @require_GET

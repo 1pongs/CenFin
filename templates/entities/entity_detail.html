@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize acquisition_tags crispy_forms_tags %}
+{% load humanize acquisition_tags crispy_forms_tags currency_tags %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -71,8 +71,9 @@
     <tr>
       <td>{{ a.name }}</td>
       <td class="text-end">
-        <span class="amount-display" data-prefix="₱" data-decimals="2">
-          {{ a.balance|floatformat:2|intcomma }}
+        {% display a.balance base_currency.code as disp_bal %}
+        <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">
+          {{ disp_bal|floatformat:2|intcomma }}
         </span>
       </td>
     </tr>
@@ -83,8 +84,9 @@
     <tr class="fw-bold">
       <td>Total</td>
       <td class="text-end">
-        <span class="amount-display" data-prefix="₱" data-decimals="2">
-          {{ total_balance|floatformat:2|intcomma }}
+        {% display total_balance base_currency.code as disp_total %}
+        <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">
+          {{ disp_total|floatformat:2|intcomma }}
         </span>
       </td>
     </tr>

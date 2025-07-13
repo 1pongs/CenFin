@@ -2,6 +2,23 @@ from decimal import Decimal
 from typing import Union
 from currencies.models import Currency, get_rate
 
+# Map a few common currency codes to their display symbols. Used when
+# rendering monetary values in templates and JSON responses.
+CURRENCY_SYMBOLS = {
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "JPY": "¥",
+    "CNY": "¥",
+    "KRW": "₩",
+    "PHP": "₱",
+}
+
+
+def get_currency_symbol(code: str) -> str:
+    """Return the typical symbol for ``code`` or the code itself."""
+    return CURRENCY_SYMBOLS.get(code.upper(), code)
+    
 
 def get_active_currency(request) -> Currency | None:
     code = request.session.get("active_currency") or request.session.get("currency")

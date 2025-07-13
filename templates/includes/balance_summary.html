@@ -63,7 +63,7 @@
           const data = await resp.json();
           const amt = parseFloat(data.balance);
           if (!isNaN(amt)) {
-            accBalanceField.textContent = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            accBalanceField.textContent = `${data.currency} ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             accWrapper.classList.remove('d-none');
           } else {
             accWrapper.classList.add('d-none');
@@ -91,7 +91,7 @@
           const data = await resp.json();
           const amt = parseFloat(data.balance);
           if (!isNaN(amt)) {
-            entBalanceField.textContent = `₱ ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            entBalanceField.textContent = `${data.currency} ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             entWrapper.classList.remove('d-none');
           } else {
             entWrapper.classList.add('d-none');

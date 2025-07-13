@@ -3,6 +3,7 @@ from ..views import CARD_FIELDS_BY_CATEGORY, CARD_SUMMARY_FIELDS_BY_CATEGORY
 from insurance.models import Insurance
 from django.template.defaultfilters import floatformat
 from django.contrib.humanize.templatetags.humanize import intcomma
+from utils.currency import amount_for_display, get_currency_symbol, get_active_currency
 
 register = template.Library()
 
@@ -21,10 +22,16 @@ def render_acquisition_card(context, acq):
             if insurance.provider:
                 extra_rows.append(("Provider", insurance.provider))
 
+    request = context.get('request')
+
     def _fmt_amt(val):
         if val is None:
             return None
-        return f"₱{intcomma(floatformat(val, 2))}"
+        base_code = request.user.base_currency.code if getattr(request.user, 'base_currency_id', None) else 'PHP'
+        amt = amount_for_display(request, val, base_code) if request else val
+        active = get_active_currency(request) if request else None
+        symbol = get_currency_symbol(active.code) if active else ''
+        return f"{symbol}{intcomma(floatformat(amt, 2))}"
 
     rows = [
         ("Type", acq.get_category_display()),

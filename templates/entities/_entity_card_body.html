@@ -1,7 +1,9 @@
-{% load humanize %}
+{% load humanize currency_tags %}
 <p class="mb-1 small">Liquid:
-  <span class="amount-display" data-prefix="₱" data-decimals="2">{{ entity.liquid_total|floatformat:2|intcomma }}</span>
+  {% display entity.liquid_total base_currency.code as disp_liq %}
+  <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_liq|floatformat:2|intcomma }}</span>
 </p>
 <p class="mb-0 small">Non-Liquid:
-  <span class="amount-display" data-prefix="₱" data-decimals="2">{{ entity.non_liquid_total|floatformat:2|intcomma }}</span>
+  {% display entity.non_liquid_total base_currency.code as disp_non %}
+  <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_non|floatformat:2|intcomma }}</span>
 </p>
