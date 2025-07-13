@@ -130,6 +130,19 @@ class Loan(models.Model):
     def __str__(self):
         return f"{self.lender.name} loan {self.principal_amount}"
 
+    def delete(self, *args, **kwargs):
+        tx_ids = []
+        if self.disbursement_tx_id:
+            tx_ids.append(self.disbursement_tx_id)
+        tx_ids.extend(
+            self.payments.filter(transaction_id__isnull=False)
+            .values_list("transaction_id", flat=True)
+        )
+        from transactions.models import Transaction
+        if tx_ids:
+            Transaction.objects.filter(id__in=tx_ids).delete()
+        super().delete(*args, **kwargs)
+
 
 class LoanPayment(models.Model):
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name="payments")

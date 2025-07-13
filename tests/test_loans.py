@@ -8,6 +8,7 @@ from accounts.models import Account
 from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
 from liabilities.models import Lender, Loan
+from transactions.models import Transaction
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -101,3 +102,44 @@ class LoanUpdateTransactionTest(TestCase):
         self.tx.refresh_from_db()
         self.assertEqual(self.tx.amount, Decimal("150"))
         self.assertEqual(self.tx.date, date(2025, 2, 1))
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LoanDeleteCascadeTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="del", password="p")
+        self.lender = Lender.objects.create(name="DelBank")
+        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
+
+    def test_delete_removes_related_transactions(self):
+        loan = Loan.objects.create(
+            user=self.user,
+            lender=self.lender,
+            principal_amount=Decimal("100"),
+            interest_rate=Decimal("1"),
+            received_date=date(2025, 1, 1),
+            term_months=3,
+        )
+        payment = loan.payments.first()
+        pay_tx = Transaction.objects.create(
+            user=self.user,
+            date=date(2025, 2, 1),
+            transaction_type="loan_repayment",
+            amount=payment.amount,
+            account_source=self.acc,
+            account_destination=self.out_acc,
+            entity_source=self.acc_ent,
+            entity_destination=self.out_ent,
+        )
+        payment.mark_paid(pay_tx)
+
+        disb_id = loan.disbursement_tx_id
+        pay_id = pay_tx.id
+        loan.delete()
+
+        self.assertFalse(Transaction.objects.filter(id=disb_id).exists())
+        self.assertFalse(Transaction.objects.filter(id=pay_id).exists())
+        self.assertFalse(Loan.objects.filter(id=loan.id).exists())
