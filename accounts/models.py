@@ -146,6 +146,8 @@ class Account(models.Model):
         """Return balance converted to the given currency."""
         if source is None and hasattr(self.user, "preferred_rate_source"):
             source = self.user.preferred_rate_source
+        if currency_code == self.currency.code:
+            return self.get_current_balance()
         target = Currency.objects.get(code=currency_code)
         rate = get_rate(self.currency, target, source, self.user)
         if rate is None:
