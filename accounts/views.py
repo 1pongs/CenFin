@@ -40,14 +40,17 @@ def account_list(request):
     active_cur = get_active_currency(request)
     base_cur = active_cur.code if active_cur else None
     converted = []
+    total_balance = sum(c or Decimal("0") for _, c in converted)
     if base_cur:
         for a in qs:
             conv = a.balance_in_currency(base_cur)
             converted.append((a, conv))
+            if conv is not None:
+                total_balance += conv
     else:
         converted = [(a, None) for a in qs]
 
-    total_balance = qs.aggregate(total=Sum("net_total"))["total"] or Decimal("0.00")
+        total_balance = qs.aggregate(total=Sum("net_total"))["total"] or Decimal("0.00")
 
     context = {
         "accounts_converted": converted,

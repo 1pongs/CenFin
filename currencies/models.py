@@ -65,6 +65,9 @@ def get_rate(currency_from, currency_to, source, user=None):
             user=user,
         ).rate
     except ExchangeRate.DoesNotExist:
+        if source == "USER":
+            # when using user-defined rates, do not fall back
+            return None
         if user is not None:
             # fall back to default (user=None)
             return get_rate(currency_from, currency_to, source, None)

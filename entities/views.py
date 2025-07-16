@@ -8,9 +8,24 @@ from django.utils import timezone
 from datetime import date, timedelta
 from django.template.defaultfilters import floatformat
 from django.contrib.humanize.templatetags.humanize import intcomma
-from utils.currency import amount_for_display, get_active_currency, get_currency_symbol
+from utils.currency import (
+    amount_for_display,
+    get_active_currency,
+    get_currency_symbol,
+    convert_amount,
+)
+from currencies.models import Currency
 
-from django.db.models import Sum, F, Case, When, DecimalField, Value, IntegerField, Count
+from django.db.models import (
+    Sum,
+    F,
+    Case,
+    When,
+    DecimalField,
+    Value,
+    IntegerField,
+    Count,
+)
 from collections import defaultdict
 
 
@@ -27,129 +42,11 @@ from transactions.models import Transaction
 # ---------------------------------------------------------------------------
 def get_entity_aggregate_rows(user):
     """Return combined entity totals from both source and destination for a user."""
-    # 1️⃣ From destination side (inflows)
-    dest = (
-        Transaction.objects.filter(
-            user=user,
-            entity_destination__is_active=True,
-            entity_destination__is_visible=True,
-        )
-        .values(
-            "entity_destination_id",
-            "entity_destination__entity_name",
-            "entity_destination__entity_type",
-        )
-        .annotate(
-            total_income=Sum(
-                Case(
-                    When(transaction_type_destination="Income", then=F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_expenses=Sum(
-                Case(
-                    When(transaction_type_destination="Expense", then=F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_transfer=Sum(
-                Case(
-                    When(transaction_type_destination="Transfer", then=F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_asset=Sum(
-                Case(
-                    When(transaction_type_destination="buy_product", then=F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_liquid=Sum(
-                Case(
-                    When(asset_type_destination__iexact="liquid", then=F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_non_liquid=Sum(
-                Case(
-                    When(
-                        asset_type_destination__iexact="non_liquid",
-                        then=F("amount"),
-                    ),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-        )
-    )
-
-    # 2️⃣ From source side (outflows)
-    src = (
-        Transaction.objects.filter(
-            user=user,
-            entity_source__is_active=True,
-            entity_source__is_visible=True,
-        )
-        .values(
-            "entity_source_id",
-            "entity_source__entity_name",
-            "entity_source__entity_type",
-        )
-        .annotate(
-            total_income=Sum(
-                 Case(
-                    When(transaction_type_source="Income", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_expenses=Sum(
-                Case(
-                    When(transaction_type_source="Expense", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_transfer=Sum(
-                Case(
-                    When(transaction_type_source="Transfer", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_asset=Sum(
-                Case(
-                    When(transaction_type_source="sell_product", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_liquid=Sum(
-                Case(
-                    When(asset_type_source__iexact="liquid", then=-F("amount")),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-            total_non_liquid=Sum(
-                Case(
-                    When(
-                        asset_type_source__iexact="non_liquid",
-                        then=-F("amount"),
-                    ),
-                    default=0,
-                    output_field=DecimalField(),
-                )
-            ),
-        )
-    )
-
-    # 3️⃣ Merge both using a defaultdict
+    base_cur = None
+    if getattr(user, "base_currency_id", None):
+        base_cur = user.base_currency
+    else:
+        base_cur = Currency.objects.filter(code="PHP").first()
     results = defaultdict(
         lambda: {
             "the_entity_id": None,
@@ -164,28 +61,60 @@ def get_entity_aggregate_rows(user):
         }
     )
 
-    for row in list(dest) + list(src):
-        id_key = row.get("entity_destination_id") or row.get("entity_source_id")
-        name = row.get("entity_destination__entity_name") or row.get(
-            "entity_source__entity_name"
-        )
-        typ = row.get("entity_destination__entity_type") or row.get(
-            "entity_source__entity_type"
-        )
+    inflow = Transaction.objects.filter(
+        user=user,
+        entity_destination__is_active=True,
+        entity_destination__is_visible=True,
+    ).select_related("currency", "entity_destination")
+    for tx in inflow:
+        amt = convert_amount(tx.amount or 0, tx.currency, base_cur, user=user)
+        data = results[tx.entity_destination_id]
+        data["the_entity_id"] = tx.entity_destination_id
+        data["the_name"] = tx.entity_destination.entity_name
+        data["the_type"] = tx.entity_destination.entity_type
 
-        data = results[id_key]
-        data["the_entity_id"] = id_key
-        data["the_name"] = name
-        data["the_type"] = typ
+        if tx.transaction_type_destination == "Income":
+            data["total_income"] += amt
+        if tx.transaction_type_destination == "Expense":
+            data["total_expenses"] += amt
+        if tx.transaction_type_destination == "Transfer":
+            data["total_transfer"] += amt
+        if tx.transaction_type_destination == "buy_product":
+            data["total_asset"] += amt
 
-        data["total_income"] += row.get("total_income", 0)
-        data["total_expenses"] += row.get("total_expenses", 0)
-        data["total_transfer"] += row.get("total_transfer", 0)
-        data["total_asset"] += row.get("total_asset", 0)
-        data["total_liquid"] += row.get("total_liquid", 0)
-        data["total_non_liquid"] += row.get("total_non_liquid", 0)
+        if (tx.asset_type_destination or "").lower() == "liquid":
+            data["total_liquid"] += amt
+        if (tx.asset_type_destination or "").lower() == "non_liquid":
+            data["total_non_liquid"] += amt
 
-        # 4️⃣ Ensure all active entities are represented even with zero totals
+    outflow = Transaction.objects.filter(
+        user=user,
+        entity_source__is_active=True,
+        entity_source__is_visible=True,
+    ).select_related("currency", "entity_source")
+    for tx in outflow:
+        amt = convert_amount(tx.amount or 0, tx.currency, base_cur, user=user)
+        data = results[tx.entity_source_id]
+        data["the_entity_id"] = tx.entity_source_id
+        data["the_name"] = tx.entity_source.entity_name
+        data["the_type"] = tx.entity_source.entity_type
+
+        if tx.transaction_type_source == "Income":
+            data["total_income"] -= amt
+        if tx.transaction_type_source == "Expense":
+            data["total_expenses"] -= amt
+        if tx.transaction_type_source == "Transfer":
+            data["total_transfer"] -= amt
+        if tx.transaction_type_source == "sell_product":
+            data["total_asset"] -= amt
+
+        if (tx.asset_type_source or "").lower() == "liquid":
+            data["total_liquid"] -= amt
+        if (tx.asset_type_source or "").lower() == "non_liquid":
+            data["total_non_liquid"] -= amt
+
+    # Include all active entities even when no transactions
+
     for ent in Entity.objects.active().filter(user=user, is_visible=True):
         entry = results.setdefault(
             ent.pk,
@@ -201,7 +130,7 @@ def get_entity_aggregate_rows(user):
                 "total_non_liquid": 0,
             },
         )
-        # If the entry already existed from transactions, ensure name/type set
+
         if not entry["the_name"]:
             entry["the_name"] = ent.entity_name
         if not entry["the_type"]:
@@ -217,9 +146,8 @@ from django.db.models import Q
 
 
 def filter_acquisitions_for_tab(entity, user, params, category):
-    qs = (
-        Acquisition.objects.select_related("purchase_tx", "sell_tx")
-        .filter(user=user, purchase_tx__entity_destination=entity, category=category)
+    qs = Acquisition.objects.select_related("purchase_tx", "sell_tx").filter(
+        user=user, purchase_tx__entity_destination=entity, category=category
     )
     q = params.get("q", "").strip()
     sort = params.get("sort", "name")
@@ -313,8 +241,7 @@ class EntityListView(TemplateView):
         search = params.get("q", "").strip()
         if search:
             qs = qs.filter(
-                Q(entity_name__icontains=search)
-                | Q(entity_type__icontains=search)
+                Q(entity_name__icontains=search) | Q(entity_type__icontains=search)
             )
 
         fund_type = params.get("fund_type", "").strip()
@@ -472,9 +399,13 @@ class EntityDetailView(TemplateView):
             (row for row in rows if row["the_entity_id"] == entity_pk), None
         )
 
-        ctx["insurances"] = Insurance.objects.filter(entity=entity, user=self.request.user)
+        ctx["insurances"] = Insurance.objects.filter(
+            entity=entity, user=self.request.user
+        )
 
-        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+        ctx["insurance_form"] = InsuranceForm(
+            initial={"entity": entity_pk}, show_actions=False
+        )
         
         return ctx
 
@@ -503,15 +434,19 @@ class EntityUpdateView(UpdateView):
         obj = self.get_object()
         if getattr(obj, "is_system_default", False):
             from django.core.exceptions import PermissionDenied
+
             raise PermissionDenied("The Accounts entity cannot be modified or removed.")
         if obj.is_account_entity:
             from django.core.exceptions import PermissionDenied
+
             raise PermissionDenied("Cannot modify Account Entity")
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = self.request.GET.get("next") or reverse("entities:accounts", args=[self.object.pk])
+        cancel = self.request.GET.get("next") or reverse(
+            "entities:accounts", args=[self.object.pk]
+        )
         kwargs["cancel_url"] = cancel
         return kwargs
 
@@ -536,9 +471,11 @@ class EntityDeleteView(DeleteView):
         obj = self.get_object()
         if getattr(obj, "is_system_default", False):
             from django.core.exceptions import PermissionDenied
+
             raise PermissionDenied("The Accounts entity cannot be modified or removed.")
         if obj.is_account_entity:
             from django.core.exceptions import PermissionDenied
+
             raise PermissionDenied("Cannot delete Account Entity")
         return super().dispatch(request, *args, **kwargs)
 
@@ -568,6 +505,7 @@ class EntityRestoreView(View):
 
 class EntityAccountsView(TemplateView):
     """Display accounts associated with an entity."""
+
     template_name = "entities/entity_accounts.html"
 
     def get_context_data(self, **kwargs):
@@ -596,20 +534,14 @@ class EntityAccountsView(TemplateView):
                 asset_type_source__iexact="liquid",
             )
             
-            inflow = (
-                inflow.values(
-                    "account_destination_id",
-                    "account_destination__account_name",
-                )
-                .annotate(total_in=Sum("amount"), count_in=Count("id"))
-            )
-            outflow = (
-                outflow.values(
-                    "account_source_id",
-                    "account_source__account_name",
-                )
-                .annotate(total_out=Sum("amount"), count_out=Count("id"))
-            )
+            inflow = inflow.values(
+                "account_destination_id",
+                "account_destination__account_name",
+            ).annotate(total_in=Sum("amount"), count_in=Count("id"))
+            outflow = outflow.values(
+                "account_source_id",
+                "account_source__account_name",
+            ).annotate(total_out=Sum("amount"), count_out=Count("id"))
 
             balances = {}
             for row in inflow:
@@ -633,8 +565,7 @@ class EntityAccountsView(TemplateView):
                 entry["tx_count"] += row["count_out"]
 
             account_map = {
-                acc.id: acc
-                for acc in Account.objects.filter(id__in=balances.keys())
+                acc.id: acc for acc in Account.objects.filter(id__in=balances.keys())
             }
             for pk, data in balances.items():
                 acc = account_map.get(pk)
@@ -660,7 +591,9 @@ class EntityAccountsView(TemplateView):
             ctx["total_balance"] = sum(b["balance"] for b in results)
             ctx["search"] = params.get("q", "")
             ctx["sort"] = sort
-            ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+            ctx["insurance_form"] = InsuranceForm(
+                initial={"entity": entity_pk}, show_actions=False
+            )
             return ctx
 
         if category == "insurance":
@@ -670,7 +603,9 @@ class EntityAccountsView(TemplateView):
             ctx["sort"] = params.get("sort", "status")
             ctx["type"] = params.get("type", "")
             ctx["type_choices"] = Insurance.TYPE_CHOICES
-            ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+            ctx["insurance_form"] = InsuranceForm(
+                initial={"entity": entity_pk}, show_actions=False
+            )
             return ctx
 
         acqs = filter_acquisitions_for_tab(entity, self.request.user, params, category)
@@ -703,7 +638,9 @@ class EntityAccountsView(TemplateView):
                 .distinct()
                 .order_by("location")
             )
-        ctx["insurance_form"] = InsuranceForm(initial={"entity": entity_pk}, show_actions=False)
+        ctx["insurance_form"] = InsuranceForm(
+            initial={"entity": entity_pk}, show_actions=False
+        )
         return ctx
 
 @require_POST
