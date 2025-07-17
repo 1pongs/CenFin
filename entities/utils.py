@@ -44,3 +44,12 @@ def ensure_fixed_entities(user=None):
         if update_fields:
             account.save(update_fields=update_fields)
     return outside, account
+
+def ensure_remittance_entity(user):
+    """Ensure a hidden Remittance entity exists for the user."""
+    ent, _ = Entity.objects.get_or_create(
+        entity_name="Remittance",
+        user=user,
+        defaults={"entity_type": "personal fund", "is_visible": False, "system_hidden": True},
+    )
+    return ent

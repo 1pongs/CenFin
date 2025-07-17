@@ -132,6 +132,9 @@ class TransactionCreateView(CreateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        accounts = Account.objects.filter(user=self.request.user, is_active=True, system_hidden=False)
+        account_map = {a.id: a.currency.code for a in accounts}
+        context['account_currency_map'] = json.dumps(account_map)
         context['quick_account_form'] = AccountForm(show_actions=False)
         context['quick_entity_form'] = EntityForm(show_actions=False)
         context['selected_txn_type'] = (
@@ -143,9 +146,56 @@ class TransactionCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        response = super().form_valid(form) 
+        self.object = form.save()
+        visible_tx = self.object
+
+        src_acc = visible_tx.account_source
+        dest_acc = visible_tx.account_destination
+        dest_amt = form.cleaned_data.get("destination_amount")
+        if (
+            visible_tx.transaction_type == "transfer"
+            and src_acc and dest_acc
+            and src_acc.currency_id != dest_acc.currency_id
+        ):
+            from accounts.utils import get_remittance_account
+            from entities.utils import ensure_remittance_entity
+
+            remittance_entity = ensure_remittance_entity(self.request.user)
+            rem_src = get_remittance_account(self.request.user, src_acc.currency)
+            rem_dest = get_remittance_account(self.request.user, dest_acc.currency)
+
+            Transaction.all_objects.create(
+                user=self.request.user,
+                date=visible_tx.date,
+                description=visible_tx.description,
+                transaction_type="transfer",
+                amount=visible_tx.amount,
+                currency=src_acc.currency,
+                account_source=src_acc,
+                account_destination=rem_src,
+                entity_source=visible_tx.entity_source,
+                entity_destination=remittance_entity,
+                is_hidden=True,
+                parent_transfer=visible_tx,
+            )
+
+            Transaction.all_objects.create(
+                user=self.request.user,
+                date=visible_tx.date,
+                description=visible_tx.description,
+                transaction_type="transfer",
+                amount=dest_amt or visible_tx.amount,
+                currency=dest_acc.currency,
+                account_source=rem_dest,
+                account_destination=dest_acc,
+                entity_source=remittance_entity,
+                entity_destination=visible_tx.entity_destination,
+                is_hidden=True,
+                parent_transfer=visible_tx,
+            )
+
         messages.success(self.request, "Transaction saved successfully!")
-        return response
+        return HttpResponseRedirect(self.get_success_url())
 
 def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")

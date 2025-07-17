@@ -80,6 +80,7 @@ class Account(models.Model):
     )
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
+    system_hidden = models.BooleanField(default=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
 
     objects = AccountManager()

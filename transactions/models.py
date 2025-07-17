@@ -36,6 +36,18 @@ class CategoryTag(models.Model):
     def __str__(self):
         return self.name
 
+class TransactionQuerySet(models.QuerySet):
+    def visible(self):
+        return self.filter(is_hidden=False)
+
+
+class TransactionManager(models.Manager):
+    def get_queryset(self):
+        return TransactionQuerySet(self.model, using=self._db).filter(is_hidden=False)
+
+    def with_hidden(self):
+        return TransactionQuerySet(self.model, using=self._db)
+
 class Transaction(models.Model):
     template = models.ForeignKey(
         TransactionTemplate,
@@ -106,6 +118,11 @@ class Transaction(models.Model):
     )
     categories = models.ManyToManyField(CategoryTag, related_name="transactions", blank=True)
     remarks = models.TextField(blank=True, null=True)
+    is_hidden = models.BooleanField(default=False)
+    parent_transfer = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='child_transfers')
+
+    objects = TransactionManager()
+    all_objects = models.Manager()
 
     class Meta:
         indexes = [

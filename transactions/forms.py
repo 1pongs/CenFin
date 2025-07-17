@@ -2,7 +2,7 @@ from django import forms
 from django.db.models import Q
 from decimal import Decimal
 from crispy_forms.helper    import FormHelper
-from crispy_forms.layout    import Layout, Row, Column, Submit, Button, Field
+from crispy_forms.layout    import Layout, Row, Column, Submit, Button, Field, HTML
 from crispy_forms.bootstrap import FormActions
 from .constants import TXN_TYPE_CHOICES
 
@@ -24,6 +24,13 @@ class TransactionForm(forms.ModelForm):
         "entity_source", "entity_destination",
     ]
     category_names = forms.CharField(label="Category", required=False)
+    destination_amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+        label="Account Destination Amount",
+    )
     
     class Meta:
         model = Transaction
@@ -63,6 +70,8 @@ class TransactionForm(forms.ModelForm):
          # mark amount field for live comma formatting
         css = self.fields['amount'].widget.attrs.get('class', '')
         self.fields['amount'].widget.attrs['class'] = f"{css} amount-input".strip()
+        css = self.fields['destination_amount'].widget.attrs.get('class', '')
+        self.fields['destination_amount'].widget.attrs['class'] = f"{css} amount-input".strip()
         self.fields['category_names'].widget.attrs['class'] = 'tag-input form-control'
 
         if self.instance.pk:
@@ -75,9 +84,10 @@ class TransactionForm(forms.ModelForm):
             account_qs = Account.objects.filter(
                 Q(user=user) | Q(user__isnull=True),
                 is_active=True,
+                system_hidden=False,
             ).filter(Q(account_type__in=allowed_types) | Q(account_type="Outside"))
             entity_qs = Entity.objects.filter(
-                Q(user=user) | Q(user__isnull=True), is_active=True
+                Q(user=user) | Q(user__isnull=True), is_active=True, system_hidden=False
             )
 
             self.fields['account_source'].queryset = account_qs
@@ -165,6 +175,12 @@ class TransactionForm(forms.ModelForm):
                 Column("currency", css_class="col-md-6"),
                 css_class="g-3",
             ),
+            Row(
+                Column("destination_amount", css_class="col-md-6"),
+                css_class="g-3 d-none",
+                css_id="destination_amount_wrapper",
+            ),
+            HTML('<div id="currency_warning" class="alert alert-info d-none">The selected accounts use different currencies. Please enter both source and destination amounts.</div>'),
             Row(
                 Column("entity_source",       css_class="col-md-6"),
                 Column("entity_destination",  css_class="col-md-6"),
