@@ -161,12 +161,15 @@ class Transaction(models.Model):
 
     def save(self, *args, **kwargs):
         if self.currency_id is None:
-            default_cur = None
-            if self.user and getattr(self.user, "base_currency_id", None):
-                default_cur = self.user.base_currency
+            if self.account_source_id:
+                self.currency = self.account_source.currency
             else:
-                default_cur = Currency.objects.filter(code="PHP").first()
-            self.currency = default_cur
+                default_cur = None
+                if self.user and getattr(self.user, "base_currency_id", None):
+                    default_cur = self.user.base_currency
+                else:
+                    default_cur = Currency.objects.filter(code="PHP").first()
+                self.currency = default_cur
 
         self._populate_from_template()
         self._apply_defaults()

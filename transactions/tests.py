@@ -331,3 +331,51 @@ class AcquisitionTxnImmutableTest(TestCase):
             {"amount": "20"},
         )
         self.assertEqual(resp.status_code, 403)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class TransactionCurrencyAutoTest(TestCase):
+    def setUp(self):
+        from currencies.models import Currency
+        User = get_user_model()
+        self.cur_usd = Currency.objects.create(code="USD", name="US Dollar")
+        self.cur_php = Currency.objects.create(code="PHP", name="Peso")
+        self.user = User.objects.create_user(username="c", password="p")
+        self.account = Account.objects.create(
+            account_name="Wallet", account_type="Cash", user=self.user, currency=self.cur_usd
+        )
+        self.dest = Account.objects.create(
+            account_name="Bank", account_type="Cash", user=self.user, currency=self.cur_php
+        )
+        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("10"),
+            account_source=self.out_acc,
+            account_destination=self.account,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+
+    def test_form_sets_currency_from_account(self):
+        form = TransactionForm(
+            data={
+                "date": timezone.now().date(),
+                "description": "t",
+                "transaction_type": "transfer",
+                "amount": "5",
+                "account_source": self.account.pk,
+                "account_destination": self.dest.pk,
+                "entity_source": self.ent.pk,
+                "entity_destination": self.ent.pk,
+            },
+            user=self.user,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        tx = form.save()
+        self.assertEqual(tx.currency, self.account.currency)
