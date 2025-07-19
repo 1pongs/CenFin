@@ -86,6 +86,80 @@
     }
   });
 
+  // ---- auto-lock Outside fields ----
+  const txTypeSel = document.getElementById('id_transaction_type');
+  const accSrc = document.getElementById('id_account_source');
+  const accDest = document.getElementById('id_account_destination');
+  const entSrc = document.getElementById('id_entity_source');
+  const entDest = document.getElementById('id_entity_destination');
+  const destWrapper = document.getElementById('destination_amount_wrapper');
+  const destInput = document.getElementById('id_destination_amount');
+  const amountLabel = document.querySelector('label[for="id_amount"]');
+  const destLabel = document.querySelector('label[for="id_destination_amount"]');
+  const currencyWarning = document.getElementById('currency_warning');
+  const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
+
+  function outsideValues(select) {
+    const opt = Array.from(select.options).find(o => o.text === 'Outside');
+    return opt ? opt.value : '';
+  }
+
+  function toggleOutside() {
+    const type = txTypeSel.value;
+    const accVal = outsideValues(accSrc);
+    const entVal = outsideValues(entSrc);
+    if (type === 'income') {
+      accSrc.value = accVal;
+      entSrc.value = entVal;
+      accSrc.disabled = true;
+      entSrc.disabled = true;
+      accDest.disabled = false;
+      entDest.disabled = false;
+    } else if (type === 'expense') {
+      accDest.value = accVal;
+      entDest.value = entVal;
+      accDest.disabled = true;
+      entDest.disabled = true;
+      accSrc.disabled = false;
+      entSrc.disabled = false;
+    } else {
+      accSrc.disabled = false;
+      entSrc.disabled = false;
+      accDest.disabled = false;
+      entDest.disabled = false;
+    }
+    toggleCurrencyInputs();
+  }
+
+  txTypeSel.addEventListener('change', toggleOutside);
+  document.addEventListener('DOMContentLoaded', toggleOutside);
+
+  function acctCurrency(select){
+    return accountCurrencies[select.value] || '';
+  }
+
+  function toggleCurrencyInputs(){
+    const diff = txTypeSel.value === 'transfer' && acctCurrency(accSrc) && acctCurrency(accDest) && acctCurrency(accSrc) !== acctCurrency(accDest);
+    if(diff){
+      amountLabel.textContent = 'Account Source Amount (' + acctCurrency(accSrc) + ')';
+      if(destLabel){
+        destLabel.textContent = 'Account Destination Amount (' + acctCurrency(accDest) + ')';
+      }
+      destWrapper.classList.remove('d-none');
+      currencyWarning.textContent = 'The selected accounts use different currencies. Please enter the source amount in ' + acctCurrency(accSrc) + ' and the destination amount in ' + acctCurrency(accDest) + '.';
+      currencyWarning.classList.remove('d-none');
+    } else {
+      amountLabel.textContent = 'Amount';
+      if(destLabel) destLabel.textContent = 'Account Destination Amount';
+      destWrapper.classList.add('d-none');
+      currencyWarning.classList.add('d-none');
+      if(destInput) destInput.value = '';
+    }
+  }
+
+  [txTypeSel, accSrc, accDest].forEach(el => el.addEventListener('change', toggleCurrencyInputs));
+  document.addEventListener('DOMContentLoaded', toggleCurrencyInputs);
+
   function toggleBalanceSummary() {
     const typeSel = document.getElementById('id_transaction_type');
     if (!typeSel) return;

@@ -99,6 +99,8 @@ class TransactionListView(ListView):
         selected_ids = request.POST.getlist("selected_ids")
 
         if action == "delete" and selected_ids:
+            # delete visible and hidden transactions linked to them
+            Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
             Transaction.objects.filter(user=request.user, id__in=selected_ids).delete()
             messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
 
@@ -109,6 +111,7 @@ def bulk_action(request):
         selected_ids = request.POST.getlist('selected_ids')
 
         if selected_ids:
+                Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
                 Transaction.objects.filter(user=request.user, pk__in=selected_ids).delete()
         return redirect(reverse('transactions:transaction_list'))
             
@@ -134,7 +137,7 @@ class TransactionCreateView(CreateView):
         }
         context['templates_json'] = json.dumps(templates_json_dict)
         accounts = Account.objects.filter(user=self.request.user, is_active=True, system_hidden=False)
-        account_map = {a.id: a.currency.code for a in accounts}
+        account_map = {a.id: (a.currency.code if a.currency else '') for a in accounts}
         context['account_currency_map'] = json.dumps(account_map)
         context['quick_account_form'] = AccountForm(show_actions=False)
         context['quick_entity_form'] = EntityForm(show_actions=False)
@@ -233,6 +236,9 @@ class TransactionUpdateView(UpdateView):
             for t in templates
         }
         context['templates_json'] = json.dumps(templates_json_dict)
+        accounts = Account.objects.filter(user=self.request.user, is_active=True, system_hidden=False)
+        account_map = {a.id: (a.currency.code if a.currency else '') for a in accounts}
+        context['account_currency_map'] = json.dumps(account_map)
         context['selected_txn_type'] = (
             self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
         )
@@ -266,6 +272,7 @@ class TransactionUpdateView(UpdateView):
 def transaction_delete(request, pk):
     txn = get_object_or_404(Transaction, pk=pk, user=request.user)
 
+    Transaction.all_objects.filter(parent_transfer=txn, user=request.user).delete()
     txn.delete()
     messages.success(request, "Transaction deleted.")
     return redirect(reverse('transactions:transaction_list'))
