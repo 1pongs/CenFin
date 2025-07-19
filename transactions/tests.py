@@ -423,11 +423,12 @@ class CrossCurrencyHiddenTxTest(TestCase):
             "entity_source": self.ent.pk,
             "entity_destination": self.ent.pk,
         }
+        count_before = Transaction.objects.count()
         resp = self.client.post(reverse("transactions:transaction_create"), data)
         self.assertEqual(resp.status_code, 302)
 
-        parent = Transaction.objects.order_by("-id").first()
-        hidden = Transaction.all_objects.filter(parent_transfer=parent)
+        self.assertEqual(Transaction.objects.count(), count_before)
+        hidden = Transaction.all_objects.filter(is_hidden=True)
         self.assertEqual(hidden.count(), 2)
         codes = {t.currency.code for t in hidden}
         self.assertEqual(codes, {"KRW", "PHP"})
