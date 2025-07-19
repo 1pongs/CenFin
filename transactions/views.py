@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.db.models import Sum
+from django.db import transaction
 from decimal import Decimal
 import json
 from cenfin_proj.utils import (
@@ -153,8 +154,9 @@ class TransactionCreateView(CreateView):
         dest_acc = visible_tx.account_destination
         dest_amt = form.cleaned_data.get("destination_amount")
         if (
-            visible_tx.transaction_type == "transfer"
-            and src_acc and dest_acc
+            (visible_tx.transaction_type or "").lower() == "transfer"
+            and src_acc
+            and dest_acc
             and src_acc.currency_id != dest_acc.currency_id
         ):
             from accounts.utils import get_remittance_account
@@ -164,36 +166,37 @@ class TransactionCreateView(CreateView):
             rem_src = get_remittance_account(self.request.user, src_acc.currency)
             rem_dest = get_remittance_account(self.request.user, dest_acc.currency)
 
-            Transaction.all_objects.create(
-                user=self.request.user,
-                date=visible_tx.date,
-                description=visible_tx.description,
-                transaction_type="transfer",
-                amount=visible_tx.amount,
-                currency=src_acc.currency,
-                account_source=src_acc,
-                account_destination=rem_src,
-                entity_source=visible_tx.entity_source,
-                entity_destination=remittance_entity,
-                is_hidden=True,
-                parent_transfer=visible_tx,
-            )
+            with transaction.atomic():
+                Transaction.all_objects.create(
+                    user=self.request.user,
+                    date=visible_tx.date,
+                    description=visible_tx.description,
+                    transaction_type="transfer",
+                    amount=visible_tx.amount,
+                    currency=src_acc.currency,
+                    account_source=src_acc,
+                    account_destination=rem_src,
+                    entity_source=visible_tx.entity_source,
+                    entity_destination=remittance_entity,
+                    is_hidden=True,
+                    parent_transfer=visible_tx,
+                )
 
-            Transaction.all_objects.create(
-                user=self.request.user,
-                date=visible_tx.date,
-                description=visible_tx.description,
-                transaction_type="transfer",
-                amount=dest_amt or visible_tx.amount,
-                currency=dest_acc.currency,
-                account_source=rem_dest,
-                account_destination=dest_acc,
-                entity_source=remittance_entity,
-                entity_destination=visible_tx.entity_destination,
-                is_hidden=True,
-                parent_transfer=visible_tx,
-            )
-
+                Transaction.all_objects.create(
+                    user=self.request.user,
+                    date=visible_tx.date,
+                    description=visible_tx.description,
+                    transaction_type="transfer",
+                    amount=dest_amt or visible_tx.amount,
+                    currency=dest_acc.currency,
+                    account_source=rem_dest,
+                    account_destination=dest_acc,
+                    entity_source=remittance_entity,
+                    entity_destination=visible_tx.entity_destination,
+                    is_hidden=True,
+                    parent_transfer=visible_tx,
+                )
+                
         messages.success(self.request, "Transaction saved successfully!")
         return HttpResponseRedirect(self.get_success_url())
 

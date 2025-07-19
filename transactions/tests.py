@@ -379,3 +379,55 @@ class TransactionCurrencyAutoTest(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         tx = form.save()
         self.assertEqual(tx.currency, self.account.currency)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class CrossCurrencyHiddenTxTest(TestCase):
+    def setUp(self):
+        from currencies.models import Currency
+        User = get_user_model()
+        self.cur_krw = Currency.objects.create(code="KRW", name="Won")
+        self.cur_php = Currency.objects.create(code="PHP", name="Peso")
+        self.user = User.objects.create_user(username="h", password="p")
+        self.client.force_login(self.user)
+        self.src_acc = Account.objects.create(
+            account_name="Woori", account_type="Cash", user=self.user, currency=self.cur_krw
+        )
+        self.dest_acc = Account.objects.create(
+            account_name="BDO", account_type="Cash", user=self.user, currency=self.cur_php
+        )
+        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("2000"),
+            account_source=self.out_acc,
+            account_destination=self.src_acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+
+    def test_hidden_transactions_created(self):
+        data = {
+            "date": timezone.now().date(),
+            "description": "x",
+            "transaction_type": "transfer",
+            "amount": "1000",
+            "destination_amount": "50",
+            "account_source": self.src_acc.pk,
+            "account_destination": self.dest_acc.pk,
+            "entity_source": self.ent.pk,
+            "entity_destination": self.ent.pk,
+        }
+        resp = self.client.post(reverse("transactions:transaction_create"), data)
+        self.assertEqual(resp.status_code, 302)
+
+        parent = Transaction.objects.order_by("-id").first()
+        hidden = Transaction.all_objects.filter(parent_transfer=parent)
+        self.assertEqual(hidden.count(), 2)
+        codes = {t.currency.code for t in hidden}
+        self.assertEqual(codes, {"KRW", "PHP"})

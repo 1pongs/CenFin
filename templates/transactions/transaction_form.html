@@ -177,6 +177,7 @@
   const destWrapper = document.getElementById('destination_amount_wrapper');
   const destInput = document.getElementById('id_destination_amount');
   const amountLabel = document.querySelector('label[for="id_amount"]');
+  const destLabel = document.querySelector('label[for="id_destination_amount"]');
   const currencyWarning = document.getElementById('currency_warning');
   const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
 
@@ -222,11 +223,16 @@
   function toggleCurrencyInputs(){
     const diff = txTypeSel.value === 'transfer' && acctCurrency(accSrc) && acctCurrency(accDest) && acctCurrency(accSrc) !== acctCurrency(accDest);
     if(diff){
-      amountLabel.textContent = 'Account Source Amount';
+      amountLabel.textContent = 'Account Source Amount (' + acctCurrency(accSrc) + ')';
+      if(destLabel){
+        destLabel.textContent = 'Account Destination Amount (' + acctCurrency(accDest) + ')';
+      }
       destWrapper.classList.remove('d-none');
+      currencyWarning.textContent = 'The selected accounts use different currencies. Please enter the source amount in ' + acctCurrency(accSrc) + ' and the destination amount in ' + acctCurrency(accDest) + '.';
       currencyWarning.classList.remove('d-none');
     } else {
       amountLabel.textContent = 'Amount';
+      if(destLabel) destLabel.textContent = 'Account Destination Amount';
       destWrapper.classList.add('d-none');
       currencyWarning.classList.add('d-none');
       if(destInput) destInput.value = '';
