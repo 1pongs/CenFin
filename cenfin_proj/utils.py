@@ -21,7 +21,14 @@ def get_entity_balances():
         .annotate(
             inflow=Coalesce(
                 Sum(
-                    "transaction_entity_destination__amount",
+                    Case(
+                        When(
+                            transaction_entity_destination__destination_amount__isnull=False,
+                            then=F("transaction_entity_destination__destination_amount"),
+                        ),
+                        default=F("transaction_entity_destination__amount"),
+                        output_field=DecimalField(),
+                    ),
                     filter=Q(
                         transaction_entity_destination__asset_type_destination__iexact="liquid"
                     ),
@@ -46,23 +53,29 @@ def get_entity_balances():
 def get_entity_balance(entity_id, user=None):
     """Return balance for a single entity."""
     from transactions.models import Transaction
-    qs = Transaction.objects
+    qs = Transaction.all_objects
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
         qs.filter(
             entity_destination_id=entity_id,
             asset_type_destination__iexact="liquid",
-        )
-        .aggregate(total=Sum("amount"))["total"]
+        ).aggregate(
+            total=Sum(
+                Case(
+                    When(destination_amount__isnull=False, then=F("destination_amount")),
+                    default=F("amount"),
+                    output_field=DecimalField(),
+                )
+            )
+        )["total"]
         or Decimal("0")
     )
     outflow = (
         qs.filter(
             entity_source_id=entity_id,
             asset_type_source__iexact="liquid",
-        )
-        .aggregate(total=Sum("amount"))["total"]
+        ).aggregate(total=Sum("amount"))["total"]
         or Decimal("0")
     )
     return inflow - outflow
@@ -84,7 +97,7 @@ def get_account_balance(account_id, user=None):
 def get_account_entity_balance(account_id, entity_id, user=None):
     """Return balance for an account/entity pair."""
     from transactions.models import Transaction
-    qs = Transaction.objects
+    qs = Transaction.all_objects
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
@@ -92,8 +105,15 @@ def get_account_entity_balance(account_id, entity_id, user=None):
             account_destination_id=account_id,
             entity_destination_id=entity_id,
             asset_type_destination__iexact="liquid",
-        )
-        .aggregate(total=Sum("amount"))["total"]
+        ).aggregate(
+            total=Sum(
+                Case(
+                    When(destination_amount__isnull=False, then=F("destination_amount")),
+                    default=F("amount"),
+                    output_field=DecimalField(),
+                )
+            )
+        )["total"]
         or Decimal("0")
     )
     outflow = (

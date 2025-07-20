@@ -10,7 +10,7 @@ class DefaultEntitiesCreatedTest(TestCase):
         user = User.objects.create_user(username="def", password="p")
 
         names = set(user.entities.values_list("entity_name", flat=True))
-        self.assertEqual(names, {"Outside", "Account", "Remittance"})
+        self.assertEqual(names, {"Outside", "Account"})
 
         null_count = Entity.objects.filter(user__isnull=True).count()
         self.assertEqual(null_count, 0)

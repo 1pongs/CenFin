@@ -29,14 +29,24 @@ class AccountQuerySet(models.QuerySet):
         from transactions.models import Transaction
 
         inflow_sq = (
-            Transaction.objects.filter(account_destination_id=OuterRef("pk"))
+            Transaction.all_objects.filter(account_destination_id=OuterRef("pk"))
+            .annotate(
+                adj_amount=Case(
+                    When(
+                        destination_amount__isnull=False,
+                        then=F("destination_amount"),
+                    ),
+                    default=F("amount"),
+                    output_field=DecimalField(),
+                )
+            )
             .values("account_destination_id")
-            .annotate(total=Sum("amount"))
+            .annotate(total=Sum("adj_amount"))
             .values("total")
         )
 
         outflow_sq = (
-            Transaction.objects.filter(account_source_id=OuterRef("pk"))
+            Transaction.all_objects.filter(account_source_id=OuterRef("pk"))
             .values("account_source_id")
             .annotate(total=Sum("amount"))
             .values("total")

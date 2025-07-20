@@ -110,6 +110,7 @@ class Transaction(models.Model):
     asset_type_destination = models.CharField(max_length=20, editable=False, blank=True, null=True)
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    destination_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.ForeignKey(
         Currency,
         on_delete=models.PROTECT,

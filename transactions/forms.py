@@ -250,9 +250,6 @@ class TransactionForm(forms.ModelForm):
             tags.append(tag)
         if commit:
             transaction.categories.set(tags)
-        else:
-            transaction.save()
-            transaction.categories.set(tags)
         return transaction
 
 # ---------------- Template Form ----------------

@@ -150,8 +150,8 @@ class TransactionCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        self.object = form.save()
-        visible_tx = self.object
+        visible_tx = form.save(commit=False)
+        visible_tx.user = self.request.user
 
         src_acc = visible_tx.account_source
         dest_acc = visible_tx.account_destination
@@ -182,7 +182,6 @@ class TransactionCreateView(CreateView):
                     entity_source=visible_tx.entity_source,
                     entity_destination=remittance_entity,
                     is_hidden=True,
-                    parent_transfer=visible_tx,
                 )
 
                 Transaction.all_objects.create(
@@ -191,17 +190,22 @@ class TransactionCreateView(CreateView):
                     description=visible_tx.description,
                     transaction_type="transfer",
                     amount=dest_amt or visible_tx.amount,
+                    destination_amount=dest_amt,
                     currency=dest_acc.currency,
                     account_source=rem_dest,
                     account_destination=dest_acc,
                     entity_source=remittance_entity,
                     entity_destination=visible_tx.entity_destination,
                     is_hidden=True,
-                    parent_transfer=visible_tx,
                 )
-                
-        messages.success(self.request, "Transaction saved successfully!")
-        return HttpResponseRedirect(self.get_success_url())
+            self.object = visible_tx
+            messages.success(self.request, "Transaction saved successfully!")
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            self.object = form.save()
+            messages.success(self.request, "Transaction saved successfully!")
+            return HttpResponseRedirect(self.get_success_url())
+                    
 
 def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")

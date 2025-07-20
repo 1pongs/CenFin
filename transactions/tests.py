@@ -432,3 +432,6 @@ class CrossCurrencyHiddenTxTest(TestCase):
         self.assertEqual(hidden.count(), 2)
         codes = {t.currency.code for t in hidden}
         self.assertEqual(codes, {"KRW", "PHP"})
+        dest_tx = hidden.filter(currency=self.cur_php).first()
+        self.assertEqual(dest_tx.destination_amount, Decimal("50"))
+

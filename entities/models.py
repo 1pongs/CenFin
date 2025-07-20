@@ -60,21 +60,29 @@ class Entity(models.Model):
 
     def current_balance(self):
         """Return current balance for this entity."""
-        from django.db.models import Sum
+        from django.db.models import Sum, Case, When, F, DecimalField
         from decimal import Decimal
         from transactions.models import Transaction
 
         inflow = (
-            Transaction.objects.filter(
+            Transaction.all_objects.filter(
                 entity_destination=self,
                 asset_type_destination__iexact="liquid",
             )
-            .aggregate(total=Sum("amount"))
+            .aggregate(
+                total=Sum(
+                    Case(
+                        When(destination_amount__isnull=False, then=F("destination_amount")),
+                        default=F("amount"),
+                        output_field=DecimalField(),
+                    )
+                )
+            )
             .get("total")
             or Decimal("0")
         )
         outflow = (
-            Transaction.objects.filter(
+            Transaction.all_objects.filter(
                 entity_source=self,
                 asset_type_source__iexact="liquid",
             )
