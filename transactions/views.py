@@ -169,18 +169,27 @@ class TransactionCreateView(CreateView):
             rem_src = get_remittance_account(self.request.user, src_acc.currency)
             rem_dest = get_remittance_account(self.request.user, dest_acc.currency)
 
+            src_amount = visible_tx.amount
+            if not dest_amt:
+                dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency, user=self.request.user)
+
             with transaction.atomic():
+                visible_tx.currency = dest_acc.currency
+                visible_tx.amount = dest_amt
+                visible_tx.save()
+
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
                     description=visible_tx.description,
                     transaction_type="transfer",
-                    amount=visible_tx.amount,
+                    amount=src_amount,
                     currency=src_acc.currency,
                     account_source=src_acc,
                     account_destination=rem_src,
                     entity_source=visible_tx.entity_source,
                     entity_destination=remittance_entity,
+                    parent_transfer=visible_tx,
                     is_hidden=True,
                 )
 
@@ -189,13 +198,14 @@ class TransactionCreateView(CreateView):
                     date=visible_tx.date,
                     description=visible_tx.description,
                     transaction_type="transfer",
-                    amount=dest_amt or visible_tx.amount,
+                    amount=dest_amt,
                     destination_amount=dest_amt,
                     currency=dest_acc.currency,
                     account_source=rem_dest,
                     account_destination=dest_acc,
                     entity_source=remittance_entity,
                     entity_destination=visible_tx.entity_destination,
+                    parent_transfer=visible_tx,
                     is_hidden=True,
                 )
             self.object = visible_tx

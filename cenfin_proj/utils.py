@@ -53,7 +53,7 @@ def get_entity_balances():
 def get_entity_balance(entity_id, user=None):
     """Return balance for a single entity."""
     from transactions.models import Transaction
-    qs = Transaction.all_objects
+    qs = Transaction.all_objects.filter(child_transfers__isnull=True)
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
@@ -97,7 +97,7 @@ def get_account_balance(account_id, user=None):
 def get_account_entity_balance(account_id, entity_id, user=None):
     """Return balance for an account/entity pair."""
     from transactions.models import Transaction
-    qs = Transaction.all_objects
+    qs = Transaction.all_objects.filter(child_transfers__isnull=True)
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (

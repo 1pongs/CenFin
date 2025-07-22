@@ -29,7 +29,10 @@ class AccountQuerySet(models.QuerySet):
         from transactions.models import Transaction
 
         inflow_sq = (
-            Transaction.all_objects.filter(account_destination_id=OuterRef("pk"))
+            Transaction.all_objects.filter(
+                account_destination_id=OuterRef("pk"),
+                child_transfers__isnull=True,
+            )
             .annotate(
                 adj_amount=Case(
                     When(
@@ -46,7 +49,10 @@ class AccountQuerySet(models.QuerySet):
         )
 
         outflow_sq = (
-            Transaction.all_objects.filter(account_source_id=OuterRef("pk"))
+            Transaction.all_objects.filter(
+                account_source_id=OuterRef("pk"),
+                child_transfers__isnull=True,
+            )
             .values("account_source_id")
             .annotate(total=Sum("amount"))
             .values("total")

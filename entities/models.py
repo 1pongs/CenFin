@@ -68,12 +68,13 @@ class Entity(models.Model):
             Transaction.all_objects.filter(
                 entity_destination=self,
                 asset_type_destination__iexact="liquid",
+                child_transfers__isnull=True,
             )
             .aggregate(
                 total=Sum(
                     Case(
                         When(destination_amount__isnull=False, then=F("destination_amount")),
-                        default=F("amount"),
+                            default=F("amount"),
                         output_field=DecimalField(),
                     )
                 )
@@ -85,6 +86,7 @@ class Entity(models.Model):
             Transaction.all_objects.filter(
                 entity_source=self,
                 asset_type_source__iexact="liquid",
+                child_transfers__isnull=True,
             )
             .aggregate(total=Sum("amount"))
             .get("total")
