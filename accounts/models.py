@@ -51,7 +51,7 @@ class AccountQuerySet(models.QuerySet):
         outflow_sq = (
             Transaction.all_objects.filter(
                 account_source_id=OuterRef("pk"),
-                child_transfers__isnull=True,
+                child_transfers__isnull=True,  # exclude parent transfers
             )
             .values("account_source_id")
             .annotate(total=Sum("amount"))

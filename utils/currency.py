@@ -69,8 +69,31 @@ def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_
                 rate = rate_val
             except Exception:
                 return amount
-        else:
+        elif source == "USER":
+            # No auto-fetch for user-defined rates
             return amount
+        else:
+            # Fallback to Frankfurter when other sources are missing
+            rate = get_rate(orig_currency, target_currency, "FRANKFURTER", user)
+            if rate is None:
+                try:
+                    resp = requests.get(
+                        f"https://api.frankfurter.app/latest?from={orig_currency.code}&to={target_currency.code}",
+                        timeout=10,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    rate_val = Decimal(str(data["rates"][target_currency.code]))
+                    ExchangeRate.objects.update_or_create(
+                        source="FRANKFURTER",
+                        currency_from=orig_currency,
+                        currency_to=target_currency,
+                        user=user,
+                        defaults={"rate": rate_val},
+                    )
+                    rate = rate_val
+                except Exception:
+                    return amount
     return amount * rate
 
 

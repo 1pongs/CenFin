@@ -64,6 +64,16 @@ class TransactionForm(forms.ModelForm):
             self.initial['category_names'] = ','.join(
                 t.name for t in self.instance.categories.all()
             )
+            # Pre-fill amounts when editing a cross-currency transfer
+            from .models import Transaction as Tx
+            children = Tx.all_objects.filter(parent_transfer=self.instance)
+            if children.exists():
+                outflow = children.filter(account_source=self.instance.account_source).first()
+                inflow = children.filter(account_destination=self.instance.account_destination).first()
+                if outflow:
+                    self.initial['amount'] = outflow.amount
+                if inflow:
+                    self.initial['destination_amount'] = inflow.amount
 
         if user is not None:
             allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]

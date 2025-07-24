@@ -439,3 +439,75 @@ class CrossCurrencyHiddenTxTest(TestCase):
         dest_tx = hidden.filter(currency=self.cur_php).first()
         self.assertEqual(dest_tx.destination_amount, Decimal("50"))
 
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class RemittanceEditTests(TestCase):
+    def setUp(self):
+        from currencies.models import Currency
+        User = get_user_model()
+        self.cur_krw = Currency.objects.create(code="KRW", name="Won")
+        self.cur_php = Currency.objects.create(code="PHP", name="Peso")
+        self.user = User.objects.create_user(username="e", password="p")
+        self.client.force_login(self.user)
+        self.src_acc = Account.objects.create(
+            account_name="Woori", account_type="Cash", user=self.user, currency=self.cur_krw
+        )
+        self.dest_acc = Account.objects.create(
+            account_name="BDO", account_type="Cash", user=self.user, currency=self.cur_php
+        )
+        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("2000"),
+            account_source=self.out_acc,
+            account_destination=self.src_acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        data = {
+            "date": timezone.now().date(),
+            "description": "x",
+            "transaction_type": "transfer",
+            "amount": "1000",
+            "destination_amount": "50",
+            "account_source": self.src_acc.pk,
+            "account_destination": self.dest_acc.pk,
+            "entity_source": self.ent.pk,
+            "entity_destination": self.ent.pk,
+        }
+        self.client.post(reverse("transactions:transaction_create"), data)
+        self.parent = Transaction.objects.order_by("-id").first()
+
+    def test_edit_form_prefills_amounts(self):
+        resp = self.client.get(reverse("transactions:transaction_update", args=[self.parent.pk]))
+        form = resp.context["form"]
+        self.assertEqual(form.initial["amount"], Decimal("1000"))
+        self.assertEqual(form.initial["destination_amount"], Decimal("50"))
+
+    def test_update_recreates_hidden_children(self):
+        data = {
+            "date": self.parent.date,
+            "description": "x",
+            "transaction_type": "transfer",
+            "amount": "1000",
+            "destination_amount": "60",
+            "account_source": self.src_acc.pk,
+            "account_destination": self.dest_acc.pk,
+            "entity_source": self.ent.pk,
+            "entity_destination": self.ent.pk,
+        }
+        resp = self.client.post(reverse("transactions:transaction_update", args=[self.parent.pk]), data)
+        self.assertEqual(resp.status_code, 302)
+        self.parent.refresh_from_db()
+        self.assertEqual(self.parent.amount, Decimal("60"))
+        hidden = Transaction.all_objects.filter(parent_transfer=self.parent)
+        self.assertEqual(hidden.count(), 2)
+        outflow = hidden.filter(account_source=self.src_acc).first()
+        inflow = hidden.filter(account_destination=self.dest_acc).first()
+        self.assertEqual(outflow.amount, Decimal("1000"))
+        self.assertEqual(inflow.amount, Decimal("60"))
+        self.assertEqual(inflow.destination_amount, Decimal("60"))
