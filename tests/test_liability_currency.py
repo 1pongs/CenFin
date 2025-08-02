@@ -15,7 +15,7 @@ class LiabilityCurrencyTests(TestCase):
         self.cur_usd = Currency.objects.create(code="USD", name="US Dollar")
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         User = get_user_model()
-        self.user = User.objects.create_user(username="u", password="p", base_currency=self.cur_php)
+        self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
         self.lender = Lender.objects.create(name="Bank")
         self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user, currency=self.cur_php)

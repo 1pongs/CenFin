@@ -27,13 +27,10 @@ def currency_context(request):
         currencies = list(Currency.objects.filter(is_active=True))
 
     active = get_active_currency(request)
-    base = None
-    if request.user.is_authenticated:
-        base = getattr(request.user, "base_currency", None)
     symbol = get_currency_symbol(active.code) if active else ""
     return {
         "currency_options": currencies,
         "active_currency": active,
         "active_currency_symbol": symbol,
-        "base_currency": base,
+        "display_currency": active.code if active else "PHP",
     }

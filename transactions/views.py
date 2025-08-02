@@ -7,7 +7,7 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from django.db.models import Sum
+from django.db.models import Sum, F, DecimalField, Case, When, Value, Subquery, ExpressionWrapper
 from django.db import transaction
 from decimal import Decimal
 import json
@@ -17,6 +17,7 @@ from cenfin_proj.utils import (
     get_account_balance,
 )
 from utils.currency import get_active_currency, convert_amount
+from utils.exchange import get_rate_subquery
 
 from .models import Transaction, TransactionTemplate, CategoryTag
 from .forms import TransactionForm, TemplateForm
@@ -81,7 +82,21 @@ class TransactionListView(ListView):
             qs = qs.filter(date__gte=today - timedelta(days=30))
         elif date_range == "month":
             qs = qs.filter(date__year=today.year, date__month=today.month)
-            
+
+        display_cur = self.request.session.get("display_currency", "PHP")
+        rate_sq = get_rate_subquery(display_cur)
+        rate = Case(
+            When(currency__code=display_cur, then=Value(1)),
+            default=Subquery(rate_sq),
+            output_field=DecimalField(max_digits=12, decimal_places=6),
+        )
+        qs = qs.annotate(
+            converted_amount=ExpressionWrapper(
+                F("amount") * rate,
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+     
         return qs.order_by(sort)
 
     def get_context_data(self, **kwargs):
@@ -92,6 +107,7 @@ class TransactionListView(ListView):
         params = self.request.GET
         ctx["search"] = params.get("q", "")
         ctx["sort"] = params.get("sort", "-date")
+        ctx["display_currency"] = self.request.session.get("display_currency", "PHP")
         return ctx
 
     def post(self, request, *args, **kwargs):

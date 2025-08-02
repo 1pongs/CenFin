@@ -12,14 +12,11 @@ class UserSettingsForm(forms.ModelForm):
             "first_name",
             "last_name",
             "email",
-            "base_currency",
         ]
 
     def __init__(self, *args, **kwargs):
         show_actions = kwargs.pop("show_actions", True)
         super().__init__(*args, **kwargs)
-        from currencies.models import Currency
-        self.fields["base_currency"].queryset = Currency.objects.filter(is_active=True)
         self.helper = FormHelper()
         self.helper.form_tag = False
 
@@ -31,7 +28,6 @@ class UserSettingsForm(forms.ModelForm):
             ),
             Row(
                 Column("email", css_class="col-md-6"),
-                Column("base_currency", css_class="col-md-6"),
                 css_class="g-3",
             ),
         ]

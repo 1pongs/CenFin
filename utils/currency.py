@@ -28,15 +28,18 @@ def get_currency_symbol(code: str) -> str:
     
 
 def get_active_currency(request) -> Currency | None:
-    """Return the active currency for the current request."""
+    """Return the display currency for the current request.
 
-    code = request.session.get("active_currency") or request.session.get("currency")
-    if not code and request.user.is_authenticated and getattr(
-        request.user, "base_currency_id", None
-    ):
-        code = request.user.base_currency.code
+    The selected currency is stored in ``request.session['display_currency']``.
+    If missing, the session is initialised to ``'PHP'`` as a sensible default.
+    ``Currency`` objects are looked up lazily so any code can safely call this
+    helper even before the session value has been set explicitly.
+    """
+
+    code = request.session.get("display_currency")
     if not code:
-        return None
+        code = "PHP"
+        request.session["display_currency"] = code
     return Currency.objects.filter(code=code).first()
 
 

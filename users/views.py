@@ -38,8 +38,5 @@ class UserSettingsView(UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        if self.request.user.base_currency:
-            self.request.session["active_currency"] = self.request.user.base_currency.code
-            self.request.session["currency"] = self.request.user.base_currency.code
         messages.success(self.request, "Account settings updated.")
         return response

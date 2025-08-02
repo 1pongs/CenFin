@@ -6,5 +6,4 @@ class UserAdmin(admin.ModelAdmin):
     list_display = [
         "username",
         "email",
-        "base_currency",
     ]

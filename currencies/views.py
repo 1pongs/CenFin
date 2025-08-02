@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.shortcuts import redirect
 import logging
 
 from . import services
@@ -13,21 +12,13 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @require_POST
-def set_currency(request):
-    """Store the selected currency code in the session."""
+def set_display_currency(request):
+    """Store the selected display currency code in the session."""
     code = (request.POST.get("code") or "").upper()
     if code:
-        # Ensure the currency exists in the DB so that conversion helpers work
         Currency.objects.get_or_create(code=code, defaults={"name": code})
-        request.session["active_currency"] = code
-        request.session["currency"] = code
-    next_url = (
-        request.POST.get("next")
-        or request.GET.get("next")
-        or request.META.get("HTTP_REFERER")
-        or "/"
-    )
-    return redirect(next_url)
+        request.session["display_currency"] = code
+    return JsonResponse({"status": "ok"})
 
 
 @login_required

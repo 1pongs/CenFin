@@ -34,15 +34,11 @@
       <ul class="navbar-nav ms-auto align-items-center">
         {% if user.is_authenticated %}
           <li class="nav-item me-2">
-            <form method="post" action="{% url 'set_currency' %}" class="d-flex">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.get_full_path }}">
-              <select name="code" id="navbar-currency" class="form-select form-select-sm" onchange="this.form.submit()">
-                {% for c in currency_options %}
-                  <option value="{{ c.code }}" {% if active_currency and c.code == active_currency.code %}selected{% endif %}>{{ c.code }}</option>
-                {% endfor %}
-              </select>
-            </form>
+            <select id="display-currency" class="form-select form-select-sm">
+              {% for c in currency_options %}
+                <option value="{{ c.code }}" {% if c.code == display_currency %}selected{% endif %}>{{ c.code }}</option>
+              {% endfor %}
+            </select>
           </li>
           <li class="nav-item"><a class="nav-link" href="{% url 'users:settings' %}">Settings</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'users:logout' %}">Logout</a></li>
@@ -84,6 +80,20 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+      const csrftoken = () => document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
+      const sel = document.getElementById('display-currency');
+      sel?.addEventListener('change', () => {
+        const code = sel.value;
+        fetch('{% url 'set_display_currency' %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrftoken()
+          },
+          body: new URLSearchParams({code})
+        }).then(() => window.location.reload());
+      });
+      
       document.querySelectorAll('.toast').forEach(el => {
         bootstrap.Toast.getOrCreateInstance(el, {
           delay: 4000,      // 4 s auto-hide; adjust mo kung gusto
