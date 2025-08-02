@@ -95,16 +95,16 @@
         </tr>
       </thead>
       <tbody>
-        {% for txn in transactions %}
-        <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' txn.pk %}">
-          <td class="select-col"><input type="checkbox" name="selected_ids" value="{{ txn.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
-          <td>{{ txn.date|date:"M d, Y" }}</td>
-          <td>{{ txn.description }}</td>
-          <td>{{ txn.get_transaction_type_display }}</td>
-          <td>{{ txn.account_source }}</td>
-          <td>{{ txn.account_destination }}</td>
+        {% for tx in transactions %}
+        <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' tx.pk %}">
+          <td class="select-col"><input type="checkbox" name="selected_ids" value="{{ tx.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
+          <td>{{ tx.date|date:"M d, Y" }}</td>
+          <td>{{ tx.description }}</td>
+          <td>{{ tx.get_transaction_type_display }}</td>
+          <td>{{ tx.account_source }}</td>
+          <td>{{ tx.account_destination }}</td>
           <td class="text-end">
-            {{ txn.display_amount|floatformat:2|intcomma }} {{ display_currency }}
+            {{ tx.display_amount|floatformat:2|intcomma }} {{ display_currency }}
           </td>
         </tr>
         {% empty %}

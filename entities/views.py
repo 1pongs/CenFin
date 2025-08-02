@@ -175,13 +175,11 @@ class EntityListView(TemplateView):
         else:
             qs = qs.order_by("entity_name")
 
-        active_cur = get_active_currency(self.request)
-        disp_code = active_cur.code if active_cur else "PHP"
-        agg = get_entity_aggregate_rows(self.request.user, disp_code)
+        disp_code = get_active_currency(self.request).code
+        totals = get_entity_aggregate_rows(self.request.user, disp_code)
 
         for ent in qs:
-            data = agg.get(ent.pk, {"liquid": Decimal("0")})
-            ent.liquid_total_display = data["liquid"]
+            ent.liquid_total_display = totals.get(ent.pk, Decimal("0"))
 
         ctx["entities"] = qs
         ctx["search"] = search

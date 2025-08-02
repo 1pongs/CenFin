@@ -28,16 +28,16 @@
     </ul>
 
   <div class="card-grid grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-fr">
-      {% for e in entities %}
-        {% url 'entities:accounts' e.pk as acc_url %}
+      {% for ent in entities %}
+        {% url 'entities:accounts' ent.pk as acc_url %}
         <div class="cenfin-card card-entity clickable-card">
           <a href="{{ acc_url }}" class="stretched-link text-reset text-decoration-none"></a>
-          <span class="badge bg-secondary">{{ e.get_entity_type_display }}</span>
-          <h6 class="card-title mb-2">{{ e.entity_name }}</h6>
+          <span class="badge bg-secondary">{{ ent.get_entity_type_display }}</span>
+          <h6 class="card-title mb-2">{{ ent.entity_name }}</h6>
           <p class="mb-1">
             <span class="field-label">Liquid:</span>
             <span class="field-value">
-              {{ e.liquid_total_display|floatformat:2|intcomma }} {{ display_currency }}
+              {{ ent.liquid_total_display|floatformat:2|intcomma }} {{ display_currency }}
             </span>
           </p>
         </div>

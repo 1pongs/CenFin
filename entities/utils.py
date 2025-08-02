@@ -59,26 +59,20 @@ from decimal import Decimal
 from collections import defaultdict
 
 from transactions.models import Transaction
-from core.utils.currency import convert
+from core.utils.fx import convert
 
 
-def get_entity_aggregate_rows(user, display_code: str):
-    """Return liquid totals per entity converted to ``display_code``."""
+def get_entity_aggregate_rows(user, disp_code: str):
+    """Return net totals per entity converted to ``disp_code``."""
 
-    rows = defaultdict(lambda: {"liquid": Decimal("0"), "nonliquid": Decimal("0")})
+    rows = defaultdict(Decimal)
     txs = Transaction.objects.filter(user=user).select_related("currency")
     for tx in txs:
-        amount = tx.amount or Decimal("0")
-        cur_code = tx.currency.code if tx.currency else display_code
-        conv = convert(amount, cur_code, display_code)
+        if tx.amount is None or tx.currency is None:
+            continue
+        amt = convert(tx.amount, tx.currency.code, disp_code)
         if tx.entity_destination_id:
-            if (tx.asset_type_destination or "").lower() == "liquid":
-                rows[tx.entity_destination_id]["liquid"] += conv
-            elif (tx.asset_type_destination or "").replace("-", "_").lower() == "non_liquid":
-                rows[tx.entity_destination_id]["nonliquid"] += conv
+            rows[tx.entity_destination_id] += amt
         if tx.entity_source_id:
-            if (tx.asset_type_source or "").lower() == "liquid":
-                rows[tx.entity_source_id]["liquid"] -= conv
-            elif (tx.asset_type_source or "").replace("-", "_").lower() == "non_liquid":
-                rows[tx.entity_source_id]["nonliquid"] -= conv
+            rows[tx.entity_source_id] -= amt
     return rows
