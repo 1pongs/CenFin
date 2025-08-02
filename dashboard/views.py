@@ -1,16 +1,8 @@
+from decimal import Decimal
+
 from django.shortcuts import render
 from django.views.generic import TemplateView, View
-from django.db.models import (
-    Sum,
-    Case,
-    When,
-    F,
-    DecimalField,
-    Value,
-    CharField,
-    Q,
-)
-from django.db.models.functions import Abs
+from django.db.models import Case, When, Value, CharField, Q
 from django.utils import timezone
 from datetime import date, timedelta
 
@@ -23,6 +15,7 @@ from cenfin_proj.utils import (
     get_monthly_cash_flow,
     parse_range_params,
 )
+from utils.currency import get_active_currency, convert_to_base
 
 # Create your views here.
 
@@ -32,42 +25,31 @@ class DashboardView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        # aggregate money-in / money-out / net worth
-        aggregates = Transaction.objects.filter(user=self.request.user).aggregate(
-            income=Sum(
-                Case(When(transaction_type_destination="Income",
-                          then=F("amount")),
-                     default=0,
-                     output_field=DecimalField())
-            ),
-            expenses=Sum(
-                Case(When(transaction_type_source="Expense",
-                          then=F("amount")),
-                     default=0,
-                     output_field=DecimalField())
-            ),
-            liquid=Sum(
-                Case(When(asset_type_destination="Liquid", then=F("amount")),
-                     When(asset_type_source="Liquid", then=-F("amount")),
-                     default=0,
-                     output_field=DecimalField())
-            ),
-            asset=Sum(
-                Case(When(asset_type_destination="Non-Liquid", then=F("amount")),
-                     When(asset_type_source="Non-Liquid", then=-F("amount")),
-                     default=0,
-                     output_field=DecimalField())
-            ),
-        )
-        income = aggregates.get("income") or 0
-        expenses = aggregates.get("expenses") or 0
-        liquid = aggregates.get("liquid") or 0
-        asset = aggregates.get("asset") or 0
-        aggregates["income"] = income
-        aggregates["expenses"] = expenses
-        aggregates["liquid"] = liquid
-        aggregates["asset"] = asset
-        aggregates["net"] = income - expenses + asset
+        base_cur = get_active_currency(self.request)
+        income = expenses = liquid = asset = Decimal("0")
+        qs_all = Transaction.objects.filter(user=self.request.user).select_related("currency")
+        for tx in qs_all:
+            amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
+            if tx.transaction_type_destination == "Income":
+                income += amt
+            if tx.transaction_type_source == "Expense":
+                expenses += amt
+            if tx.asset_type_destination == "Liquid":
+                liquid += amt
+            elif tx.asset_type_source == "Liquid":
+                liquid -= amt
+            if tx.asset_type_destination == "Non-Liquid":
+                asset += amt
+            elif tx.asset_type_source == "Non-Liquid":
+                asset -= amt
+
+        aggregates = {
+            "income": income,
+            "expenses": expenses,
+            "liquid": liquid,
+            "asset": asset,
+            "net": income - expenses + asset,
+        }
 
         ctx["totals"] = aggregates
 
@@ -78,7 +60,7 @@ class DashboardView(TemplateView):
             ("Asset", "asset", "info"),
             ("Net Worth", "net",       "primary"),
         ]
-        ctx["monthly_summary"] = get_monthly_summary(user=self.request.user)
+        ctx["monthly_summary"] = get_monthly_summary(user=self.request.user, currency=base_cur)
         today = timezone.now().date()
         ctx["today"] = today
         
@@ -124,31 +106,30 @@ class DashboardView(TemplateView):
         # ------------------------------------------------------
         qs = Transaction.objects.filter(
             user=self.request.user, date__range=[start_top, end_top]
-        )
+        ).select_related("currency")
         if selected_entities:
             qs = qs.filter(
-                Q(entity_source_id__in=selected_entities) |
-                Q(entity_destination_id__in=selected_entities)
+                Q(entity_source_id__in=selected_entities)
+                | Q(entity_destination_id__in=selected_entities)
             )
         if txn_type and txn_type != "all":
             qs = qs.filter(transaction_type=txn_type)
-        top_entries_qs = (
-            qs
-            .annotate(abs_amount=Abs("amount"))
-            .annotate(
-                entry_type=Case(
-                    When(transaction_type_destination="Income", then=Value("income")),
-                    When(transaction_type_source="Expense", then=Value("expense")),
-                    When(asset_type_destination="Non-Liquid", then=Value("asset")),
-                    default=Value("other"),
-                    output_field=CharField(),
-                )
-            )
-            .order_by("-abs_amount")[:10]
-            .values("description", "abs_amount", "entry_type")
-            .values(category=F("description"), amount=F("abs_amount"), type=F("entry_type"))
-        )
-        ctx["top10_big_tickets"] = list(top_entries_qs)
+
+        entries = []
+        for tx in qs:
+            amt = convert_to_base(abs(tx.amount or Decimal("0")), tx.currency, base_cur, user=self.request.user)
+            if tx.transaction_type_destination == "Income":
+                entry_type = "income"
+            elif tx.transaction_type_source == "Expense":
+                entry_type = "expense"
+            elif tx.asset_type_destination == "Non-Liquid":
+                entry_type = "asset"
+            else:
+                entry_type = "other"
+            entries.append({"category": tx.description, "amount": amt, "type": entry_type})
+
+        entries.sort(key=lambda r: r["amount"], reverse=True)
+        ctx["top10_big_tickets"] = entries[:10]
 
         return ctx
 
@@ -163,7 +144,8 @@ class MonthlyDataView(View):
                 return JsonResponse({"error": "invalid entity"}, status=400)
         else:
             ent = None
-        data = get_monthly_summary(ent, user=request.user)
+        base_cur = get_active_currency(request)
+        data = get_monthly_summary(ent, user=request.user, currency=base_cur)
         return JsonResponse(data, safe=False)
     
 
@@ -186,6 +168,9 @@ class MonthlyChartDataView(View):
         except (TypeError, ValueError):
             months = 12
 
-        data = get_monthly_cash_flow(ent, months, drop_empty=True, user=request.user)
+        base_cur = get_active_currency(request)
+        data = get_monthly_cash_flow(
+            ent, months, drop_empty=True, user=request.user, currency=base_cur
+        )
         return JsonResponse(data, safe=False)
     

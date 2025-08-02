@@ -1,7 +1,12 @@
+"""Utility helpers for currency conversion and display."""
+
 from decimal import Decimal
 from typing import Union
-from currencies.models import Currency, ExchangeRate, get_rate
+
 import requests
+
+from currencies.models import Currency, ExchangeRate, get_rate
+
 
 # Map a few common currency codes to their display symbols. Used when
 # rendering monetary values in templates and JSON responses.
@@ -18,21 +23,41 @@ CURRENCY_SYMBOLS = {
 
 def get_currency_symbol(code: str) -> str:
     """Return the typical symbol for ``code`` or the code itself."""
+
     return CURRENCY_SYMBOLS.get(code.upper(), code)
     
 
 def get_active_currency(request) -> Currency | None:
+    """Return the active currency for the current request."""
+
     code = request.session.get("active_currency") or request.session.get("currency")
-    if not code and request.user.is_authenticated and getattr(request.user, "base_currency_id", None):
+    if not code and request.user.is_authenticated and getattr(
+        request.user, "base_currency_id", None
+    ):
         code = request.user.base_currency.code
     if not code:
         return None
     return Currency.objects.filter(code=code).first()
 
 
-def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_currency: Union[str, Currency], *, user=None, source=None) -> Decimal:
+def convert_amount(
+    amount: Decimal,
+    orig_currency: Union[str, Currency],
+    target_currency: Union[str, Currency],
+    *,
+    user=None,
+    source=None,
+) -> Decimal:
+    """Convert ``amount`` from ``orig_currency`` to ``target_currency``.
+
+    If a conversion rate is missing, an attempt will be made to fetch it from
+    the Frankfurter API and store it in the ``ExchangeRate`` table.  The
+    user's preferred rate source is honoured when provided.
+    """
+
     if amount is None:
         return amount
+
     if isinstance(orig_currency, str):
         orig_currency = Currency.objects.filter(code=orig_currency).first()
         if orig_currency is None:
@@ -43,10 +68,12 @@ def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_
             return amount
     if orig_currency == target_currency:
         return amount
+
     if source is None and user is not None and hasattr(user, "preferred_rate_source"):
         source = user.preferred_rate_source
     if source is None:
         source = "FRANKFURTER"
+
     rate = get_rate(orig_currency, target_currency, source, user)
     if rate is None:
         if source == "FRANKFURTER":
@@ -94,11 +121,47 @@ def convert_amount(amount: Decimal, orig_currency: Union[str, Currency], target_
                     rate = rate_val
                 except Exception:
                     return amount
+
     return amount * rate
 
 
-def amount_for_display(request, amount: Decimal, orig_currency: Union[str, Currency]) -> Decimal:
+def convert_to_base(
+    amount: Decimal,
+    orig_currency: Union[str, Currency],
+    base_currency: Union[str, Currency] | None = None,
+    *,
+    request=None,
+    user=None,
+) -> Decimal:
+    """Convert ``amount`` to the application's active/base currency.
+
+    ``base_currency`` can be supplied directly.  If omitted, the active
+    currency from ``request`` or the user's ``base_currency`` will be used.
+    When no target currency can be determined the original ``amount`` is
+    returned.
+    """
+
+    if base_currency is None:
+        if request is not None:
+            base_currency = get_active_currency(request)
+            if user is None and hasattr(request, "user"):
+                user = request.user
+        elif user is not None and getattr(user, "base_currency_id", None):
+            base_currency = user.base_currency
+
+    if base_currency is None:
+        return amount
+
+    return convert_amount(amount, orig_currency, base_currency, user=user)
+
+
+def amount_for_display(
+    request, amount: Decimal, orig_currency: Union[str, Currency]
+) -> Decimal:
+    """Convert ``amount`` for display based on the request's active currency."""
+
     target = get_active_currency(request)
     if not target:
         return amount
     return convert_amount(amount, orig_currency, target, user=getattr(request, "user", None))
+    
