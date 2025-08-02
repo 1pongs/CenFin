@@ -175,8 +175,13 @@ class EntityListView(TemplateView):
         else:
             qs = qs.order_by("entity_name")
 
-        disp_code = get_active_currency(self.request).code
-        totals = get_entity_aggregate_rows(self.request.user, disp_code)
+        active_currency = get_active_currency(self.request)
+        disp_code = active_currency.code if active_currency else None
+        totals = (
+            get_entity_aggregate_rows(self.request.user, disp_code)
+            if disp_code
+            else {}
+        )
 
         for ent in qs:
             ent.liquid_total_display = totals.get(ent.pk, Decimal("0"))
