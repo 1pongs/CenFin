@@ -38,3 +38,21 @@ class ConvertAmountFetchTests(TestCase):
             currency_from=self.cur_usd, currency_to=self.cur_php
         )
         self.assertEqual(rate.rate, Decimal("55.0"))
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class FrankfurterServiceTests(TestCase):
+    @patch("currencies.services.requests.get")
+    def test_returns_all_remote_codes(self, mock_get):
+        from currencies import services
+        from django.core.cache import cache
+
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"USD": "US Dollar", "EUR": "Euro"}
+        mock_get.return_value.raise_for_status = lambda: None
+
+        cache.clear()
+        # Only USD exists locally but service should return both USD and EUR
+        Currency.objects.create(code="USD", name="US Dollar")
+        data = services.get_frankfurter_currencies()
+        self.assertEqual(set(data.keys()), {"USD", "EUR"})

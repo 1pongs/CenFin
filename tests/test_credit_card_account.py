@@ -133,16 +133,18 @@ class CreditCardAccountTests(TestCase):
         Account.objects.create(
             account_name="Master", account_type="Cash", user=self.user
         )
-        with self.assertRaises(ValidationError):
-            self.client.post(
-                reverse("liabilities:credit-create"),
-                {
-                    "issuer_id": self.lender.pk,
-                    "issuer_text": self.lender.name,
-                    "card_name": "Master",
-                    "credit_limit": "1000",
-                    "interest_rate": "1",
-                    "statement_day": "1",
-                    "payment_due_day": "10",
-                },
-            )
+        resp = self.client.post(
+            reverse("liabilities:credit-create"),
+            {
+                "issuer_id": self.lender.pk,
+                "issuer_text": self.lender.name,
+                "card_name": "Master",
+                "credit_limit": "1000",
+                "interest_rate": "1",
+                "statement_day": "1",
+                "payment_due_day": "10",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertIn("card_name", form.errors)

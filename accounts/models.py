@@ -163,8 +163,8 @@ class Account(models.Model):
         """Return balance converted to the given currency."""
         if currency_code == self.currency.code:
             return self.get_current_balance()
-        target = Currency.objects.get(code=currency_code)
-        rate = get_rate(self.currency, target)
-        if rate is None:
+        target = Currency.objects.filter(code=currency_code).first()
+        if target is None:
             return None
-        return self.get_current_balance() * rate
+        from utils.currency import convert_amount
+        return convert_amount(self.get_current_balance(), self.currency, target)

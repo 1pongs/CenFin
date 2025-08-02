@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 def set_currency(request):
     """Store the selected currency code in the session."""
     code = (request.POST.get("code") or "").upper()
-    if Currency.objects.filter(code=code, is_active=True).exists():
+    if code:
+        # Ensure the currency exists in the DB so that conversion helpers work
+        Currency.objects.get_or_create(code=code, defaults={"name": code})
         request.session["active_currency"] = code
         request.session["currency"] = code
     next_url = (

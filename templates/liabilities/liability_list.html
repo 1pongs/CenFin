@@ -14,8 +14,10 @@
           <div class="col">
             {% url 'liabilities:loan-edit' loan.pk as edit_url %}
           {% display loan.principal_amount loan.currency as disp_principal %}
-          {% with '<span class="amount-display" data-prefix="'|add:active_currency_symbol|add:'" data-decimals="2">'|add:disp_principal|floatformat:2|intcomma|add:'</span>' as loan_amt %}
-          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt|safe rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% with loan_amt=disp_principal|floatformat:2|intcomma %}
+          {% with '<span class="amount-display" data-prefix="'|add:active_currency_symbol|add:'" data-decimals="2">'|add:loan_amt|add:'</span>' as loan_amt_html %}
+          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt_html|safe rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% endwith %}
           {% endwith %}
           </div>
         {% empty %}

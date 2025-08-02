@@ -13,26 +13,9 @@ class CurrencySourceError(Exception):
     pass
 
 
-_FRANK_URL = "https://api.frankfurter.dev/v1/currencies"
+_FRANK_URL = "https://api.frankfurter.app/currencies"
 _CACHE_KEY = "frankfurter_currencies"
-_TTL       = 86_400            # 24 h
-
-
-def _limit_to_active(currencies: Dict[str, str]) -> Dict[str, str]:
-    """
-    Keep only codes that exist in the DB AND are marked is_active=True.
-    If none are found (e.g. dev DB is empty), return the full dict so
-    the dropdowns are never blank.
-    """
-    codes = list(currencies)
-    active_codes = set(
-        Currency.objects.filter(code__in=codes, is_active=True)
-                        .values_list("code", flat=True)
-    )
-    if active_codes:
-        return {c: n for c, n in currencies.items() if c in active_codes}
-    return currencies   # dev fallback → give everything
-
+_TTL = 86_400  # 24 h
 
 def get_frankfurter_currencies() -> Dict[str, str]:
     """Fetch (and cache) the Frankfurter currency map."""
@@ -49,6 +32,5 @@ def get_frankfurter_currencies() -> Dict[str, str]:
         logger.exception("Frankfurter fetch failed: %s", exc)
         raise CurrencySourceError("Frankfurter unavailable") from exc
 
-    mapped = _limit_to_active(raw)
-    cache.set(_CACHE_KEY, mapped, _TTL)
-    return mapped
+    cache.set(_CACHE_KEY, raw, _TTL)
+    return raw
