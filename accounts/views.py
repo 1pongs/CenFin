@@ -10,6 +10,8 @@ from decimal import Decimal
 
 from accounts.models import Account
 from utils.currency import get_active_currency
+from utils.conversion import convert_amount, MissingRateError
+from django.conf import settings
 from .forms import AccountForm
 from transactions.models import Transaction
 
@@ -59,6 +61,23 @@ def account_list(request):
         "base_currency": base_cur,
     }
     return render(request, "accounts/account_list.html", context)
+
+
+class AccountDetailView(TemplateView):
+    template_name = "accounts/account_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        account = get_object_or_404(Account, pk=self.kwargs["pk"], user=self.request.user)
+        disp_code = getattr(self.request, "display_currency", settings.BASE_CURRENCY)
+        bal = account.get_current_balance()
+        try:
+            converted = convert_amount(bal, account.currency.code, disp_code)
+        except MissingRateError:
+            converted = bal
+        ctx["account"] = account
+        ctx["converted_balance"] = converted
+        return ctx
 
 
 class AccountCreateView(CreateView):

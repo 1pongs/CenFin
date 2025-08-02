@@ -1,6 +1,7 @@
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
 
 from django.http import HttpResponseRedirect, JsonResponse, QueryDict
 from django.urls import reverse_lazy, reverse
@@ -90,8 +91,7 @@ class TransactionListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        active_currency = get_active_currency(self.request)
-        disp_code = active_currency.code if active_currency else None
+        disp_code = getattr(self.request, "display_currency", settings.BASE_CURRENCY)
 
         for tx in ctx["object_list"]:
             amount = tx.amount

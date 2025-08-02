@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Account {{ account.account_name }} · CENFIN{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ account.account_name }}</h1>
+<p><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ converted_balance|floatformat:2|intcomma }}</span></p>
+{% endblock %}

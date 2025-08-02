@@ -16,15 +16,17 @@ class SetDisplayCurrencyViewTests(TestCase):
     def test_logged_in_post_sets_session_and_redirects(self):
         self.client.force_login(self.user)
         url = reverse("set_display_currency")
-        resp = self.client.post(url, {"code": self.cur.code})
-        self.assertEqual(resp.status_code, 200)
+        resp = self.client.post(url, {"code": self.cur.code}, HTTP_REFERER="/origin/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], "/origin/")
         self.assertEqual(self.client.session["display_currency"], self.cur.code)
 
     def test_post_next_field_used_when_present(self):
         self.client.force_login(self.user)
         url = reverse("set_display_currency")
-        resp = self.client.post(url, {"code": self.cur.code})
-        self.assertEqual(resp.status_code, 200)
+        resp = self.client.post(url, {"code": self.cur.code}, HTTP_REFERER="/some/prev/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], "/some/prev/")
         self.assertEqual(self.client.session["display_currency"], self.cur.code)
 
     def test_anonymous_redirects_to_login(self):

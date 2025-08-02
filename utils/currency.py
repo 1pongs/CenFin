@@ -36,10 +36,13 @@ def get_active_currency(request) -> Currency | None:
     helper even before the session value has been set explicitly.
     """
 
-    code = request.session.get("display_currency")
+    code = getattr(request, "display_currency", None)
     if not code:
-        code = "PHP"
-        request.session["display_currency"] = code
+        code = request.session.get("display_currency")
+        if not code:
+            code = "PHP"
+            request.session["display_currency"] = code
+        request.display_currency = code
     return Currency.objects.filter(code=code).first()
 
 

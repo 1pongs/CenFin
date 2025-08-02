@@ -65,14 +65,21 @@ from core.utils.fx import convert
 def get_entity_aggregate_rows(user, disp_code: str):
     """Return net totals per entity converted to ``disp_code``."""
 
-    rows = defaultdict(Decimal)
+    per_entity = defaultdict(lambda: defaultdict(Decimal))
     txs = Transaction.objects.filter(user=user).select_related("currency")
     for tx in txs:
         if tx.amount is None or tx.currency is None:
             continue
-        amt = convert(tx.amount, tx.currency.code, disp_code)
+        code = tx.currency.code
         if tx.entity_destination_id:
-            rows[tx.entity_destination_id] += amt
+            per_entity[tx.entity_destination_id][code] += tx.amount
         if tx.entity_source_id:
-            rows[tx.entity_source_id] -= amt
+            per_entity[tx.entity_source_id][code] -= tx.amount
+
+    rows = {}
+    for ent_id, per_cur in per_entity.items():
+        total = Decimal("0")
+        for code, amount in per_cur.items():
+            total += convert(amount, code, disp_code)
+        rows[ent_id] = total
     return rows

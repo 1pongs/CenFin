@@ -1,6 +1,9 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
 import logging
 
 from . import services
@@ -18,7 +21,8 @@ def set_display_currency(request):
     if code:
         Currency.objects.get_or_create(code=code, defaults={"name": code})
         request.session["display_currency"] = code
-    return JsonResponse({"status": "ok"})
+    referer = request.META.get("HTTP_REFERER") or reverse("dashboard:dashboard")
+    return redirect(referer)
 
 
 @login_required

@@ -1,6 +1,7 @@
+from django.conf import settings
 from .models import Currency
 from . import services
-from utils.currency import get_active_currency, get_currency_symbol
+from utils.currency import get_currency_symbol
 
 
 def currency_context(request):
@@ -26,11 +27,11 @@ def currency_context(request):
     except services.CurrencySourceError:
         currencies = list(Currency.objects.filter(is_active=True))
 
-    active = get_active_currency(request)
-    symbol = get_currency_symbol(active.code) if active else ""
+    code = getattr(request, "display_currency", settings.BASE_CURRENCY)
+    active = Currency.objects.filter(code=code).first()
+    symbol = get_currency_symbol(code)
     return {
         "currency_options": currencies,
         "active_currency": active,
         "active_currency_symbol": symbol,
-        "display_currency": active.code if active else "PHP",
     }
