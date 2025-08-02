@@ -43,7 +43,12 @@ class TransactionListView(ListView):
     context_object_name = "transactions"
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(user=self.request.user)
+        qs = (
+            super()
+            .get_queryset()
+            .filter(user=self.request.user)
+            .select_related("currency")
+        )
         params = self.request.GET
 
         search = params.get("q", "").strip()
@@ -83,15 +88,15 @@ class TransactionListView(ListView):
         elif date_range == "month":
             qs = qs.filter(date__year=today.year, date__month=today.month)
 
-        display_cur = self.request.session.get("display_currency", "PHP")
-        rate_sq = get_rate_subquery(display_cur)
+        disp_cur = get_active_currency(self.request).code
+        rate_sq = get_rate_subquery(disp_cur)
         rate = Case(
-            When(currency__code=display_cur, then=Value(1)),
+            When(currency__code=disp_cur, then=Value(1)),
             default=Subquery(rate_sq),
             output_field=DecimalField(max_digits=12, decimal_places=6),
         )
         qs = qs.annotate(
-            converted_amount=ExpressionWrapper(
+            display_amount=ExpressionWrapper(
                 F("amount") * rate,
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             )
@@ -107,7 +112,7 @@ class TransactionListView(ListView):
         params = self.request.GET
         ctx["search"] = params.get("q", "")
         ctx["sort"] = params.get("sort", "-date")
-        ctx["display_currency"] = self.request.session.get("display_currency", "PHP")
+        ctx["display_currency"] = get_active_currency(self.request).code
         return ctx
 
     def post(self, request, *args, **kwargs):

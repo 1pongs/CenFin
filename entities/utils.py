@@ -53,3 +53,32 @@ def ensure_remittance_entity(user):
         defaults={"entity_type": "personal fund", "is_visible": False, "system_hidden": True},
     )
     return ent
+
+
+from decimal import Decimal
+from collections import defaultdict
+
+from transactions.models import Transaction
+from core.utils.currency import convert
+
+
+def get_entity_aggregate_rows(user, display_code: str):
+    """Return liquid totals per entity converted to ``display_code``."""
+
+    rows = defaultdict(lambda: {"liquid": Decimal("0"), "nonliquid": Decimal("0")})
+    txs = Transaction.objects.filter(user=user).select_related("currency")
+    for tx in txs:
+        amount = tx.amount or Decimal("0")
+        cur_code = tx.currency.code if tx.currency else display_code
+        conv = convert(amount, cur_code, display_code)
+        if tx.entity_destination_id:
+            if (tx.asset_type_destination or "").lower() == "liquid":
+                rows[tx.entity_destination_id]["liquid"] += conv
+            elif (tx.asset_type_destination or "").replace("-", "_").lower() == "non_liquid":
+                rows[tx.entity_destination_id]["nonliquid"] += conv
+        if tx.entity_source_id:
+            if (tx.asset_type_source or "").lower() == "liquid":
+                rows[tx.entity_source_id]["liquid"] -= conv
+            elif (tx.asset_type_source or "").replace("-", "_").lower() == "non_liquid":
+                rows[tx.entity_source_id]["nonliquid"] -= conv
+    return rows

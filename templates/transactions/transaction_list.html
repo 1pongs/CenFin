@@ -104,7 +104,7 @@
           <td>{{ txn.account_source }}</td>
           <td>{{ txn.account_destination }}</td>
           <td class="text-end">
-            {{ txn.converted_amount|floatformat:2|intcomma }} {{ display_currency }}
+            {{ txn.display_amount|floatformat:2|intcomma }} {{ display_currency }}
           </td>
         </tr>
         {% empty %}

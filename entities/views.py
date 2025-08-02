@@ -6,27 +6,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import date, timedelta
-from django.template.defaultfilters import floatformat
-from django.contrib.humanize.templatetags.humanize import intcomma
-from utils.currency import (
-    amount_for_display,
-    get_active_currency,
-    get_currency_symbol,
-    convert_amount,
-)
-from currencies.models import Currency
-
-from django.db.models import (
-    Sum,
-    F,
-    Case,
-    When,
-    DecimalField,
-    Value,
-    IntegerField,
-    Count,
-)
-from collections import defaultdict
+from utils.currency import get_active_currency
+from entities.utils import get_entity_aggregate_rows
+from decimal import Decimal
+from django.db.models import Sum, Count
 
 
 from entities.models import Entity
@@ -36,107 +19,6 @@ from insurance.models import Insurance
 from accounts.models import Account
 from .forms import EntityForm
 from transactions.models import Transaction
-
-# ---------------------------------------------------------------------------
-# Helper: aggregate_totals
-# ---------------------------------------------------------------------------
-def get_entity_aggregate_rows(user):
-    """Return combined entity totals from both source and destination for a user."""
-    base_cur = None
-    if getattr(user, "base_currency_id", None):
-        base_cur = user.base_currency
-    else:
-        base_cur = Currency.objects.filter(code="PHP").first()
-    results = defaultdict(
-        lambda: {
-            "the_entity_id": None,
-            "the_name": "",
-            "the_type": "",
-            "total_income": 0,
-            "total_expenses": 0,
-            "total_transfer": 0,
-            "total_asset": 0,
-            "total_liquid": 0,
-            "total_non_liquid": 0,
-        }
-    )
-
-    inflow = Transaction.objects.filter(
-        user=user,
-        entity_destination__is_active=True,
-        entity_destination__is_visible=True,
-    ).select_related("currency", "entity_destination")
-    for tx in inflow:
-        amt = convert_amount(tx.amount or 0, tx.currency, base_cur)
-        data = results[tx.entity_destination_id]
-        data["the_entity_id"] = tx.entity_destination_id
-        data["the_name"] = tx.entity_destination.entity_name
-        data["the_type"] = tx.entity_destination.entity_type
-
-        if tx.transaction_type_destination == "Income":
-            data["total_income"] += amt
-        if tx.transaction_type_destination == "Expense":
-            data["total_expenses"] += amt
-        if tx.transaction_type_destination == "Transfer":
-            data["total_transfer"] += amt
-        if tx.transaction_type_destination == "buy_product":
-            data["total_asset"] += amt
-
-        if (tx.asset_type_destination or "").lower() == "liquid":
-            data["total_liquid"] += amt
-        if (tx.asset_type_destination or "").lower() == "non_liquid":
-            data["total_non_liquid"] += amt
-
-    outflow = Transaction.objects.filter(
-        user=user,
-        entity_source__is_active=True,
-        entity_source__is_visible=True,
-    ).select_related("currency", "entity_source")
-    for tx in outflow:
-        amt = convert_amount(tx.amount or 0, tx.currency, base_cur)
-        data = results[tx.entity_source_id]
-        data["the_entity_id"] = tx.entity_source_id
-        data["the_name"] = tx.entity_source.entity_name
-        data["the_type"] = tx.entity_source.entity_type
-
-        if tx.transaction_type_source == "Income":
-            data["total_income"] -= amt
-        if tx.transaction_type_source == "Expense":
-            data["total_expenses"] -= amt
-        if tx.transaction_type_source == "Transfer":
-            data["total_transfer"] -= amt
-        if tx.transaction_type_source == "sell_product":
-            data["total_asset"] -= amt
-
-        if (tx.asset_type_source or "").lower() == "liquid":
-            data["total_liquid"] -= amt
-        if (tx.asset_type_source or "").lower() == "non_liquid":
-            data["total_non_liquid"] -= amt
-
-    # Include all active entities even when no transactions
-
-    for ent in Entity.objects.active().filter(user=user, is_visible=True):
-        entry = results.setdefault(
-            ent.pk,
-            {
-                "the_entity_id": ent.pk,
-                "the_name": ent.entity_name,
-                "the_type": ent.entity_type,
-                "total_income": 0,
-                "total_expenses": 0,
-                "total_transfer": 0,
-                "total_asset": 0,
-                "total_liquid": 0,
-                "total_non_liquid": 0,
-            },
-        )
-
-        if not entry["the_name"]:
-            entry["the_name"] = ent.entity_name
-        if not entry["the_type"]:
-            entry["the_type"] = ent.entity_type
-
-    return list(results.values())
 
 
 # ---------------------------------------------------------------------------
@@ -293,31 +175,13 @@ class EntityListView(TemplateView):
         else:
             qs = qs.order_by("entity_name")
 
-        totals_map = {
-            row["the_entity_id"]: row
-            for row in get_entity_aggregate_rows(self.request.user)
-        }
         active_cur = get_active_currency(self.request)
-        symbol = get_currency_symbol(active_cur.code) if active_cur else ""
-        base_code = (
-            self.request.user.base_currency.code
-            if getattr(self.request.user, "base_currency_id", None)
-            else ""
-        )
+        disp_code = active_cur.code if active_cur else "PHP"
+        agg = get_entity_aggregate_rows(self.request.user, disp_code)
 
         for ent in qs:
-            data = totals_map.get(ent.pk, {})
-            ent.liquid_total = data.get("total_liquid", 0)
-            ent.non_liquid_total = data.get("total_non_liquid", 0)
-            
-            def _fmt(val):
-                conv = amount_for_display(self.request, val, base_code)
-                return f"{symbol}{intcomma(floatformat(conv, 2))}"
-
-            ent.card_rows = [
-                ("Liquid", _fmt(ent.liquid_total)),
-                ("Non-Liquid", _fmt(ent.non_liquid_total)),
-            ]
+            data = agg.get(ent.pk, {"liquid": Decimal("0")})
+            ent.liquid_total_display = data["liquid"]
 
         ctx["entities"] = qs
         ctx["search"] = search
@@ -393,11 +257,6 @@ class EntityDetailView(TemplateView):
 
         ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
         ctx["total_balance"] = sum(b["balance"] for b in balances.values())
-
-        rows = get_entity_aggregate_rows(self.request.user)
-        ctx["totals"] = next(
-            (row for row in rows if row["the_entity_id"] == entity_pk), None
-        )
 
         ctx["insurances"] = Insurance.objects.filter(
             entity=entity, user=self.request.user
