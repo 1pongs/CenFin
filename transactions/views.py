@@ -171,7 +171,7 @@ class TransactionCreateView(CreateView):
 
             src_amount = visible_tx.amount
             if not dest_amt:
-                dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency, user=self.request.user)
+                dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
 
             with transaction.atomic():
                 visible_tx.currency = dest_acc.currency
@@ -290,7 +290,7 @@ class TransactionUpdateView(UpdateView):
 
                 src_amount = visible_tx.amount
                 if not dest_amt:
-                    dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency, user=self.request.user)
+                    dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
 
                 visible_tx.currency = dest_acc.currency
                 visible_tx.amount = dest_amt
@@ -453,7 +453,7 @@ def pair_balance(request):
     active = get_active_currency(request)
     base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
     if active:
-        balance = convert_amount(balance, base_code, active.code, user=request.user)
+        balance = convert_amount(balance, base_code, active.code)
         cur_code = active.code
     else:
         cur_code = base_code
@@ -467,7 +467,7 @@ def account_balance(request, pk):
     active = get_active_currency(request)
     base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
     if active:
-        bal = convert_amount(bal, base_code, active.code, user=request.user)
+        bal = convert_amount(bal, base_code, active.code)
         cur_code = active.code
     else:
         cur_code = base_code
@@ -481,7 +481,7 @@ def entity_balance(request, pk):
     active = get_active_currency(request)
     base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
     if active:
-        bal = convert_amount(bal, base_code, active.code, user=request.user)
+        bal = convert_amount(bal, base_code, active.code)
         cur_code = active.code
     else:
         cur_code = base_code

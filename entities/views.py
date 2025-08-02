@@ -67,7 +67,7 @@ def get_entity_aggregate_rows(user):
         entity_destination__is_visible=True,
     ).select_related("currency", "entity_destination")
     for tx in inflow:
-        amt = convert_amount(tx.amount or 0, tx.currency, base_cur, user=user)
+        amt = convert_amount(tx.amount or 0, tx.currency, base_cur)
         data = results[tx.entity_destination_id]
         data["the_entity_id"] = tx.entity_destination_id
         data["the_name"] = tx.entity_destination.entity_name
@@ -93,7 +93,7 @@ def get_entity_aggregate_rows(user):
         entity_source__is_visible=True,
     ).select_related("currency", "entity_source")
     for tx in outflow:
-        amt = convert_amount(tx.amount or 0, tx.currency, base_cur, user=user)
+        amt = convert_amount(tx.amount or 0, tx.currency, base_cur)
         data = results[tx.entity_source_id]
         data["the_entity_id"] = tx.entity_source_id
         data["the_name"] = tx.entity_source.entity_name

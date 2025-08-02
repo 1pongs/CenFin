@@ -25,11 +25,9 @@ class LiabilityCurrencyTests(TestCase):
         # set a KRW->PHP rate so conversions work
         self.cur_krw = Currency.objects.create(code="KRW", name="Korean Won")
         ExchangeRate.objects.create(
-            source="USER",
             currency_from=self.cur_krw,
             currency_to=self.cur_php,
             rate=Decimal("0.041"),
-            user=self.user,
         )
 
     def test_create_credit_card_with_currency(self):

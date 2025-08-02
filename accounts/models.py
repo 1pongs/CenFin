@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.db.models.functions import Coalesce, Lower
 from django.db.models import Q
-from currencies.models import Currency, RATE_SOURCE_CHOICES, get_rate
+from currencies.models import Currency, get_rate
 
 
 # Create your models here.
@@ -159,14 +159,12 @@ class Account(models.Model):
     def current_balance(self):
         return self.get_current_balance()
 
-    def balance_in_currency(self, currency_code, source=None):
+    def balance_in_currency(self, currency_code):
         """Return balance converted to the given currency."""
-        if source is None and hasattr(self.user, "preferred_rate_source"):
-            source = self.user.preferred_rate_source
         if currency_code == self.currency.code:
             return self.get_current_balance()
         target = Currency.objects.get(code=currency_code)
-        rate = get_rate(self.currency, target, source, self.user)
+        rate = get_rate(self.currency, target)
         if rate is None:
             return None
         return self.get_current_balance() * rate

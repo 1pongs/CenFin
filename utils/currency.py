@@ -44,15 +44,11 @@ def convert_amount(
     amount: Decimal,
     orig_currency: Union[str, Currency],
     target_currency: Union[str, Currency],
-    *,
-    user=None,
-    source=None,
 ) -> Decimal:
     """Convert ``amount`` from ``orig_currency`` to ``target_currency``.
 
     If a conversion rate is missing, an attempt will be made to fetch it from
-    the Frankfurter API and store it in the ``ExchangeRate`` table.  The
-    user's preferred rate source is honoured when provided.
+    the Frankfurter API and store it in the ``ExchangeRate`` table.
     """
 
     if amount is None:
@@ -69,58 +65,24 @@ def convert_amount(
     if orig_currency == target_currency:
         return amount
 
-    if source is None and user is not None and hasattr(user, "preferred_rate_source"):
-        source = user.preferred_rate_source
-    if source is None:
-        source = "FRANKFURTER"
-
-    rate = get_rate(orig_currency, target_currency, source, user)
+    rate = get_rate(orig_currency, target_currency)
     if rate is None:
-        if source == "FRANKFURTER":
-            # attempt live fetch from Frankfurter when missing
-            try:
-                resp = requests.get(
-                    f"https://api.frankfurter.app/latest?from={orig_currency.code}&to={target_currency.code}",
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                rate_val = Decimal(str(data["rates"][target_currency.code]))
-                ExchangeRate.objects.update_or_create(
-                    source="FRANKFURTER",
-                    currency_from=orig_currency,
-                    currency_to=target_currency,
-                    user=user,
-                    defaults={"rate": rate_val},
-                )
-                rate = rate_val
-            except Exception:
-                return amount
-        elif source == "USER":
-            # No auto-fetch for user-defined rates
+        try:
+            resp = requests.get(
+                f"https://api.frankfurter.app/latest?from={orig_currency.code}&to={target_currency.code}",
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            rate_val = Decimal(str(data["rates"][target_currency.code]))
+            ExchangeRate.objects.update_or_create(
+                currency_from=orig_currency,
+                currency_to=target_currency,
+                defaults={"rate": rate_val},
+            )
+            rate = rate_val
+        except Exception:
             return amount
-        else:
-            # Fallback to Frankfurter when other sources are missing
-            rate = get_rate(orig_currency, target_currency, "FRANKFURTER", user)
-            if rate is None:
-                try:
-                    resp = requests.get(
-                        f"https://api.frankfurter.app/latest?from={orig_currency.code}&to={target_currency.code}",
-                        timeout=10,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    rate_val = Decimal(str(data["rates"][target_currency.code]))
-                    ExchangeRate.objects.update_or_create(
-                        source="FRANKFURTER",
-                        currency_from=orig_currency,
-                        currency_to=target_currency,
-                        user=user,
-                        defaults={"rate": rate_val},
-                    )
-                    rate = rate_val
-                except Exception:
-                    return amount
 
     return amount * rate
 
@@ -152,7 +114,7 @@ def convert_to_base(
     if base_currency is None:
         return amount
 
-    return convert_amount(amount, orig_currency, base_currency, user=user)
+    return convert_amount(amount, orig_currency, base_currency)
 
 
 def amount_for_display(
@@ -163,5 +125,5 @@ def amount_for_display(
     target = get_active_currency(request)
     if not target:
         return amount
-    return convert_amount(amount, orig_currency, target, user=getattr(request, "user", None))
+    return convert_amount(amount, orig_currency, target)
     

@@ -34,7 +34,6 @@ class CurrencySelectorTests(TestCase):
             "last_name": "",
             "email": "u@example.com",
             "base_currency": self.cur_php.id,
-            "preferred_rate_source": self.user.preferred_rate_source,
         })
         self.assertEqual(resp.status_code, 302)
         self.user.refresh_from_db()

@@ -13,7 +13,6 @@ class UserSettingsForm(forms.ModelForm):
             "last_name",
             "email",
             "base_currency",
-            "preferred_rate_source",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -32,8 +31,7 @@ class UserSettingsForm(forms.ModelForm):
             ),
             Row(
                 Column("email", css_class="col-md-6"),
-                Column("base_currency", css_class="col-md-3"),
-                Column("preferred_rate_source", css_class="col-md-3"),
+                Column("base_currency", css_class="col-md-6"),
                 css_class="g-3",
             ),
         ]

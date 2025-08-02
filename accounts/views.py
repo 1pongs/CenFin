@@ -9,7 +9,6 @@ from django.db.models import Sum, F, Value, DecimalField
 from decimal import Decimal
 
 from accounts.models import Account
-from currencies.models import RATE_SOURCE_CHOICES
 from utils.currency import get_active_currency
 from .forms import AccountForm
 from transactions.models import Transaction

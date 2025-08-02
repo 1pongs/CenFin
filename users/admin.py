@@ -7,5 +7,4 @@ class UserAdmin(admin.ModelAdmin):
         "username",
         "email",
         "base_currency",
-        "preferred_rate_source",
     ]

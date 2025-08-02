@@ -3,9 +3,6 @@
     const form = document.getElementById('account-settings-form');
     if(!form) return;
     const saveBtn = form.querySelector('input[name="save"], button[name="save"]');
-    const srcSelect = document.getElementById('id_preferred_rate_source');
-    const curDiv = document.getElementById('div_id_base_currency');
-    const manage = document.getElementById('manage-rates');
     if(!saveBtn) return;
     
     const fields = Array.from(form.querySelectorAll('input, select, textarea'));
@@ -21,24 +18,8 @@
       saveBtn.disabled = !changed;
     }
 
-    function toggleCurrency(){
-      const hasSource = srcSelect.value !== '';
-      if(curDiv){
-        curDiv.classList.toggle('d-none', !hasSource);
-        const sel = curDiv.querySelector('select');
-        if(sel) sel.disabled = !hasSource;
-      }
-      if(manage){
-        manage.style.display = srcSelect.value === 'USER' ? '' : 'none';
-      }
-    }
-
     saveBtn.disabled = true;
-    toggleCurrency();
     form.addEventListener('input', checkChanged);
     form.addEventListener('change', checkChanged);
-    if(srcSelect){
-      srcSelect.addEventListener('change', toggleCurrency);
-    }
   });
 })();

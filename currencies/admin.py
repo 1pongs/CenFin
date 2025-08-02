@@ -11,10 +11,8 @@ class CurrencyAdmin(admin.ModelAdmin):
 @admin.register(ExchangeRate)
 class ExchangeRateAdmin(admin.ModelAdmin):
     list_display = [
-        "source",
         "currency_from",
         "currency_to",
         "rate",
-        "user",
     ]
-    list_filter = ["source", "currency_from", "currency_to"]
+    list_filter = ["currency_from", "currency_to"]

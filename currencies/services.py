@@ -34,17 +34,6 @@ def _limit_to_active(currencies: Dict[str, str]) -> Dict[str, str]:
     return currencies   # dev fallback → give everything
 
 
-def get_rem_a_currencies() -> Dict[str, str]:
-    """Hard-coded list for Remittance Center A, filtered as above."""
-    raw = {
-        "USD": "US Dollar",
-        "PHP": "Philippine Peso",
-        "EUR": "Euro",
-        "JPY": "Japanese Yen",
-    }
-    return _limit_to_active(raw)
-
-
 def get_frankfurter_currencies() -> Dict[str, str]:
     """Fetch (and cache) the Frankfurter currency map."""
     if cached := cache.get(_CACHE_KEY):
