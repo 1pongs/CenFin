@@ -186,7 +186,7 @@ def get_monthly_cash_flow(
         .select_related("currency")
         .order_by("date")
     )
-for tx in qs:
+    for tx in qs:
         d = date(tx.date.year, tx.date.month, 1)
         row = month_map.setdefault(
             d,
