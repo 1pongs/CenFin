@@ -1,9 +1,13 @@
 {% extends "base.html" %}
+{% load humanize currency_tags %}
 {% block content %}
 <h2>{{ object }}</h2>
 <ul>
-  <li>Sum Assured: {{ object.sum_assured }}</li>
-  <li>Total Premiums Paid: {{ object.total_premiums_paid }}</li>
-  <li>Cash Value: {{ object.cash_value }}</li>
+  {% display object.sum_assured base_currency as sum_disp %}
+  <li>Sum Assured: <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ sum_disp|floatformat:2|intcomma }}</span></li>
+  {% display object.total_premiums_paid base_currency as prem_disp %}
+  <li>Total Premiums Paid: <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ prem_disp|floatformat:2|intcomma }}</span></li>
+  {% display object.cash_value base_currency as cash_disp %}
+  <li>Cash Value: <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ cash_disp|floatformat:2|intcomma }}</span></li>
 </ul>
 {% endblock %}

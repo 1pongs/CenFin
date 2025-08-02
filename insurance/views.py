@@ -4,6 +4,7 @@ from django.http import JsonResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.conf import settings
 
 from acquisitions.models import Acquisition
 from entities.models import Entity
@@ -24,6 +25,10 @@ class InsuranceListView(ListView):
     def get_queryset(self):
         return Insurance.objects.filter(user=self.request.user).with_cash_value().with_total_premiums_paid()
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["base_currency"] = settings.BASE_CURRENCY
+        return context
 
 @method_decorator(login_required, name="dispatch")
 class InsuranceCreateView(CreateView):
@@ -97,6 +102,12 @@ class InsuranceDetailView(DetailView):
         )
     
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["base_currency"] = settings.BASE_CURRENCY
+        return ctx
+
+        
 @login_required
 def category_list(request):
     data = [

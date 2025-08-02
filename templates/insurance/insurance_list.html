@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize currency_tags %}
 {% block content %}
 <h2>Insurance Policies</h2>
 <table class="table">
@@ -6,9 +7,12 @@
   {% for ins in object_list %}
   <tr>
     <td><a href="{% url 'insurance:edit' ins.pk %}">{{ ins }}</a></td>
-    <td>{{ ins.sum_assured }}</td>
-    <td>{{ ins.total_premiums_paid }}</td>
-    <td>{{ ins.cash_value }}</td>
+    {% display ins.sum_assured base_currency as sum_disp %}
+    <td><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ sum_disp|floatformat:2|intcomma }}</span></td>
+    {% display ins.total_premiums_paid base_currency as prem_disp %}
+    <td><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ prem_disp|floatformat:2|intcomma }}</span></td>
+    {% display ins.cash_value base_currency as cash_disp %}
+    <td><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ cash_disp|floatformat:2|intcomma }}</span></td>
   </tr>
   {% empty %}
   <tr><td colspan="4">No policies.</td></tr>
