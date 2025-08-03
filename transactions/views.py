@@ -171,13 +171,6 @@ class TransactionCreateView(CreateView):
             and dest_acc
             and src_acc.currency_id != dest_acc.currency_id
         ):
-            from accounts.utils import get_remittance_account
-            from entities.utils import ensure_remittance_entity
-
-            remittance_entity = ensure_remittance_entity(self.request.user)
-            rem_src = get_remittance_account(self.request.user, src_acc.currency)
-            rem_dest = get_remittance_account(self.request.user, dest_acc.currency)
-
             src_amount = visible_tx.amount
             if not dest_amt:
                 dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
@@ -187,6 +180,7 @@ class TransactionCreateView(CreateView):
                 visible_tx.save()
                 form.save_categories(visible_tx)
 
+                # Record debit from the source account in its base currency
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -194,13 +188,13 @@ class TransactionCreateView(CreateView):
                     transaction_type="transfer",
                     amount=src_amount,
                     account_source=src_acc,
-                    account_destination=rem_src,
                     entity_source=visible_tx.entity_source,
-                    entity_destination=remittance_entity,
                     parent_transfer=visible_tx,
+                    currency=src_acc.currency,
                     is_hidden=True,
                 )
 
+                # Record credit to the destination account in its base currency
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -208,11 +202,10 @@ class TransactionCreateView(CreateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
-                    account_source=rem_dest,
                     account_destination=dest_acc,
-                    entity_source=remittance_entity,
                     entity_destination=visible_tx.entity_destination,
                     parent_transfer=visible_tx,
+                    currency=dest_acc.currency,
                     is_hidden=True,
                 )
             self.object = visible_tx
@@ -288,13 +281,6 @@ class TransactionUpdateView(UpdateView):
         with transaction.atomic():
             Transaction.all_objects.filter(parent_transfer=visible_tx).delete()
             if is_cross:
-                from accounts.utils import get_remittance_account
-                from entities.utils import ensure_remittance_entity
-
-                remittance_entity = ensure_remittance_entity(self.request.user)
-                rem_src = get_remittance_account(self.request.user, src_acc.currency)
-                rem_dest = get_remittance_account(self.request.user, dest_acc.currency)
-
                 src_amount = visible_tx.amount
                 if not dest_amt:
                     dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
@@ -303,6 +289,7 @@ class TransactionUpdateView(UpdateView):
                 visible_tx.save()
                 form.save_categories(visible_tx)
 
+                # Source account debit
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -310,13 +297,13 @@ class TransactionUpdateView(UpdateView):
                     transaction_type="transfer",
                     amount=src_amount,
                     account_source=src_acc,
-                    account_destination=rem_src,
                     entity_source=visible_tx.entity_source,
-                    entity_destination=remittance_entity,
                     parent_transfer=visible_tx,
+                    currency=src_acc.currency,
                     is_hidden=True,
                 )
 
+                # Destination account credit
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -324,11 +311,10 @@ class TransactionUpdateView(UpdateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
-                    account_source=rem_dest,
                     account_destination=dest_acc,
-                    entity_source=remittance_entity,
                     entity_destination=visible_tx.entity_destination,
                     parent_transfer=visible_tx,
+                    currency=dest_acc.currency,
                     is_hidden=True,
                 )
             else:

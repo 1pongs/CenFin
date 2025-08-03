@@ -227,6 +227,7 @@ class TransactionForm(forms.ModelForm):
             cleaned["account_destination"] = outside_account
             cleaned["entity_destination"] = outside_entity
         acc = cleaned.get("account_source")
+        dest = cleaned.get("account_destination")
         ent = cleaned.get("entity_source")
 
         if acc and acc.account_name != "Outside":
@@ -246,12 +247,16 @@ class TransactionForm(forms.ModelForm):
     
 
 
-        # For single-leg transactions (non-transfer), ensure both accounts use the same currency
+        # For single-leg transactions (non-transfer), ensure both accounts use the
+        # same currency
         if tx_type != "transfer" and acc and dest:
             c1 = getattr(acc, "currency_id", None)
             c2 = getattr(dest, "currency_id", None)
             if c1 and c2 and c1 != c2:
-                self.add_error("account_destination", "Source and destination accounts must share the same currency.")
+                self.add_error(
+                    "account_destination",
+                    "Source and destination accounts must share the same currency.",
+                )
 
         return cleaned
 

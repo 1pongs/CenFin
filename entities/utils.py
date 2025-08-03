@@ -66,15 +66,35 @@ def get_entity_aggregate_rows(user, disp_code: str):
     """Return net totals per entity converted to ``disp_code``."""
 
     totals: dict[int, Decimal] = defaultdict(Decimal)
-    txs = Transaction.objects.filter(user=user).select_related("currency")
+    txs = (
+        Transaction.objects.filter(user=user)
+        .select_related("currency", "account_destination__currency")
+    )
     for tx in txs:
         if tx.amount is None or tx.currency is None:
             continue
-        code = tx.currency.code
-        amount = tx.amount
-        if tx.entity_destination_id:
-            totals[tx.entity_destination_id] += convert_amount(amount, code, disp_code)
+        # Always treat the source leg in the transaction's own currency.
         if tx.entity_source_id:
-            totals[tx.entity_source_id] -= convert_amount(amount, code, disp_code)
+            totals[tx.entity_source_id] -= convert_amount(
+                tx.amount, tx.currency.code, disp_code
+            )
+
+        if tx.entity_destination_id:
+            # For the destination side, prefer the explicitly stored
+            # destination_amount and the destination account's currency.  This
+            # ensures cross-currency transfers respect the destination account's
+            # base currency.
+            dest_amt = tx.destination_amount if tx.destination_amount is not None else tx.amount
+            dest_code = (
+                tx.account_destination.currency.code
+                if tx.destination_amount is not None
+                and tx.account_destination_id
+                and tx.account_destination
+                and tx.account_destination.currency
+                else tx.currency.code
+            )
+            totals[tx.entity_destination_id] += convert_amount(
+                dest_amt, dest_code, disp_code
+            )
 
     return totals
