@@ -120,25 +120,5 @@
       e.target.reset();
     }
   });
-
-  const categoryField = document.getElementById('id_category');
-  const fieldGroups = {
-    'product': ['div_id_target_selling_date'],
-    'stock_bond': ['div_id_current_value','div_id_market','div_id_target_selling_date'],
-    'property': ['div_id_expected_lifespan_years','div_id_location'],
-    'equipment': ['div_id_expected_lifespan_years','div_id_location'],
-    'vehicle': ['div_id_expected_lifespan_years','div_id_mileage','div_id_plate_number','div_id_model_year']
-  };
-  function toggleFields(){
-    const cat = categoryField.value;
-    Object.keys(fieldGroups).forEach(c => {
-      fieldGroups[c].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = (c === cat) ? '' : 'none';
-      });
-    });
-  }
-  categoryField.addEventListener('change', toggleFields);
-  document.addEventListener('DOMContentLoaded', toggleFields);
 </script>
 {% endblock %}

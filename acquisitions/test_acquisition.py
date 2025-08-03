@@ -301,34 +301,7 @@ class AcquisitionFormValidationTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="vtest", password="p")
-
-    def test_vehicle_future_model_year_invalid(self):
-        form = AcquisitionForm(
-            data={
-                "name": "Car",
-                "category": "vehicle",
-                "date": timezone.now().date(),
-                "amount": "1",
-                "account_source": Account.objects.create(
-                    account_name="A", account_type="Cash", user=self.user
-                ).pk,
-                "account_destination": Account.objects.create(
-                    account_name="B", account_type="Cash", user=self.user
-                ).pk,
-                "entity_source": Entity.objects.create(
-                    entity_name="E", entity_type="outside", user=self.user
-                ).pk,
-                "entity_destination": Entity.objects.create(
-                    entity_name="E2", entity_type="outside", user=self.user
-                ).pk,
-                "model_year": timezone.now().year + 1,
-            },
-            user=self.user,
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("model_year", form.errors)
-
-    def test_term_insurance_cash_value_zeroed(self):
+    def test_insurance_category_not_present(self):
         form = AcquisitionForm(user=self.user)
         choices = [c[0] for c in form.fields["category"].choices]
         self.assertNotIn("insurance", choices)

@@ -14,7 +14,6 @@ from decimal import Decimal
 from .models import Acquisition
 from .forms import AcquisitionForm, SellAcquisitionForm
 from transactions.models import Transaction
-from currencies.models import Currency
 from accounts.models import Account
 from accounts.forms import AccountForm
 from entities.models import Entity
@@ -143,14 +142,15 @@ class AcquisitionCreateView(FormView):
     
     def form_valid(self, form):
         data = form.cleaned_data
+        account_src = data["account_source"]
         tx = Transaction(
             user=self.request.user,
             date=data["date"],
             description=data["name"],
             transaction_type="buy acquisition",
             amount=data["amount"],
-            currency=data["currency"],
-            account_source=data["account_source"],
+            currency=getattr(account_src, "currency", None),
+            account_source=account_src,
             account_destination=data["account_destination"],
             entity_source=data["entity_source"],
             entity_destination=data["entity_destination"],
@@ -167,19 +167,6 @@ class AcquisitionCreateView(FormView):
             category=data["category"],
             purchase_tx=tx,
             status="active",
-            current_value=data.get("current_value"),
-            market=data.get("market", ""),
-            expected_lifespan_years=data.get("expected_lifespan_years"),
-            location=data.get("location", ""),
-            target_selling_date=data.get("target_selling_date"),
-            mileage=data.get("mileage"),
-            plate_number=data.get("plate_number", ""),
-            model_year=data.get("model_year"),
-            insurance_type=data.get("insurance_type"),
-            sum_assured_amount=data.get("sum_assured_amount"),
-            cash_value=data.get("cash_value"),
-            maturity_date=data.get("maturity_date"),
-            provider=data.get("provider", ""),
             user=self.request.user,
         )
         return super().form_valid(form)
@@ -216,26 +203,12 @@ class AcquisitionUpdateView(AcquisitionCreateView):
             initial = {
                 "name": self.object.name,
                 "category": self.object.category,
-                "current_value": self.object.current_value,
-                "market": self.object.market,
-                "expected_lifespan_years": self.object.expected_lifespan_years,
-                "location": self.object.location,
-                "target_selling_date": self.object.target_selling_date,
-                "mileage": self.object.mileage,
-                "plate_number": self.object.plate_number,
-                "model_year": self.object.model_year,
-                "insurance_type": self.object.insurance_type,
-                "sum_assured_amount": self.object.sum_assured_amount,
-                "cash_value": self.object.cash_value,
-                "maturity_date": self.object.maturity_date,
-                "provider": self.object.provider,
             }
             if tx:
                 initial.update(
                     {
                         "date": tx.date,
                         "amount": tx.amount,
-                        "currency": tx.currency_id,
                         "account_source": tx.account_source_id,
                         "account_destination": tx.account_destination_id,
                         "entity_source": tx.entity_source_id,
@@ -257,7 +230,7 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         tx.date = data["date"]
         tx.description = data["name"]
         tx.amount = data["amount"]
-        tx.currency = data["currency"]
+        tx.currency = getattr(data["account_source"], "currency", None)
         tx.account_source = data["account_source"]
         tx.account_destination = data["account_destination"]
         tx.entity_source = data["entity_source"]
@@ -274,19 +247,6 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         acq = self.object
         acq.name = data["name"]
         acq.category = data["category"]
-        acq.current_value = data.get("current_value")
-        acq.market = data.get("market", "")
-        acq.expected_lifespan_years = data.get("expected_lifespan_years")
-        acq.location = data.get("location", "")
-        acq.target_selling_date = data.get("target_selling_date")
-        acq.mileage = data.get("mileage")
-        acq.plate_number = data.get("plate_number", "")
-        acq.model_year = data.get("model_year")
-        acq.insurance_type = data.get("insurance_type")
-        acq.sum_assured_amount = data.get("sum_assured_amount")
-        acq.cash_value = data.get("cash_value")
-        acq.maturity_date = data.get("maturity_date")
-        acq.provider = data.get("provider", "")
         acq.save()
         messages.success(self.request, "Acquisition updated.")
         return super().form_valid(form)
