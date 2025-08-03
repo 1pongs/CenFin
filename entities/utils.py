@@ -59,27 +59,22 @@ from decimal import Decimal
 from collections import defaultdict
 
 from transactions.models import Transaction
-from core.utils.fx import convert
+from utils.currency import convert_amount
 
 
 def get_entity_aggregate_rows(user, disp_code: str):
     """Return net totals per entity converted to ``disp_code``."""
 
-    per_entity = defaultdict(lambda: defaultdict(Decimal))
+    totals: dict[int, Decimal] = defaultdict(Decimal)
     txs = Transaction.objects.filter(user=user).select_related("currency")
     for tx in txs:
         if tx.amount is None or tx.currency is None:
             continue
         code = tx.currency.code
+        amount = tx.amount
         if tx.entity_destination_id:
-            per_entity[tx.entity_destination_id][code] += tx.amount
+            totals[tx.entity_destination_id] += convert_amount(amount, code, disp_code)
         if tx.entity_source_id:
-            per_entity[tx.entity_source_id][code] -= tx.amount
+            totals[tx.entity_source_id] -= convert_amount(amount, code, disp_code)
 
-    rows = {}
-    for ent_id, per_cur in per_entity.items():
-        total = Decimal("0")
-        for code, amount in per_cur.items():
-            total += convert(amount, code, disp_code)
-        rows[ent_id] = total
-    return rows
+    return totals

@@ -91,15 +91,8 @@ class TransactionListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        disp_code = getattr(self.request, "display_currency", settings.BASE_CURRENCY)
-
-        for tx in ctx["object_list"]:
-            amount = tx.amount
-            src_code = tx.currency.code if getattr(tx, "currency", None) else None
-            if amount is not None and src_code and disp_code and src_code != disp_code:
-                tx.display_amount = convert(amount, src_code, disp_code)
-            else:
-                tx.display_amount = amount
+        active = get_active_currency(self.request)
+        disp_code = active.code if active else settings.BASE_CURRENCY
                 
         ctx["display_currency"] = disp_code
         ctx["accounts"] = Account.objects.active().filter(user=self.request.user)

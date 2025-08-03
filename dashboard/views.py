@@ -26,6 +26,7 @@ class DashboardView(TemplateView):
         ctx = super().get_context_data(**kwargs)
 
         base_cur = get_active_currency(self.request)
+        ctx["base_currency"] = base_cur
         income = expenses = liquid = asset = Decimal("0")
         qs_all = Transaction.objects.filter(user=self.request.user).select_related("currency")
         for tx in qs_all:

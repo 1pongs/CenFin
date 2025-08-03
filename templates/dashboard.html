@@ -10,7 +10,7 @@
       <div class="card text-bg-{{ bg }} h-100 text-center">
         <div class="card-body d-flex flex-column justify-content-center">
           <h5 class="card-title">{{ label }}</h5>
-          {% display totals|get_item:key|default_if_none:0 active_currency.code as card_total %}
+          {% display totals|get_item:key|default_if_none:0 base_currency.code as card_total %}
           <p class="fs-4 mb-0">{{ card_total|floatformat:2|intcomma }}</p>
         </div>
       </div>
