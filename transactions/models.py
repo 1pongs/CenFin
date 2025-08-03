@@ -157,23 +157,40 @@ class Transaction(models.Model):
         self._apply_defaults()
         super().clean()
 
-        acc_id = self.account_source_id
-        ent_id = self.entity_source_id
+        # Prevent single-leg transactions from mixing currencies
+        if (
+            self.transaction_type != "transfer"
+            and self.account_source
+            and self.account_destination
+        ):
+            c1 = getattr(self.account_source, "currency_id", None)
+            c2 = getattr(self.account_destination, "currency_id", None)
+            if c1 and c2 and c1 != c2:
+                raise ValidationError(
+                    "Source and destination accounts must share the same currency."
+                )
 
     def save(self, *args, **kwargs):
-        if self.currency_id is None:
-            if self.account_source_id:
-                self.currency = self.account_source.currency
-            else:
-                default_cur = None
-                if self.user and getattr(self.user, "base_currency_id", None):
-                    default_cur = self.user.base_currency
-                else:
-                    default_cur = Currency.objects.filter(code="PHP").first()
-                self.currency = default_cur
-
+        # Ensure template defaults are applied first
         self._populate_from_template()
         self._apply_defaults()
+
+        account = None
+        if self.transaction_type == "income" and self.account_destination_id:
+            account = self.account_destination
+        elif self.account_source_id:
+            account = self.account_source
+        elif self.account_destination_id:
+            account = self.account_destination
+
+        if account and getattr(account, "currency_id", None):
+            self.currency = account.currency
+        else:
+            if self.user and getattr(self.user, "base_currency_id", None):
+                self.currency = self.user.base_currency
+            else:
+                self.currency = Currency.objects.filter(code="PHP").first()
+                
         super().save(*args, **kwargs)
         for acc_field in ["account_source", "account_destination"]:
             acc = getattr(self, acc_field, None)

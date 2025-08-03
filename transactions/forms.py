@@ -243,23 +243,49 @@ class TransactionForm(forms.ModelForm):
         if ent and ent.entity_name != "Outside":
             if not getattr(ent, "is_account_entity", False) and ent.current_balance() < amt:
                 self.add_error("entity_source", f"Insufficient funds in {ent}.")
+    
+
+
+        # For single-leg transactions (non-transfer), ensure both accounts use the same currency
+        if tx_type != "transfer" and acc and dest:
+            c1 = getattr(acc, "currency_id", None)
+            c2 = getattr(dest, "currency_id", None)
+            if c1 and c2 and c1 != c2:
+                self.add_error("account_destination", "Source and destination accounts must share the same currency.")
 
         return cleaned
-    
-    def save(self, commit=True):
-        transaction = super().save(commit=False)
-        if transaction.account_source:
-            transaction.currency = transaction.account_source.currency
-        if commit:
-            transaction.save()
-        names = [n.strip() for n in (self.cleaned_data.get("category_names") or "").split(",") if n.strip()]
+
+    def save_categories(self, transaction):
+        names = [
+            n.strip()
+            for n in (self.cleaned_data.get("category_names") or "").split(",")
+            if n.strip()
+        ]
         tags = []
         tx_type = transaction.transaction_type
         for name in names:
-            tag, _ = CategoryTag.objects.get_or_create(user=self.user, transaction_type=tx_type, name=name)
+            tag, _ = CategoryTag.objects.get_or_create(
+                user=self.user, transaction_type=tx_type, name=name
+            )
             tags.append(tag)
+        transaction.categories.set(tags)
+
+    def save(self, commit=True):
+        transaction = super().save(commit=False)
+        # destination_amount isn't part of Meta.fields, handle manually
+        transaction.destination_amount = self.cleaned_data.get("destination_amount")
+
+        # Derive currency from the relevant account
+        if transaction.transaction_type == "income" and transaction.account_destination:
+            transaction.currency = transaction.account_destination.currency
+        elif transaction.account_source:
+            transaction.currency = transaction.account_source.currency
+        elif transaction.account_destination:
+            transaction.currency = transaction.account_destination.currency
+
         if commit:
-            transaction.categories.set(tags)
+            transaction.save()
+            self.save_categories(transaction)
         return transaction
 
 # ---------------- Template Form ----------------

@@ -6,6 +6,8 @@ from django.urls import reverse
 
 from accounts.models import Account
 from entities.models import Entity
+from currencies.models import Currency
+from django.core.exceptions import ValidationError
 from .models import Transaction
 from .forms import TransactionForm
 from transactions.models import TransactionTemplate
@@ -430,14 +432,15 @@ class CrossCurrencyHiddenTxTest(TestCase):
         self.assertEqual(Transaction.objects.count(), count_before + 1)
         parent = Transaction.objects.order_by("-id").first()
         self.assertFalse(parent.is_hidden)
-        self.assertEqual(parent.amount, Decimal("50"))
-        self.assertEqual(parent.currency, self.cur_php)
+        self.assertEqual(parent.amount, Decimal("1000"))
+        self.assertEqual(parent.currency, self.cur_krw)
+        self.assertEqual(parent.destination_amount, Decimal("50"))
         hidden = Transaction.all_objects.filter(is_hidden=True, parent_transfer=parent)
         self.assertEqual(hidden.count(), 2)
         codes = {t.currency.code for t in hidden}
         self.assertEqual(codes, {"KRW", "PHP"})
         dest_tx = hidden.filter(currency=self.cur_php).first()
-        self.assertEqual(dest_tx.destination_amount, Decimal("50"))
+        self.assertEqual(dest_tx.amount, Decimal("50"))
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 class RemittanceEditTests(TestCase):
@@ -503,7 +506,8 @@ class RemittanceEditTests(TestCase):
         resp = self.client.post(reverse("transactions:transaction_update", args=[self.parent.pk]), data)
         self.assertEqual(resp.status_code, 302)
         self.parent.refresh_from_db()
-        self.assertEqual(self.parent.amount, Decimal("60"))
+        self.assertEqual(self.parent.amount, Decimal("1000"))
+        self.assertEqual(self.parent.destination_amount, Decimal("60"))
         hidden = Transaction.all_objects.filter(parent_transfer=self.parent)
         self.assertEqual(hidden.count(), 2)
         outflow = hidden.filter(account_source=self.src_acc).first()
@@ -511,3 +515,58 @@ class RemittanceEditTests(TestCase):
         self.assertEqual(outflow.amount, Decimal("1000"))
         self.assertEqual(inflow.amount, Decimal("60"))
         self.assertEqual(inflow.destination_amount, Decimal("60"))
+
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
+class TransactionCurrencyTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="cur", password="p")
+        self.cur1 = Currency.objects.create(code="USD")
+        self.cur2 = Currency.objects.create(code="EUR")
+        self.acc1 = Account.objects.create(
+            account_name="A1", account_type="Cash", user=self.user, currency=self.cur1
+        )
+        self.acc2 = Account.objects.create(
+            account_name="A2", account_type="Cash", user=self.user, currency=self.cur2
+        )
+        self.ent = Entity.objects.create(
+            entity_name="Vendor", entity_type="personal fund", user=self.user
+        )
+
+    def test_mismatched_account_currencies_invalid(self):
+        tx = Transaction(
+            user=self.user,
+            date=timezone.now().date(),
+            description="x",
+            transaction_type="expense",
+            amount=Decimal("1"),
+            account_source=self.acc1,
+            account_destination=self.acc2,
+            entity_source=self.ent,
+            entity_destination=self.ent,
+        )
+        with self.assertRaises(ValidationError):
+            tx.full_clean()
+
+    def test_account_currency_change_does_not_affect_tx(self):
+        acc_same = Account.objects.create(
+            account_name="B", account_type="Cash", user=self.user, currency=self.cur1
+        )
+        tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="y",
+            transaction_type="expense",
+            amount=Decimal("5"),
+            account_source=acc_same,
+            account_destination=acc_same,
+            entity_source=self.ent,
+            entity_destination=self.ent,
+        )
+        self.assertEqual(tx.currency, self.cur1)
+        acc_same.currency = self.cur2
+        acc_same.save()
+        tx.refresh_from_db()
+        self.assertEqual(tx.currency, self.cur1)

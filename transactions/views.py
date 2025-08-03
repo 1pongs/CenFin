@@ -183,9 +183,9 @@ class TransactionCreateView(CreateView):
                 dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
 
             with transaction.atomic():
-                visible_tx.currency = dest_acc.currency
-                visible_tx.amount = dest_amt
+                visible_tx.destination_amount = dest_amt
                 visible_tx.save()
+                form.save_categories(visible_tx)
 
                 Transaction.all_objects.create(
                     user=self.request.user,
@@ -193,7 +193,6 @@ class TransactionCreateView(CreateView):
                     description=visible_tx.description,
                     transaction_type="transfer",
                     amount=src_amount,
-                    currency=src_acc.currency,
                     account_source=src_acc,
                     account_destination=rem_src,
                     entity_source=visible_tx.entity_source,
@@ -209,7 +208,6 @@ class TransactionCreateView(CreateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
-                    currency=dest_acc.currency,
                     account_source=rem_dest,
                     account_destination=dest_acc,
                     entity_source=remittance_entity,
@@ -226,7 +224,7 @@ class TransactionCreateView(CreateView):
             return HttpResponseRedirect(self.get_success_url())
                     
 
-def form_invalid(self, form):
+    def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -301,9 +299,9 @@ class TransactionUpdateView(UpdateView):
                 if not dest_amt:
                     dest_amt = convert_amount(src_amount, src_acc.currency, dest_acc.currency)
 
-                visible_tx.currency = dest_acc.currency
-                visible_tx.amount = dest_amt
+                visible_tx.destination_amount = dest_amt
                 visible_tx.save()
+                form.save_categories(visible_tx)
 
                 Transaction.all_objects.create(
                     user=self.request.user,
@@ -311,7 +309,6 @@ class TransactionUpdateView(UpdateView):
                     description=visible_tx.description,
                     transaction_type="transfer",
                     amount=src_amount,
-                    currency=src_acc.currency,
                     account_source=src_acc,
                     account_destination=rem_src,
                     entity_source=visible_tx.entity_source,
@@ -327,7 +324,6 @@ class TransactionUpdateView(UpdateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
-                    currency=dest_acc.currency,
                     account_source=rem_dest,
                     account_destination=dest_acc,
                     entity_source=remittance_entity,
@@ -336,9 +332,8 @@ class TransactionUpdateView(UpdateView):
                     is_hidden=True,
                 )
             else:
-                if src_acc and dest_acc and src_acc.currency_id == dest_acc.currency_id:
-                    visible_tx.currency = src_acc.currency
                 visible_tx.save()
+                form.save_categories(visible_tx)
         self.object = visible_tx
         messages.success(self.request, "Transaction updated successfully!")
         return HttpResponseRedirect(self.get_success_url())
