@@ -29,3 +29,20 @@
   </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+  const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
+  const accDest = document.getElementById('id_account_destination');
+  const priceLabel = document.querySelector('label[for="id_sale_price"]');
+
+  function updateLabel(){
+    if(!priceLabel) return;
+    const cur = accountCurrencies[accDest.value] || '';
+    priceLabel.textContent = cur ? `Sale price (${cur})` : 'Sale price';
+  }
+
+  if(accDest) accDest.addEventListener('change', updateLabel);
+  document.addEventListener('DOMContentLoaded', updateLabel);
+</script>
+{% endblock %}

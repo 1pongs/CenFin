@@ -440,13 +440,20 @@ def pair_balance(request):
         return JsonResponse({"error": "missing parameters"}, status=400)
 
     balance = get_account_entity_balance(account_id, entity_id, user=request.user)
-    active = get_active_currency(request)
-    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
-    if active:
-        balance = convert_amount(balance, base_code, active.code)
-        cur_code = active.code
-    else:
-        cur_code = base_code
+    account = Account.objects.filter(pk=account_id).select_related("currency").first()
+    base_code = (
+        account.currency.code
+        if account and account.currency
+        else request.user.base_currency.code
+        if getattr(request.user, "base_currency_id", None)
+        else "PHP"
+    )
+    cur_code = base_code
+    if request.GET.get("convert"):
+        active = get_active_currency(request)
+        if active and active.code != base_code:
+            balance = convert_amount(balance, base_code, active.code)
+            cur_code = active.code
     return JsonResponse({"balance": str(balance), "currency": cur_code})
 
 
@@ -454,13 +461,20 @@ def pair_balance(request):
 def account_balance(request, pk):
     """Return balance for a single account."""
     bal = get_account_balance(pk, user=request.user)
-    active = get_active_currency(request)
-    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
-    if active:
-        bal = convert_amount(bal, base_code, active.code)
-        cur_code = active.code
-    else:
-        cur_code = base_code
+    account = Account.objects.filter(pk=pk).select_related("currency").first()
+    base_code = (
+        account.currency.code
+        if account and account.currency
+        else request.user.base_currency.code
+        if getattr(request.user, "base_currency_id", None)
+        else "PHP"
+    )
+    cur_code = base_code
+    if request.GET.get("convert"):
+        active = get_active_currency(request)
+        if active and active.code != base_code:
+            bal = convert_amount(bal, base_code, active.code)
+            cur_code = active.code
     return JsonResponse({"balance": str(bal), "currency": cur_code})
 
 
@@ -468,13 +482,17 @@ def account_balance(request, pk):
 def entity_balance(request, pk):
     """Return balance for a single entity."""
     bal = util_entity_balance(pk, user=request.user)
-    active = get_active_currency(request)
-    base_code = request.user.base_currency.code if getattr(request.user, "base_currency_id", None) else "PHP"
-    if active:
-        bal = convert_amount(bal, base_code, active.code)
-        cur_code = active.code
-    else:
-        cur_code = base_code
+    base_code = (
+        request.user.base_currency.code
+        if getattr(request.user, "base_currency_id", None)
+        else "PHP"
+    )
+    cur_code = base_code
+    if request.GET.get("convert"):
+        active = get_active_currency(request)
+        if active and active.code != base_code:
+            bal = convert_amount(bal, base_code, active.code)
+            cur_code = active.code
     return JsonResponse({"balance": str(bal), "currency": cur_code})
 
 

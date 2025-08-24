@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.db import transaction
 from decimal import Decimal
+import json
 
 
 # Create your views here.
@@ -138,6 +139,9 @@ class AcquisitionCreateView(FormView):
         ctx = super().get_context_data(**kwargs)
         ctx['quick_account_form'] = AccountForm(show_actions=False)
         ctx['quick_entity_form'] = EntityForm(show_actions=False)
+        accounts = Account.objects.filter(user=self.request.user, is_active=True)
+        account_map = {a.id: (a.currency.code if a.currency else '') for a in accounts}
+        ctx['account_currency_map'] = json.dumps(account_map)
         return ctx
     
     def form_valid(self, form):
@@ -323,4 +327,7 @@ def sell_acquisition(request, pk):
         "form": form,
         "acquisition": acquisition,
     }
+    accounts = Account.objects.filter(user=request.user, is_active=True)
+    account_map = {a.id: (a.currency.code if a.currency else '') for a in accounts}
+    context['account_currency_map'] = json.dumps(account_map)
     return render(request, "acquisitions/acquisition_sell.html", context)

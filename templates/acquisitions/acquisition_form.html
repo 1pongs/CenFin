@@ -120,5 +120,23 @@
       e.target.reset();
     }
   });
+
+  const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
+  const accSrc = document.getElementById('id_account_source');
+  const amountLabel = document.querySelector('label[for="id_amount"]');
+
+  function acctCurrency(select){
+    if(!select) return '';
+    return accountCurrencies[select.value] || '';
+  }
+
+  function updateAmountLabel(){
+    if(!amountLabel) return;
+    const cur = acctCurrency(accSrc);
+    amountLabel.textContent = cur ? `Amount (${cur})` : 'Amount';
+  }
+
+  if(accSrc) accSrc.addEventListener('change', updateAmountLabel);
+  document.addEventListener('DOMContentLoaded', updateAmountLabel);
 </script>
 {% endblock %}
