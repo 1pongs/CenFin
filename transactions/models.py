@@ -183,10 +183,14 @@ class Transaction(models.Model):
         elif self.account_destination_id:
             account = self.account_destination
 
-        if account and getattr(account, "currency_id", None):
-            self.currency = account.currency
-        else:
-            if self.user and getattr(self.user, "base_currency_id", None):
+        if not self.currency_id:
+            # Loan.save and other callers may explicitly supply a currency. In
+            # that case we must not infer a new one here; otherwise a loan
+            # disbursed in KRW could be overwritten with the user's PHP base
+            # currency and then converted back, inflating the displayed amount.
+            if account and getattr(account, "currency_id", None):
+                self.currency = account.currency
+            elif self.user and getattr(self.user, "base_currency_id", None):
                 self.currency = self.user.base_currency
             else:
                 self.currency = Currency.objects.filter(code="PHP").first()

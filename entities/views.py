@@ -11,6 +11,9 @@ from django.conf import settings
 from decimal import Decimal
 from django.db.models import Sum, Count
 
+from cenfin_proj.utils import get_account_entity_balance
+from utils.currency import convert_to_base
+
 
 from entities.models import Entity
 from acquisitions.models import Acquisition
@@ -406,7 +409,6 @@ class EntityAccountsView(TemplateView):
                 balances[acc_pk] = {
                     "id": acc_pk,
                     "name": row["account_destination__account_name"],
-                    "balance": row["total_in"],
                     "tx_count": row["count_in"],
                 }
             for row in outflow:
@@ -414,11 +416,10 @@ class EntityAccountsView(TemplateView):
                 name = row.get("account_source__account_name", "")
                 entry = balances.setdefault(
                     acc_pk,
-                    {"id": acc_pk, "name": name, "balance": 0, "tx_count": 0},
+                    {"id": acc_pk, "name": name, "tx_count": 0},
                 )
                 if not entry["name"]:
                     entry["name"] = name
-                entry["balance"] -= row["total_out"]
                 entry["tx_count"] += row["count_out"]
 
             account_map = {
@@ -427,6 +428,10 @@ class EntityAccountsView(TemplateView):
             for pk, data in balances.items():
                 acc = account_map.get(pk)
                 data["type"] = getattr(acc, "account_type", "") if acc else ""
+                data["currency"] = acc.currency if acc else None
+                data["balance"] = get_account_entity_balance(
+                    pk, entity_pk, user=self.request.user
+                )
 
             results = list(balances.values())
         
@@ -444,8 +449,22 @@ class EntityAccountsView(TemplateView):
             else:
                 results.sort(key=lambda x: x["name"])
 
+            disp_code = getattr(
+                self.request, "display_currency", settings.BASE_CURRENCY
+            )
+            total_balance = Decimal("0")
+            for row in results:
+                bal = row.get("balance") or Decimal("0")
+                cur = row.get("currency")
+                if cur:
+                    total_balance += convert_to_base(
+                        bal, cur, base_currency=disp_code, user=self.request.user
+                    )
+                else:
+                    total_balance += bal
+
             ctx["accounts"] = results
-            ctx["total_balance"] = sum(b["balance"] for b in results)
+            ctx["total_balance"] = total_balance
             ctx["search"] = params.get("q", "")
             ctx["sort"] = sort
             ctx["insurance_form"] = InsuranceForm(

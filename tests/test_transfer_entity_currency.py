@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from unittest.mock import patch
 
 from currencies.models import Currency, ExchangeRate
 from accounts.models import Account
@@ -75,3 +76,57 @@ class TransferCurrencyAssignmentTests(TestCase):
         self.assertEqual(inflow.currency, self.cur_php)
         self.assertEqual(outflow.amount, Decimal("100"))
         self.assertEqual(inflow.amount, Decimal("4"))
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class EntityAccountsViewBalanceTests(TestCase):
+    def setUp(self):
+        self.cur_php = Currency.objects.create(code="PHP", name="Peso")
+        self.cur_krw = Currency.objects.create(code="KRW", name="Won")
+        ExchangeRate.objects.create(
+            currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04")
+        )
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u3", password="p")
+        self.client.force_login(self.user)
+        self.entity = Entity.objects.create(
+            entity_name="Pig", entity_type="free fund", user=self.user
+        )
+        self.acc_php = Account.objects.create(
+            account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php
+        )
+        self.acc_krw = Account.objects.create(
+            account_name="KRW", account_type="Cash", user=self.user, currency=self.cur_krw
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type="transfer",
+            amount=Decimal("100"),
+            account_source=self.acc_krw,
+            account_destination=self.acc_php,
+            entity_destination=self.entity,
+            currency=self.cur_krw,
+            destination_amount=Decimal("5"),
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type="income",
+            amount=Decimal("50"),
+            account_destination=self.acc_krw,
+            entity_destination=self.entity,
+            currency=self.cur_krw,
+        )
+
+    def test_accounts_tab_shows_converted_totals(self):
+        with patch(
+            "currencies.context_processors.services.get_frankfurter_currencies",
+            return_value={"PHP": "Peso", "KRW": "Won"},
+        ):
+            resp = self.client.get(reverse("entities:accounts", args=[self.entity.pk]))
+        self.assertEqual(resp.status_code, 200)
+        accs = {a["name"]: a for a in resp.context["accounts"]}
+        self.assertEqual(accs["PHP"]["balance"], Decimal("5"))
+        self.assertEqual(accs["PHP"]["currency"].code, "PHP")
+        self.assertEqual(accs["KRW"]["balance"], Decimal("50"))
+        self.assertEqual(accs["KRW"]["currency"].code, "KRW")
+        self.assertEqual(resp.context["total_balance"], Decimal("7"))
