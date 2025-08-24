@@ -1,8 +1,2 @@
 {% load acquisition_tags humanize %}
-{% if acq.category == 'insurance' and insurance %}
-  {% url 'insurance:edit' insurance.pk as edit_url %}
-  {% include 'components/card.html' with link=edit_url modifier='clickable-card card-acquisition cat-'|add:acq.category category_badge=acq.get_category_display title=acq.name rows=rows action_btn_template='acquisitions/_acquisition_footer.html' acq=acq %}
-{% else %}
-  {% url 'acquisitions:acquisition-update' acq.pk as edit_url %}
-  {% include 'components/card.html' with link=edit_url modifier='clickable-card card-acquisition cat-'|add:acq.category category_badge=acq.get_category_display title=acq.name rows=rows action_btn_template='acquisitions/_acquisition_footer.html' acq=acq %}
-{% endif %}
+{% include 'components/card.html' with modifier='card-acquisition cat-'|add:acq.category category_badge=acq.get_category_display title=acq.name rows=rows action_btn_template='acquisitions/_acquisition_footer.html' acq=acq insurance=insurance %}

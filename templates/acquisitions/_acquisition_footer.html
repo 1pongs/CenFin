@@ -1,5 +1,5 @@
 {% if not acq.sell_tx %}
-<a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success">
+<a href="{% url 'acquisitions:sell' acq.pk %}" class="btn btn-sm btn-success me-1">
   {% if acq.category == 'insurance' %}
     {% if acq.insurance_type == 'vul' %}Withdraw{% else %}Claim{% endif %}
   {% elif acq.category == 'equipment' %}
@@ -9,3 +9,10 @@
   {% endif %}
 </a>
 {% endif %}
+
+{% if acq.category == 'insurance' and insurance %}
+<a href="{% url 'insurance:edit' insurance.pk %}" class="btn btn-sm btn-primary me-1">Edit</a>
+{% else %}
+<a href="{% url 'acquisitions:acquisition-update' acq.pk %}" class="btn btn-sm btn-primary me-1">Edit</a>
+{% endif %}
+<a href="{% url 'acquisitions:acquisition-delete' acq.pk %}" class="btn btn-sm btn-danger">Delete</a>
