@@ -140,7 +140,7 @@ class Account(models.Model):
     def __str__(self):
         if self.account_type == "Credit" and hasattr(self, "credit_card"):
             limit = self.credit_card.credit_limit
-            cur = self.currency.code if self.currency else ""
+            cur = self.credit_card.currency or ""
             return f"{self.account_name} — {limit:,.0f} {cur} limit".strip()
         return self.account_name
 

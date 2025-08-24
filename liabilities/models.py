@@ -141,8 +141,6 @@ class Loan(models.Model):
         from transactions.models import Transaction
         if tx_ids:
             Transaction.objects.filter(id__in=tx_ids).delete()
-        super().delete(*args, **kwargs)
-
 
 class LoanPayment(models.Model):
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name="payments")
@@ -213,18 +211,18 @@ class CreditCard(models.Model):
                 raise ValidationError({"card_name": "Name already in use."})
 
             acc = qs.filter(is_active=False).first()
+            cur_obj = Currency.objects.filter(code=self.currency).first()
             if acc:
                 acc.is_active = True
                 acc.account_type = "Credit"
-                if acc.currency_id is None:
-                    acc.currency = default_cur
+                acc.currency = cur_obj or default_cur
                 acc.save()
             else:
                 acc = Account(
                     account_name=self.card_name,
                     account_type="Credit",
                     user=self.user,
-                    currency=default_cur,
+                    currency=cur_obj or default_cur,
                 )
                 acc.save()
             self.account = acc
@@ -248,8 +246,9 @@ class CreditCard(models.Model):
                 if acc.account_type != "Credit":
                     acc.account_type = "Credit"
 
-                if acc.currency_id is None:
-                    acc.currency = default_cur
+                if acc.currency_id is None or acc.currency.code != self.currency:
+                    cur_obj = Currency.objects.filter(code=self.currency).first()
+                    acc.currency = cur_obj or default_cur
 
                 acc.save()
             super().save(*args, **kwargs)

@@ -10,8 +10,7 @@ from django.views.decorators.http import require_POST
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
 from django.db import transaction
-from django.conf import settings
-from utils.currency import amount_for_display, get_currency_symbol
+from utils.currency import get_currency_symbol
 
 
 @login_required
@@ -132,10 +131,10 @@ class LiabilityListView(TemplateView):
                 ("Currency", loan.currency),
             ]
         for card in ctx.get("credit_cards", []):
-            conv_limit = amount_for_display(self.request, card.credit_limit, card.currency)
-            symbol = get_currency_symbol(getattr(self.request, "display_currency", settings.BASE_CURRENCY))
+            symbol = get_currency_symbol(card.currency)
+            limit_val = card.credit_limit
             card.field_tags = [
-                ("Limit", f"{symbol}{conv_limit:,.2f}"),
+                ("Limit", f"{symbol}{limit_val:,.2f}"),
                 ("Rate", f"{card.interest_rate}%"),
             ]
         return ctx
