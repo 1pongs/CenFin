@@ -141,6 +141,7 @@ class Loan(models.Model):
         from transactions.models import Transaction
         if tx_ids:
             Transaction.objects.filter(id__in=tx_ids).delete()
+        super().delete(*args, **kwargs)
 
 class LoanPayment(models.Model):
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name="payments")

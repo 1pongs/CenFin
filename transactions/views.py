@@ -108,9 +108,22 @@ class TransactionListView(ListView):
         selected_ids = request.POST.getlist("selected_ids")
 
         if action == "delete" and selected_ids:
-            # delete visible and hidden transactions linked to them
+            qs = Transaction.objects.filter(user=request.user, id__in=selected_ids)
+            warned = False
+            for txn in qs:
+                if txn.transaction_type == "loan_disbursement":
+                    loan = getattr(txn, "loan_disbursement", None)
+                    if loan:
+                        loan.delete()
+                        warned = True
+            # delete visible and hidden transactions linked to remaining ids
             Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
-            Transaction.objects.filter(user=request.user, id__in=selected_ids).delete()
+            qs.exclude(transaction_type="loan_disbursement").delete()
+            if warned:
+                messages.warning(
+                    request,
+                    "Deleting a loan disbursement also removes the associated loan.",
+                )
             messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
 
         return redirect(reverse("transactions:transaction_list"))
@@ -120,8 +133,22 @@ def bulk_action(request):
         selected_ids = request.POST.getlist('selected_ids')
 
         if selected_ids:
-                Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
-                Transaction.objects.filter(user=request.user, pk__in=selected_ids).delete()
+                qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids)
+            warned = False
+            for txn in qs:
+                if txn.transaction_type == "loan_disbursement":
+                    loan = getattr(txn, "loan_disbursement", None)
+                    if loan:
+                        loan.delete()
+                        warned = True
+            Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
+            qs.exclude(transaction_type="loan_disbursement").delete()
+            if warned:
+                messages.warning(
+                    request,
+                    "Deleting a loan disbursement also removes the associated loan.",
+                )
+            messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
         return redirect(reverse('transactions:transaction_list'))
             
     return redirect(reverse('transactions:transaction_list'))
@@ -337,7 +364,15 @@ class TransactionUpdateView(UpdateView):
 
 def transaction_delete(request, pk):
     txn = get_object_or_404(Transaction, pk=pk, user=request.user)
-
+    if txn.transaction_type == "loan_disbursement":
+        loan = getattr(txn, "loan_disbursement", None)
+        if loan:
+            loan.delete()
+            messages.warning(
+                request,
+                "Deleting a loan disbursement also removes the associated loan.",
+            )
+            return redirect(reverse('transactions:transaction_list'))
     Transaction.all_objects.filter(parent_transfer=txn, user=request.user).delete()
     txn.delete()
     messages.success(request, "Transaction deleted.")
