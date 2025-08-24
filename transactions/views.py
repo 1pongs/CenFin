@@ -133,7 +133,8 @@ def bulk_action(request):
         selected_ids = request.POST.getlist('selected_ids')
 
         if selected_ids:
-                qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids)
+
+            qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids)
             warned = False
             for txn in qs:
                 if txn.transaction_type == "loan_disbursement":
