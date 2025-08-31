@@ -207,15 +207,40 @@
   const entSrc = document.getElementById('id_entity_source');
   const entDest = document.getElementById('id_entity_destination');
 
+  function outsideOption(select) {
+    return Array.from(select.options).find(o => o.text.trim() === 'Outside');
+  }
+
   function outsideValues(select) {
-    const opt = Array.from(select.options).find(o => o.text === 'Outside');
+    const opt = outsideOption(select);
     return opt ? opt.value : '';
+  }
+
+  function firstInternalOption(select) {
+    return Array.from(select.options).find(o => o.value && o !== outsideOption(select));
   }
 
   function toggleOutside() {
     const type = txTypeSel.value;
     const accVal = outsideValues(accSrc);
     const entVal = outsideValues(entSrc);
+    const hideOutside = type === 'transfer';
+    [accDest, entDest].forEach(sel => {
+      if (!sel) return;
+      const opt = outsideOption(sel);
+      if (!opt) return;
+      if (hideOutside) {
+        opt.disabled = true;
+        opt.hidden = true;
+        if (sel.value === opt.value) {
+          const first = firstInternalOption(sel);
+          sel.value = first ? first.value : '';
+        }
+      } else {
+        opt.disabled = false;
+        opt.hidden = false;
+      }
+    });
     if (type === 'income') {
       accSrc.value = accVal;
       entSrc.value = entVal;
