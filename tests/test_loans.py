@@ -50,6 +50,11 @@ class LoanAutocompleteTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Loan.objects.filter(lender=self.lender).count(), 2)
 
+    def test_create_redirects_to_loans_tab(self):
+        resp = self.client.post(reverse("liabilities:loan-create"), self._form_data(lender_id=self.lender.pk))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("?tab=loans", resp["Location"])
+
     def test_autocomplete_search_json(self):
         resp = self.client.get(reverse("ajax_lender_search"), {"q": "Wel"})
         self.assertEqual(resp.status_code, 200)
@@ -99,6 +104,7 @@ class LoanUpdateTransactionTest(TestCase):
             },
         )
         self.assertEqual(resp.status_code, 302)
+        self.assertIn("?tab=loans", resp["Location"])
         self.tx.refresh_from_db()
         self.assertEqual(self.tx.amount, Decimal("150"))
         self.assertEqual(self.tx.date, date(2025, 2, 1))
@@ -138,7 +144,9 @@ class LoanDeleteCascadeTest(TestCase):
 
         disb_id = loan.disbursement_tx_id
         pay_id = pay_tx.id
-        loan.delete()
+        resp = self.client.post(reverse("liabilities:loan-delete", args=[loan.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("?tab=loans", resp["Location"])
 
         self.assertFalse(Transaction.objects.filter(id=disb_id).exists())
         self.assertFalse(Transaction.objects.filter(id=pay_id).exists())

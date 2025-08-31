@@ -169,7 +169,7 @@ class LoanCreateView(CreateView):
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        cancel = self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
         kwargs["cancel_url"] = cancel
         kwargs["user"] = self.request.user
         if self.object:
@@ -179,7 +179,9 @@ class LoanCreateView(CreateView):
                 "lender_id": self.object.lender_id,
             })
         return kwargs
-    
+
+    def get_success_url(self):
+        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
 
 class CreditCardUpdateView(UpdateView):
     model = CreditCard
@@ -233,7 +235,7 @@ class LoanUpdateView(UpdateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = reverse("liabilities:list") + "?tab=loans"
+        cancel = self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
         kwargs["cancel_url"] = cancel
         kwargs["user"] = self.request.user
         if self.object:
@@ -243,6 +245,9 @@ class LoanUpdateView(UpdateView):
                 "lender_id": self.object.lender_id,
             })
         return kwargs
+
+    def get_success_url(self):
+        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -265,5 +270,5 @@ class LoanDeleteView(DeleteView):
         return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
-        return reverse("liabilities:list") + "?tab=loans"
+        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
        
