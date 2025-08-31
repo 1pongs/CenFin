@@ -233,7 +233,7 @@ class LoanUpdateView(UpdateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = self.request.GET.get("next") or reverse("liabilities:list")
+        cancel = reverse("liabilities:list") + "?tab=loans"
         kwargs["cancel_url"] = cancel
         kwargs["user"] = self.request.user
         if self.object:
@@ -249,6 +249,8 @@ class LoanUpdateView(UpdateView):
         messages.success(self.request, "Loan updated successfully!")
         return response
 
+    def get_success_url(self):
+        return reverse("liabilities:list") + "?tab=loans"
 
 class LoanDeleteView(DeleteView):
     model = Loan
@@ -261,4 +263,7 @@ class LoanDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(request, "Loan deleted.")
         return super().delete(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse("liabilities:list") + "?tab=loans"
        
