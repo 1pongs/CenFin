@@ -570,3 +570,45 @@ class TransactionCurrencyTests(TestCase):
         acc_same.save()
         tx.refresh_from_db()
         self.assertEqual(tx.currency, self.cur1)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class PairBalanceViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="pb", password="p")
+        self.client.force_login(self.user)
+        self.acc1 = Account.objects.create(account_name="A1", account_type="Cash", user=self.user)
+        self.acc2 = Account.objects.create(account_name="A2", account_type="Cash", user=self.user)
+        self.ent = Entity.objects.create(entity_name="E", entity_type="personal fund", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed1",
+            transaction_type="income",
+            amount=Decimal("100"),
+            account_source=self.out_acc,
+            account_destination=self.acc1,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed2",
+            transaction_type="income",
+            amount=Decimal("200"),
+            account_source=self.out_acc,
+            account_destination=self.acc2,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+
+    def test_pair_balance_specific_account(self):
+        url = reverse("transactions:pair_balance")
+        resp = self.client.get(url, {"account": self.acc1.pk, "entity": self.ent.pk})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(Decimal(data["balance"]), Decimal("100"))

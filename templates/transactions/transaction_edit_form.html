@@ -194,7 +194,7 @@
     const typeSel = document.getElementById('id_transaction_type');
     if (!typeSel) return;
     const hide = typeSel.value === 'income' || typeSel.value.startsWith('sell');
-    ['account-balance-wrapper','entity-balance-wrapper','balance-error'].forEach(id => {
+    ['account-balance-wrapper','balance-error'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         if (hide) el.classList.add('d-none');
