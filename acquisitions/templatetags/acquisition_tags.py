@@ -8,7 +8,7 @@ register = template.Library()
 
 @register.inclusion_tag('acquisitions/_acquisition_card.html', takes_context=True)
 def render_acquisition_card(context, acq):
-   """Render an acquisition card."""
+    """Render an acquisition card."""
    
     request = context.get('request')
 
