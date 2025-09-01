@@ -17,9 +17,6 @@
       {% endif %}
     </div>
     <div>
-    <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#insModal">
-      <i class="bi bi-shield-plus me-1"></i>Add Insurance
-    </button>
     <a href="{% url 'accounts:create' %}" class="btn btn-success btn-sm me-2">
       <i class="bi bi-plus-lg me-1"></i>Add Account
     </a>
@@ -44,9 +41,6 @@
   </li>
   <li class="nav-item">
     <a class="nav-link{% if current_category == 'equipment' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=equipment{% if nav_qs %}&{{ nav_qs }}{% endif %}">Equipment</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link{% if current_category == 'insurance' %} active{% endif %}" href="{% url 'entities:accounts' entity.pk %}?category=insurance{% if nav_qs %}&{{ nav_qs }}{% endif %}">Insurance</a>
   </li>
 </ul>
 
@@ -80,30 +74,6 @@
       {% empty %}
         {% include 'includes/no_accounts.html' %}
       {% endfor %}
-    {% elif current_category == 'insurance' %}
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
-        {% for ins in insurances %}
-          <div class="col">
-            <div class="card h-100">
-              <a href="{% url 'insurance:edit' ins.pk %}?next={{ request.get_full_path }}" class="text-decoration-none text-reset clickable-card">
-              <div class="card-body">
-                <h6 class="card-subtitle text-muted small mb-1">{{ ins.get_insurance_type_display }}</h6>
-                <h5 class="card-title mb-2">{{ ins.policy_owner|default:ins.person_insured }}</h5>
-                <dl class="row small mb-0">
-                  <dt class="col-5">Status</dt>
-                  <dd class="col-7">{{ ins.get_status_display }}</dd>
-                </dl>
-              </div>
-              </a>
-              <div class="card-footer bg-transparent border-0 text-end">
-                <a href="{% url 'insurance:pay-premium' ins.pk %}" class="btn btn-sm btn-primary">Pay Premium</a>
-              </div>
-            </div>
-          </div>
-        {% empty %}
-          <p class="text-center">No insurance policies.</p>
-        {% endfor %}
-      </div>
     {% else %}
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3">
         {% for acq in acquisitions %}
@@ -128,140 +98,9 @@
         {% include 'entities/_toolbar_vehicle.html' %}
       {% elif current_category == 'equipment' %}
         {% include 'entities/_toolbar_equipment.html' %}
-      {% elif current_category == 'insurance' %}
-        {% include 'entities/_toolbar_insurance.html' %}
       {% endif %}
     </div>
   </aside>
 </div>
 
-<!-- Insurance wizard modal copied from entity detail -->
-<div class="modal fade" id="insModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Subscribe Insurance Policy</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="ins-step1">
-          <label class="form-label">Select Category</label>
-          <select id="insCategory" class="form-select">
-            <option value="personal">Personal Insurance</option>
-            <option value="property">Property Insurance</option>
-            <option value="vehicle">Vehicle Insurance</option>
-            <option value="travel">Travel Insurance</option>
-          </select>
-          <div class="text-end mt-3">
-            <button type="button" class="btn btn-primary" id="insNext">Continue</button>
-          </div>
-        </div>
-        <div id="ins-step2" style="display:none;">
-          <div class="mb-3" id="acqSelectGroup" style="display:none;">
-            <label class="form-label">Select Acquisition</label>
-            <select id="acqSelect" class="form-select"></select>
-          </div>
-          <form id="insForm" method="post" action="{% url 'insurance:create' %}" data-entity="{{ entity.pk }}">
-            {% csrf_token %}
-            {% include "insurance/_insurance_form_fields.html" with form=insurance_form %}
-          </form>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" id="insBack" style="display:none;">Back</button>
-        <button type="submit" form="insForm" class="btn btn-primary" id="insSubmit" style="display:none;">Save</button>
-      </div>
-</div>
-  </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('insModal');
-  if(!modal) return;
-  const catSel = document.getElementById('insCategory');
-  const acqGroup = document.getElementById('acqSelectGroup');
-  const acqSelect = document.getElementById('acqSelect');
-  const step1 = document.getElementById('ins-step1');
-  const step2 = document.getElementById('ins-step2');
-  const nextBtn = document.getElementById('insNext');
-  const backBtn = document.getElementById('insBack');
-  const submitBtn = document.getElementById('insSubmit');
-  const form = document.getElementById('insForm');
-
-  nextBtn.addEventListener('click', async () => {
-    const cat = catSel.value;
-    form.querySelector('#id_entity').value = form.dataset.entity;
-    if(cat === 'property' || cat === 'vehicle'){
-      const resp = await fetch(`/insurance/api/acquisitions/${form.dataset.entity}/${cat}/`);
-      if(resp.ok){
-        const data = await resp.json();
-        acqSelect.innerHTML = '';
-        data.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = d.id;
-          opt.textContent = d.name;
-          acqSelect.appendChild(opt);
-        });
-        form.querySelector('#id_acquisition').value = acqSelect.value;
-      }
-      acqGroup.style.display = '';
-      acqSelect.addEventListener('change', () => {
-        form.querySelector('#id_acquisition').value = acqSelect.value;
-      });
-    } else {
-      acqGroup.style.display = 'none';
-      acqSelect.innerHTML = '';
-      form.querySelector('#id_acquisition').value = '';
-    }
-    step1.style.display = 'none';
-    step2.style.display = '';
-    backBtn.style.display = '';
-    submitBtn.style.display = '';
-  });
-
-  backBtn.addEventListener('click', () => {
-    step1.style.display = '';
-    step2.style.display = 'none';
-    backBtn.style.display = 'none';
-    submitBtn.style.display = 'none';
-  });
-
-  modal.addEventListener('hidden.bs.modal', () => {
-    step1.style.display = '';
-    step2.style.display = 'none';
-    backBtn.style.display = 'none';
-    submitBtn.style.display = 'none';
-    form.reset();
-    acqGroup.style.display = 'none';
-    acqSelect.innerHTML = '';
-    const acqField = form.querySelector('#id_acquisition');
-    if(acqField) acqField.value = '';
-  });
-});
-</script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('filter-form');
-    if(form){
-      form.querySelectorAll('select,input').forEach(el => {
-        el.addEventListener('change', () => form.submit());
-      });
-    }
-  });
-</script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const typeSel = document.getElementById('id_insurance_type');
-    const vulRow = document.getElementById('vul-fields');
-    if (!typeSel || !vulRow) return;
-    const toggle = () => {
-      vulRow.style.display = typeSel.value === 'vul' ? '' : 'none';
-    };
-    typeSel.addEventListener('change', toggle);
-    toggle();
-  });
-  </script>
 {% endblock %}

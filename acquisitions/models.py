@@ -13,7 +13,6 @@ class Acquisition(models.Model):
     CATEGORY_PRODUCT = "product"
     CATEGORY_STOCK_BOND = "stock_bond"
     CATEGORY_PROPERTY = "property"
-    CATEGORY_INSURANCE = "insurance"
     CATEGORY_EQUIPMENT = "equipment"
     CATEGORY_VEHICLE = "vehicle"
 
@@ -21,16 +20,8 @@ class Acquisition(models.Model):
         (CATEGORY_PRODUCT, "Product"),
         (CATEGORY_STOCK_BOND, "Stock/Bond"),
         (CATEGORY_PROPERTY, "Property"),
-        (CATEGORY_INSURANCE, "Insurance"),
         (CATEGORY_EQUIPMENT, "Equipment"),
         (CATEGORY_VEHICLE, "Vehicle"),
-    ]
-
-    INSURANCE_TYPE_CHOICES = [
-        ("vul", "VUL"),
-        ("term", "Term"),
-        ("whole", "Whole"),
-        ("health", "Health"),
     ]
 
     STATUS_CHOICES = [
@@ -80,19 +71,6 @@ class Acquisition(models.Model):
     mileage = models.PositiveIntegerField(null=True, blank=True)
     plate_number = models.CharField(max_length=20, blank=True)
     model_year = models.PositiveIntegerField(null=True, blank=True)
-
-    # insurance
-    insurance_type = models.CharField(
-        max_length=10, choices=INSURANCE_TYPE_CHOICES, blank=True
-    )
-    sum_assured_amount = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True
-    )
-    cash_value = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
-    )
-    maturity_date = models.DateField(null=True, blank=True)
-    provider = models.CharField(max_length=255, blank=True)
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
     

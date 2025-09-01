@@ -16,10 +16,4 @@ class AcquisitionAdmin(admin.ModelAdmin):
         if cat != 'property':
             form.base_fields.pop('expected_lifespan_years', None)
             form.base_fields.pop('location', None)
-        if cat != 'insurance':
-            form.base_fields.pop('insurance_type', None)
-            form.base_fields.pop('sum_assured_amount', None)
-            form.base_fields.pop('cash_value', None)
-            form.base_fields.pop('maturity_date', None)
-            form.base_fields.pop('provider', None)
         return form

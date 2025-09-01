@@ -10,14 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='acquisition',
-            name='maturity_date',
-        ),
-        migrations.RemoveField(
-            model_name='acquisition',
-            name='provider',
-        ),
         migrations.AddField(
             model_name='acquisition',
             name='avg_unit_cost',

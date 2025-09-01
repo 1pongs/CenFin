@@ -1,6 +1,5 @@
 from django import template
 from ..views import CARD_FIELDS_BY_CATEGORY, CARD_SUMMARY_FIELDS_BY_CATEGORY
-from insurance.models import Insurance
 from django.template.defaultfilters import floatformat
 from django.contrib.humanize.templatetags.humanize import intcomma
 from utils.currency import amount_for_display, get_currency_symbol, get_active_currency
@@ -9,19 +8,8 @@ register = template.Library()
 
 @register.inclusion_tag('acquisitions/_acquisition_card.html', takes_context=True)
 def render_acquisition_card(context, acq):
-    """Render an acquisition card and include related insurance when needed."""
-    insurance = None
-    extra_rows = []
-    if acq.category == 'insurance':
-        insurance = acq.insurances.first()
-        if insurance:
-            if insurance.policy_owner:
-                extra_rows.append(("Policy Owner", insurance.policy_owner))
-            if insurance.person_insured:
-                extra_rows.append(("Insured", insurance.person_insured))
-            if insurance.provider:
-                extra_rows.append(("Provider", insurance.provider))
-
+   """Render an acquisition card."""
+   
     request = context.get('request')
 
     def _fmt_amt(val):
@@ -40,11 +28,10 @@ def render_acquisition_card(context, acq):
         ("Date Bought", acq.purchase_tx.date if acq.purchase_tx else None),
         ("Amount", _fmt_amt(acq.purchase_tx.amount if acq.purchase_tx else None)),
         ("Status", "Sold" if acq.sell_tx else acq.get_status_display()),
-    ] + extra_rows
+    ]
     return {
         'acq': acq,
         'rows': rows,
-        'insurance': insurance,
         'request': context.get('request'),
     }
 

@@ -58,23 +58,6 @@ class AcquisitionListViewTest(TestCase):
         self.assertContains(resp, "Alpha")
         self.assertNotContains(resp, "Beta")
 
-    def test_insurance_acquisitions_are_excluded(self):
-        buy_tx = Transaction.objects.create(
-            user=self.user,
-            date=timezone.now().date(),
-            description="ins",
-            transaction_type="buy acquisition",
-            amount=Decimal("1"),
-        )
-        Acquisition.objects.create(
-            name="Policy",
-            category="insurance",
-            purchase_tx=buy_tx,
-            user=self.user,
-        )
-        resp = self.client.get(reverse("acquisitions:acquisition-list"))
-        self.assertNotContains(resp, "Policy")
-
 @override_settings(
     DATABASES={
         "default": {
@@ -295,16 +278,6 @@ class OutsideAccountVisibilityTest(TestCase):
         qs = form.fields["account_source"].queryset
         self.assertIn(self.outside, qs)
         self.assertIn(self.outside, form.fields["account_destination"].queryset)
-
-
-class AcquisitionFormValidationTest(TestCase):
-    def setUp(self):
-        User = get_user_model()
-        self.user = User.objects.create_user(username="vtest", password="p")
-    def test_insurance_category_not_present(self):
-        form = AcquisitionForm(user=self.user)
-        choices = [c[0] for c in form.fields["category"].choices]
-        self.assertNotIn("insurance", choices)
 
 
 @override_settings(

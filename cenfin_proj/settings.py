@@ -68,7 +68,6 @@ INSTALLED_APPS = [
     'entities',
     'currencies',
     'acquisitions.apps.AcquisitionsConfig',
-    'insurance.apps.InsuranceConfig',
     'liabilities',
     'users',
 ]

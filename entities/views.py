@@ -17,15 +17,13 @@ from utils.currency import convert_to_base
 
 from entities.models import Entity
 from acquisitions.models import Acquisition
-from insurance.forms import InsuranceForm
-from insurance.models import Insurance
 from accounts.models import Account
 from .forms import EntityForm
 from transactions.models import Transaction
 
 
 # ---------------------------------------------------------------------------
-# Helper: acquisition & insurance filtering
+# Helper: acquisition filtering
 # ---------------------------------------------------------------------------
 from django.db.models import Q
 
@@ -85,24 +83,6 @@ def filter_acquisitions_for_tab(entity, user, params, category):
         else:
             qs = qs.order_by("name")
 
-    return qs
-
-
-def filter_insurances_for_tab(entity, user, params):
-    qs = Insurance.objects.filter(user=user, entity=entity)
-    q = params.get("q", "").strip()
-    if q:
-        qs = qs.filter(Q(policy_owner__icontains=q) | Q(person_insured__icontains=q))
-    typ = params.get("type", "").strip()
-    if typ:
-        qs = qs.filter(insurance_type=typ)
-    sort = params.get("sort", "status")
-    if sort == "sum_assured_desc":
-        qs = qs.order_by("-sum_assured")
-    elif sort == "status":
-        qs = qs.order_by("status")
-    else:
-        qs = qs.order_by("policy_owner")
     return qs
 
 
@@ -258,14 +238,6 @@ class EntityDetailView(TemplateView):
 
         ctx["accounts"] = sorted(balances.values(), key=lambda x: x["name"])
         ctx["total_balance"] = sum(b["balance"] for b in balances.values())
-
-        ctx["insurances"] = Insurance.objects.filter(
-            entity=entity, user=self.request.user
-        )
-
-        ctx["insurance_form"] = InsuranceForm(
-            initial={"entity": entity_pk}, show_actions=False
-        )
         
         return ctx
 
@@ -467,21 +439,6 @@ class EntityAccountsView(TemplateView):
             ctx["total_balance"] = total_balance
             ctx["search"] = params.get("q", "")
             ctx["sort"] = sort
-            ctx["insurance_form"] = InsuranceForm(
-                initial={"entity": entity_pk}, show_actions=False
-            )
-            return ctx
-
-        if category == "insurance":
-            ins_qs = filter_insurances_for_tab(entity, self.request.user, params)
-            ctx["insurances"] = ins_qs
-            ctx["search"] = params.get("q", "")
-            ctx["sort"] = params.get("sort", "status")
-            ctx["type"] = params.get("type", "")
-            ctx["type_choices"] = Insurance.TYPE_CHOICES
-            ctx["insurance_form"] = InsuranceForm(
-                initial={"entity": entity_pk}, show_actions=False
-            )
             return ctx
 
         acqs = filter_acquisitions_for_tab(entity, self.request.user, params, category)
@@ -514,9 +471,6 @@ class EntityAccountsView(TemplateView):
                 .distinct()
                 .order_by("location")
             )
-        ctx["insurance_form"] = InsuranceForm(
-            initial={"entity": entity_pk}, show_actions=False
-        )
         return ctx
 
 @require_POST

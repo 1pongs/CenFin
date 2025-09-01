@@ -24,7 +24,6 @@ CARD_FIELDS_BY_CATEGORY = {
     "product":    ["date_bought", "amount", "target_selling_date", "status"],
     "stock_bond": ["date_bought", "amount", "current_value", "market", "target_selling_date", "status"],
     "property":   ["date_bought", "amount", "location", "expected_lifespan_years", "status"],
-    "insurance":  ["date_bought", "amount", "insurance_type", "cash_value", "maturity_date", "provider", "status"],
     "equipment":  ["date_bought", "amount", "location", "expected_lifespan_years", "status"],
     "vehicle":    ["date_bought", "amount", "model_year", "mileage", "plate_number", "status"],
 }
@@ -34,7 +33,6 @@ CARD_SUMMARY_FIELDS_BY_CATEGORY = {
     "product":    ["date_bought", "amount", "status"],
     "stock_bond": ["date_bought", "amount", "status"],
     "property":   ["location", "date_bought", "amount", "status"],
-    "insurance":  ["date_bought", "amount", "status"],
     "equipment":  ["location", "date_bought", "amount", "status"],
     "vehicle":    ["date_bought", "amount", "status"],
 }
@@ -49,8 +47,6 @@ class AcquisitionListView(ListView):
             Acquisition.objects.select_related("purchase_tx", "sell_tx")
             .filter(user=self.request.user)
         )
-        
-        qs = qs.exclude(category=Acquisition.CATEGORY_INSURANCE)
 
         cat = self.request.GET.get("category")
         if cat:
