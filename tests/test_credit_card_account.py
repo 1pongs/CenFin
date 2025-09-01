@@ -35,6 +35,18 @@ class CreditCardAccountTests(TestCase):
         self.assertIsNotNone(card.account)
         self.assertEqual(card.account.account_type, "Credit")
 
+    def test_account_str_omits_limit(self):
+        card = CreditCard.objects.create(
+            user=self.user,
+            issuer=self.lender,
+            card_name="Visa",
+            credit_limit=Decimal("1000"),
+            interest_rate=Decimal("1"),
+            statement_day=1,
+            payment_due_day=10,
+        )
+        self.assertEqual(str(card.account), "Visa")
+
     def test_card_shown_in_form(self):
         card = CreditCard.objects.create(
             user=self.user,

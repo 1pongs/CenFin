@@ -138,10 +138,6 @@ class Account(models.Model):
         self.save()
 
     def __str__(self):
-        if self.account_type == "Credit" and hasattr(self, "credit_card"):
-            limit = self.credit_card.credit_limit
-            cur = self.credit_card.currency or ""
-            return f"{self.account_name} — {limit:,.0f} {cur} limit".strip()
         return self.account_name
 
     def get_current_balance(self):
