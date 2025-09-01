@@ -9,7 +9,7 @@ from entities.models import Entity
 from currencies.models import Currency
 from django.core.exceptions import ValidationError
 from .models import Transaction
-from .forms import TransactionForm
+from .forms import TransactionForm, TemplateForm
 from transactions.models import TransactionTemplate
 from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
@@ -143,6 +143,15 @@ class TransactionFormBalanceTest(TestCase):
         self.assertEqual(form.cleaned_data["account_destination"].account_name, "Outside")
         self.assertEqual(form.cleaned_data["entity_destination"].entity_name, "Outside")
 
+    def test_income_excludes_outside_destination(self):
+        data = self._form_data(transaction_type="income")
+        form = TransactionForm(data=data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        acc_names = list(form.fields["account_destination"].queryset.values_list("account_name", flat=True))
+        ent_names = list(form.fields["entity_destination"].queryset.values_list("entity_name", flat=True))
+        self.assertNotIn("Outside", acc_names)
+        self.assertNotIn("Outside", ent_names)
+
 
 class OutsideEnforcedTest(TestCase):
     def setUp(self):
@@ -233,6 +242,13 @@ class TemplateOutsideEnforcedTest(TestCase):
         self.assertEqual(tpl.autopop_map["account_destination"], self.out_acc.pk)
         self.assertEqual(tpl.autopop_map["entity_destination"], self.out_ent.pk)
 
+    def test_income_template_excludes_outside_destination(self):
+        form = TemplateForm(data={"transaction_type": "income"}, user=self.user)
+        acc_names = list(form.fields["account_destination"].queryset.values_list("account_name", flat=True))
+        ent_names = list(form.fields["entity_destination"].queryset.values_list("entity_name", flat=True))
+        self.assertNotIn("Outside", acc_names)
+        self.assertNotIn("Outside", ent_names)
+        
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 class ConstantsTest(TestCase):

@@ -75,6 +75,7 @@ class TransactionForm(forms.ModelForm):
                 if inflow:
                     self.initial['destination_amount'] = inflow.amount
 
+        account_qs = entity_qs = None
         if user is not None:
             allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]
             account_qs = Account.objects.filter(
@@ -104,6 +105,10 @@ class TransactionForm(forms.ModelForm):
         tx_type = (self.data.get("transaction_type")
                    or self.initial.get("transaction_type")
                    or getattr(self.instance, "transaction_type", None))
+
+        if tx_type == "income" and account_qs is not None and entity_qs is not None:
+            self.fields["account_destination"].queryset = account_qs.exclude(account_name="Outside")
+            self.fields["entity_destination"].queryset = entity_qs.exclude(entity_name="Outside")
 
         if tx_type == "income" and outside_account and outside_entity:
             self.fields["account_source"].initial = outside_account
@@ -355,6 +360,7 @@ class TemplateForm(forms.ModelForm):
             or getattr(self.instance, "transaction_type", None)
         )
 
+        account_qs = entity_qs = None
         if user is not None:
             allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]
             account_qs = Account.objects.filter(
@@ -368,6 +374,10 @@ class TemplateForm(forms.ModelForm):
             self.fields['account_destination'].queryset = account_qs
             self.fields['entity_source'].queryset = entity_qs
             self.fields['entity_destination'].queryset = entity_qs
+
+        if tx_type == "income" and account_qs is not None and entity_qs is not None:
+            self.fields["account_destination"].queryset = account_qs.exclude(account_name="Outside")
+            self.fields["entity_destination"].queryset = entity_qs.exclude(entity_name="Outside")
 
         if self.instance and self.instance.autopop_map:
             for field_name, value in self.instance.autopop_map.items():
