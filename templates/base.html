@@ -34,6 +34,9 @@
       <ul class="navbar-nav ms-auto align-items-center">
         {% if user.is_authenticated %}
           <li class="nav-item me-2">
+            <a class="btn btn-primary btn-sm" href="{% url 'transactions:transaction_create' %}">Add Transaction</a>
+          </li>
+          <li class="nav-item me-2">
             <form method="post" action="{% url 'set_display_currency' %}" class="d-inline">
               {% csrf_token %}
               <select id="display-currency" name="code" class="form-select form-select-sm" onchange="this.form.submit()">
