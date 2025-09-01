@@ -24,6 +24,7 @@ from accounts.forms import AccountForm
 from entities.forms import EntityForm
 from accounts.models import Account
 from entities.models import Entity
+from liabilities.models import Loan
 
 from .constants import TXN_TYPE_CHOICES
 
@@ -160,6 +161,14 @@ class TransactionCreateView(CreateView):
     template_name = "transactions/transaction_form.html"
     success_url = reverse_lazy("transactions:transaction_list")
 
+    def get_initial(self):
+        initial = super().get_initial()
+        for fld in ["transaction_type", "account_source", "account_destination", "entity_source", "entity_destination"]:
+            val = self.request.GET.get(fld)
+            if val:
+                initial[fld] = val
+        return initial
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
@@ -181,11 +190,20 @@ class TransactionCreateView(CreateView):
         context['selected_txn_type'] = (
             self.request.POST.get('transaction_type') or context['form'].initial.get('transaction_type')
         )
+        context['loan_id'] = self.request.GET.get('loan') or self.request.POST.get('loan_id')
         tx_type = context['selected_txn_type'] or ''
         context['show_balance_summary'] = not (tx_type == 'income' or tx_type.startswith('sell'))
         return context
 
     def form_valid(self, form):
+        loan_id = self.request.POST.get('loan_id')
+        loan = None
+        if loan_id:
+            loan = get_object_or_404(Loan, pk=loan_id, user=self.request.user)
+            if form.cleaned_data.get('amount') > loan.outstanding_balance:
+                form.add_error('amount', "Payment amount cannot exceed current balance")
+                return self.form_invalid(form)
+
         form.instance.user = self.request.user
         visible_tx = form.save(commit=False)
         visible_tx.user = self.request.user
@@ -238,10 +256,16 @@ class TransactionCreateView(CreateView):
                 )
             self.object = visible_tx
             messages.success(self.request, "Transaction saved successfully!")
+            if loan:
+                loan.outstanding_balance -= visible_tx.amount
+                loan.save(update_fields=["outstanding_balance"])
             return HttpResponseRedirect(self.get_success_url())
         else:
             self.object = form.save()
             messages.success(self.request, "Transaction saved successfully!")
+            if loan:
+                loan.outstanding_balance -= visible_tx.amount
+                loan.save(update_fields=["outstanding_balance"])
             return HttpResponseRedirect(self.get_success_url())
                     
 

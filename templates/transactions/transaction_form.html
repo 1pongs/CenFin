@@ -27,6 +27,9 @@
         <div class="card-body">
           <form method="post" novalidate>
             {% csrf_token %}
+            {% if loan_id %}
+              <input type="hidden" name="loan_id" value="{{ loan_id }}">
+            {% endif %}
             {% crispy form %}
           </form>
         </div>

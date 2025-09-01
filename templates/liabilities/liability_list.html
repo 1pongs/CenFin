@@ -16,7 +16,8 @@
           {% display loan.principal_amount loan.currency as disp_principal %}
           {% with loan_amt=disp_principal|floatformat:2|intcomma %}
           {% with '<span class="amount-display" data-prefix="'|add:active_currency_symbol|add:'" data-decimals="2">'|add:loan_amt|add:'</span>' as loan_amt_html %}
-          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt_html|safe rows=loan.field_tags buttons='<span class="btn btn-sm btn-primary">Record Payment</span>' modifier='card-loan' %}
+          {% url 'transactions:transaction_create' as tx_create %}
+          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt_html|safe rows=loan.field_tags buttons='<a href="'|add:tx_create|add:'?transaction_type=loan_repayment&loan='|add:loan.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary position-relative">Pay</a>' modifier='card-loan' %}
           {% endwith %}
           {% endwith %}
           </div>
@@ -32,7 +33,8 @@
         {% for card in credit_cards %}
           <div class="col">
             {% url 'liabilities:credit-edit' card.pk as edit_url %}
-          {% include 'components/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name rows=card.field_tags buttons='<span class="btn btn-sm btn-primary">Pay</span>' modifier='card-credit' %}
+          {% url 'transactions:transaction_create' as tx_create %}
+          {% include 'components/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name rows=card.field_tags buttons='<a href="'|add:tx_create|add:'?transaction_type=cc_payment&account_destination='|add:card.account.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary position-relative">Pay</a>' modifier='card-credit' %}
           </div>
         {% empty %}
         <div class="card text-center p-5">

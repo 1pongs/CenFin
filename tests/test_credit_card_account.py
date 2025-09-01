@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -7,6 +8,7 @@ from liabilities.models import CreditCard, Lender
 from accounts.models import Account
 from django.core.exceptions import ValidationError
 from transactions.forms import TransactionForm
+from transactions.models import Transaction
 from entities.models import Entity
 from entities.utils import ensure_fixed_entities
 from accounts.utils import ensure_outside_account
@@ -160,3 +162,62 @@ class CreditCardAccountTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         form = resp.context["form"]
         self.assertIn("card_name", form.errors)
+
+    def test_payment_limits_and_updates_balance(self):
+        card = CreditCard.objects.create(
+            user=self.user,
+            issuer=self.lender,
+            card_name="Visa", 
+            credit_limit=Decimal("1000"),
+            interest_rate=Decimal("1"),
+            statement_day=1,
+            payment_due_day=10,
+        )
+        cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        # simulate existing spend to create balance
+        Transaction.objects.create(
+            user=self.user,
+            date=date(2025, 1, 1),
+            transaction_type="expense",
+            amount=Decimal("300"),
+            account_source=card.account,
+            account_destination=cash,
+            entity_source=self.acc_ent,
+            entity_destination=self.entity,
+        )
+        card.refresh_from_db()
+        self.assertEqual(card.current_balance, Decimal("300"))
+
+        form = TransactionForm(
+            data={
+                "date": "2025-02-01",
+                "description": "Pay",
+                "transaction_type": "cc_payment",
+                "amount": "400",
+                "account_source": cash.pk,
+                "account_destination": card.account.pk,
+                "entity_source": self.acc_ent.pk,
+                "entity_destination": self.out_ent.pk,
+            },
+            user=self.user,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("amount", form.errors)
+
+        form = TransactionForm(
+            data={
+                "date": "2025-02-01",
+                "description": "Pay",
+                "transaction_type": "cc_payment",
+                "amount": "200",
+                "account_source": cash.pk,
+                "account_destination": card.account.pk,
+                "entity_source": self.acc_ent.pk,
+                "entity_destination": self.out_ent.pk,
+            },
+            user=self.user,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        card.refresh_from_db()
+        self.assertEqual(card.current_balance, Decimal("100"))

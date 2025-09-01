@@ -2,10 +2,14 @@ from decimal import Decimal
 from datetime import date
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 
 from transactions.models import Transaction
 from .models import Lender, Loan, LoanPayment, CreditCard
 from django.core.exceptions import ValidationError
+from accounts.models import Account
+from accounts.utils import ensure_outside_account
+from entities.utils import ensure_fixed_entities
 
 
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
@@ -118,3 +122,57 @@ class CreditCardFormTest(TestCase):
         self.assertEqual(resp.status_code, 302)
         card = CreditCard.objects.latest("id")
         self.assertEqual(card.issuer, self.lender)
+
+
+@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+class LoanPaymentTransactionTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="pay", password="p")
+        self.client.force_login(self.user)
+        self.lender = Lender.objects.create(name="BDO")
+        self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
+        self.loan = Loan.objects.create(
+            user=self.user,
+            lender=self.lender,
+            principal_amount=Decimal("300"),
+            interest_rate=Decimal("1"),
+            received_date=date(2025, 1, 1),
+            term_months=3,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            date=date(2025, 1, 1),
+            transaction_type="income",
+            amount=Decimal("500"),
+            account_destination=self.cash,
+            entity_source=self.out_ent,
+            entity_destination=self.acc_ent,
+        )
+
+    def _post(self, amount):
+        data = {
+            "date": "2025-02-01",
+            "description": "Pay",
+            "transaction_type": "transfer",
+            "amount": str(amount),
+            "account_source": self.cash.pk,
+            "account_destination": self.out_acc.pk,
+            "entity_source": self.acc_ent.pk,
+            "entity_destination": self.out_ent.pk,
+            "loan_id": self.loan.pk,
+        }
+        return self.client.post(reverse("transactions:transaction_create"), data)
+
+    def test_overpayment_rejected_and_balance_updated(self):
+        resp = self._post(400)
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        self.assertIn("amount", form.errors)
+
+        resp = self._post(100)
+        self.assertEqual(resp.status_code, 302)
+        self.loan.refresh_from_db()
+        self.assertEqual(self.loan.outstanding_balance, Decimal("200"))

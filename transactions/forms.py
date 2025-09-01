@@ -136,7 +136,7 @@ class TransactionForm(forms.ModelForm):
             if type(self) is TransactionForm:
                 hidden = {
                     'premium_payment', 'loan_disbursement',
-                    'loan_repayment', 'cc_purchase', 'cc_payment'
+                    'cc_purchase'
                 }
             current_type = getattr(self.instance, 'transaction_type', None)
 
@@ -249,6 +249,13 @@ class TransactionForm(forms.ModelForm):
         if ent and ent.entity_name != "Outside":
             if not getattr(ent, "is_account_entity", False) and ent.current_balance() < amt:
                 self.add_error("entity_source", f"Insufficient funds in {ent}.")
+
+        if tx_type == "cc_payment":
+            dest_acc = cleaned.get("account_destination")
+            if dest_acc and hasattr(dest_acc, "credit_card"):
+                bal = abs(dest_acc.get_current_balance())
+                if amt > bal:
+                    self.add_error("amount", "Payment amount cannot exceed current balance")
     
 
 
