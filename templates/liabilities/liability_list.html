@@ -12,12 +12,14 @@
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3 mb-4">
         {% for loan in loans %}
           <div class="col">
-            {% url 'liabilities:loan-edit' loan.pk as edit_url %}
+          {% url 'liabilities:loan-edit' loan.pk as edit_url %}
           {% display loan.principal_amount loan.currency as disp_principal %}
           {% with loan_amt=disp_principal|floatformat:2|intcomma %}
           {% with '<span class="amount-display" data-prefix="'|add:active_currency_symbol|add:'" data-decimals="2">'|add:loan_amt|add:'</span>' as loan_amt_html %}
           {% url 'transactions:transaction_create' as tx_create %}
-          {% include 'components/card.html' with link=edit_url title=loan.lender.name subtitle=loan_amt_html|safe rows=loan.field_tags buttons='<a href="'|add:tx_create|add:'?transaction_type=loan_repayment&loan='|add:loan.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary">Pay</a>'|safe modifier='card-loan' %}
+          {% with '<a href="'|add:edit_url|add:'" class="btn btn-sm btn-secondary">View</a> <a href="'|add:tx_create|add:'?transaction_type=loan_repayment&loan='|add:loan.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary">Pay</a>' as buttons %}
+          {% include 'components/card.html' with title=loan.lender.name subtitle=loan_amt_html|safe rows=loan.field_tags buttons=buttons|safe modifier='card-loan' %}
+          {% endwith %}
           {% endwith %}
           {% endwith %}
           </div>
@@ -32,9 +34,11 @@
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xxl-3 g-3 mb-4">
         {% for card in credit_cards %}
           <div class="col">
-            {% url 'liabilities:credit-edit' card.pk as edit_url %}
+          {% url 'liabilities:credit-edit' card.pk as edit_url %}
           {% url 'transactions:transaction_create' as tx_create %}
-          {% include 'components/card.html' with link=edit_url title=card.card_name subtitle=card.issuer.name rows=card.field_tags buttons='<a href="'|add:tx_create|add:'?transaction_type=cc_payment&account_destination='|add:card.account.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary">Pay</a>'|safe modifier='card-credit' %}
+          {% with '<a href="'|add:edit_url|add:'" class="btn btn-sm btn-secondary">View</a> <a href="'|add:tx_create|add:'?transaction_type=cc_payment&account_destination='|add:card.account.pk|stringformat:"s"|add:'" class="btn btn-sm btn-primary">Pay</a>' as buttons %}
+          {% include 'components/card.html' with title=card.card_name subtitle=card.issuer.name rows=card.field_tags buttons=buttons|safe modifier='card-credit' %}
+          {% endwith %}
           </div>
         {% empty %}
         <div class="card text-center p-5">

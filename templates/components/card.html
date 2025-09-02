@@ -1,10 +1,7 @@
 {% comment %}Reusable simple card component with optional subtitle, buttons and footer{% endcomment %}
 <div class="cenfin-card position-relative {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
-  {% if link %}
-  <a href="{{ link }}" class="stretched-link" aria-label="View details"></a>
-  {% endif %}
   {% if buttons %}
-    <div class="card-buttons">
+    <div class="card-buttons d-flex justify-content-end gap-2 mb-1">
       {{ buttons|safe }}
     </div>
   {% endif %}

@@ -33,9 +33,9 @@
 }
 
 .cenfin-card .card-buttons {
-  /* Ensure card-buttons (e.g. Pay) sits above stretched-link overlay */
-  position: relative;
-  z-index: 2; /* higher than stretched-link pseudo-element */
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .card-grid {
