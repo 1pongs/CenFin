@@ -136,9 +136,9 @@ class TransactionForm(forms.ModelForm):
             if type(self) is TransactionForm:
                 hidden = {
                     'premium_payment', 'loan_disbursement',
-                    'cc_purchase'
+                    'loan_repayment', 'cc_purchase', 'cc_payment'
                 }
-            current_type = getattr(self.instance, 'transaction_type', None)
+            current_type = tx_type or getattr(self.instance, 'transaction_type', None)
 
             if current_type in disallowed | hidden:
                 self.fields['transaction_type'].choices = [
@@ -243,7 +243,7 @@ class TransactionForm(forms.ModelForm):
                         "account_source",
                         "Credit limit exceeded.",
                     )
-            elif acc.get_current_balance() < amt:
+            elif tx_type != "cc_payment" and acc.get_current_balance() < amt:
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if ent and ent.entity_name != "Outside":

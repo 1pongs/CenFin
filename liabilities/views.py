@@ -130,6 +130,7 @@ class LiabilityListView(TemplateView):
             ]
         for card in ctx.get("credit_cards", []):
             card.field_tags = [
+                ("Limit", card.credit_limit),
                 ("Outstanding", card.outstanding_amount),
                 ("Available", card.available_credit),
                 ("Rate", f"{card.interest_rate}%"),

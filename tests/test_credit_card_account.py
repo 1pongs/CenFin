@@ -168,7 +168,7 @@ class CreditCardAccountTests(TestCase):
         card = CreditCard.objects.create(
             user=self.user,
             issuer=self.lender,
-            card_name="Visa", 
+            card_name="Visa",
             credit_limit=Decimal("1000"),
             interest_rate=Decimal("1"),
             statement_day=1,
@@ -224,3 +224,31 @@ class CreditCardAccountTests(TestCase):
         card.refresh_from_db()
         self.assertEqual(card.outstanding_amount, Decimal("100"))
         self.assertEqual(card.available_credit, Decimal("900"))
+
+    def test_transaction_delete_updates_balance(self):
+        card = CreditCard.objects.create(
+            user=self.user,
+            issuer=self.lender,
+            card_name="Visa",
+            credit_limit=Decimal("1000"),
+            interest_rate=Decimal("1"),
+            statement_day=1,
+            payment_due_day=10,
+        )
+        cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        tx = Transaction.objects.create(
+            user=self.user,
+            date=date(2025, 1, 1),
+            transaction_type="expense",
+            amount=Decimal("200"),
+            account_source=card.account,
+            account_destination=cash,
+            entity_source=self.acc_ent,
+            entity_destination=self.entity,
+        )
+        card.refresh_from_db()
+        self.assertEqual(card.outstanding_amount, Decimal("200"))
+        tx.delete()
+        card.refresh_from_db()
+        self.assertEqual(card.outstanding_amount, Decimal("0"))
+        self.assertEqual(card.available_credit, Decimal("1000"))

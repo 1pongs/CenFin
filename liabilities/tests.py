@@ -74,7 +74,25 @@ class LiabilityListViewTest(TestCase):
         self.assertContains(resp, '<a class="nav-link active" href="?tab=credit">Credit</a>', html=True)
         self.assertContains(resp, 'id="filter-form"')
 
+    def test_credit_card_details_displayed(self):
+        lender = Lender.objects.create(name="Bank")
+        CreditCard.objects.create(
+            user=self.user,
+            issuer=lender,
+            card_name="Visa",
+            credit_limit=Decimal("1000"),
+            interest_rate=Decimal("1"),
+            statement_day=1,
+            payment_due_day=10,
+            outstanding_amount=Decimal("100"),
+            available_credit=Decimal("900"),
+        )
+        resp = self.client.get(reverse("liabilities:list"))
+        self.assertContains(resp, "Limit")
+        self.assertContains(resp, "Outstanding")
+        self.assertContains(resp, "Available")
 
+        
 @override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 class LenderUniqueTest(TestCase):
     def test_lender_name_unique_case_insensitive(self):

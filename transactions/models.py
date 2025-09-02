@@ -57,12 +57,16 @@ class Transaction(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transactions", null=True)
     
     TRANSACTION_TYPE_CHOICES = [
-        ('income', 'Income'),
-        ('expense', 'Expense'),
-        ('premium_payment', 'Premium Payment'),
-        ('buy acquisition', 'Buy Acquisition'),
-        ('sell acquisition', 'Sell Acquisition'),
-        ('transfer', 'Transfer'),
+        ("income", "Income"),
+        ("expense", "Expense"),
+        ("premium_payment", "Premium Payment"),
+        ("buy acquisition", "Buy Acquisition"),
+        ("sell acquisition", "Sell Acquisition"),
+        ("transfer", "Transfer"),
+        ("loan_disbursement", "Loan Disbursement"),
+        ("loan_repayment", "Loan Repayment"),
+        ("cc_purchase", "Cc Purchase"),
+        ("cc_payment", "Cc Payment"),
     ]
 
     date = models.DateField(default=timezone.now, null=True, blank=True,)
@@ -204,3 +208,17 @@ class Transaction(models.Model):
                 card.outstanding_amount = bal
                 card.available_credit = (card.credit_limit or Decimal("0")) - bal
                 card.save(update_fields=["outstanding_amount", "available_credit"])
+
+    def delete(self, *args, **kwargs):
+        acc_ids = [self.account_source_id, self.account_destination_id]
+        result = super().delete(*args, **kwargs)
+        for acc_id in acc_ids:
+            if acc_id:
+                acc = Account.objects.filter(pk=acc_id).first()
+                if acc and hasattr(acc, "credit_card"):
+                    bal = abs(acc.get_current_balance())
+                    card = acc.credit_card
+                    card.outstanding_amount = bal
+                    card.available_credit = (card.credit_limit or Decimal("0")) - bal
+                    card.save(update_fields=["outstanding_amount", "available_credit"])
+        return result
