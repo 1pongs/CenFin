@@ -1,14 +1,18 @@
 {% comment %}Reusable simple card component with optional subtitle, buttons and footer{% endcomment %}
-<div class="cenfin-card {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
+<div class="cenfin-card position-relative {{ modifier }}" {% if extra_attrs %}{{ extra_attrs|safe }}{% endif %}>
   {% if link %}
-  <a href="{{ link }}" class="stretched-link text-reset text-decoration-none"></a>
+  <a href="{{ link }}" class="stretched-link" aria-label="View details"></a>
+  {% endif %}
+  {% if buttons %}
+    <div class="card-buttons">
+      {{ buttons|safe }}
+    </div>
   {% endif %}
   {% if badge %}
     <span class="badge bg-secondary">{{ badge }}</span>
   {% elif category_badge %}
     <span class="badge bg-secondary">{{ category_badge }}</span>
   {% endif %}
-  {% if buttons %}<div class="card-buttons">{{ buttons|safe }}</div>{% endif %}
   {% if subtitle %}<h6 class="text-muted small mb-1">{{ subtitle }}</h6>{% endif %}
   <h6 class="card-title mb-2">{{ title }}</h6>
   {% if rows %}
@@ -17,7 +21,7 @@
       <p class="mb-1"><span class="field-label">{{ label }}:</span> <span class="field-value">{{ value }}</span></p>
       {% endif %}
     {% endfor %}
-    {% elif field_tags %}
+  {% elif field_tags %}
     {% for label,value in field_tags %}
       <p class="mb-1"><span class="field-label">{{ label }}:</span> <span class="field-value">{{ value }}</span></p>
     {% endfor %}
