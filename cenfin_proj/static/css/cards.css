@@ -32,6 +32,11 @@
   font-size: 0.78rem;
 }
 
+.cenfin-card .card-buttons {
+  position: relative;
+  z-index: 2; /* place buttons above stretched-link overlay */
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
