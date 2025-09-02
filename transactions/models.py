@@ -201,5 +201,6 @@ class Transaction(models.Model):
             if acc and hasattr(acc, "credit_card"):
                 bal = abs(acc.get_current_balance())
                 card = acc.credit_card
-                card.current_balance = bal
-                card.save(update_fields=["current_balance"])
+                card.outstanding_amount = bal
+                card.available_credit = (card.credit_limit or Decimal("0")) - bal
+                card.save(update_fields=["outstanding_amount", "available_credit"])

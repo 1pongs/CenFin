@@ -73,9 +73,9 @@ class LiabilityListView(TemplateView):
             if search:
                 qs = qs.filter(card_name__icontains=search)
             if status == "active":
-                qs = qs.filter(current_balance__gt=0)
+                qs = qs.filter(outstanding_amount__gt=0)
             elif status == "inactive":
-                qs = qs.filter(current_balance__lte=0)
+                qs = qs.filter(outstanding_amount__lte=0)
             if start:
                 try:
                     start_date = timezone.datetime.fromisoformat(start).date()
@@ -93,7 +93,7 @@ class LiabilityListView(TemplateView):
             if currency:
                 qs = qs.filter(currency=currency)
             if sort == "balance":
-                qs = qs.order_by("-current_balance")
+                qs = qs.order_by("-outstanding_amount")
             elif sort == "date":
                 qs = qs.order_by("-created_at")
             else:
@@ -130,6 +130,8 @@ class LiabilityListView(TemplateView):
             ]
         for card in ctx.get("credit_cards", []):
             card.field_tags = [
+                ("Outstanding", card.outstanding_amount),
+                ("Available", card.available_credit),
                 ("Rate", f"{card.interest_rate}%"),
             ]
         return ctx

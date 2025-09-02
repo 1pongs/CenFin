@@ -171,7 +171,8 @@ class CreditCard(models.Model):
     currency = models.CharField(max_length=3, blank=True)
     statement_day = models.PositiveIntegerField()
     payment_due_day = models.PositiveIntegerField()
-    current_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    outstanding_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    available_credit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
     account = models.OneToOneField(
         "accounts.Account",
         on_delete=models.CASCADE,
@@ -203,6 +204,14 @@ class CreditCard(models.Model):
         else:
             default_cur = Currency.objects.filter(code="PHP").first()
 
+        # If only updating balance fields, skip account management logic
+        update_fields = kwargs.get("update_fields")
+        if update_fields and set(update_fields).issubset({"outstanding_amount", "available_credit"}):
+            self.available_credit = (self.credit_limit or Decimal("0")) - (
+                self.outstanding_amount or Decimal("0")
+            )
+            return super().save(*args, **kwargs)
+        
         if new:
             qs = Account.objects.filter(
                 account_name__iexact=self.card_name,
@@ -227,7 +236,6 @@ class CreditCard(models.Model):
                 )
                 acc.save()
             self.account = acc
-            super().save(*args, **kwargs)
         else:
             acc = self.account
             if acc:
@@ -252,7 +260,11 @@ class CreditCard(models.Model):
                     acc.currency = cur_obj or default_cur
 
                 acc.save()
-            super().save(*args, **kwargs)
+        # Keep available_credit derived from limit and outstanding balance
+        self.available_credit = (self.credit_limit or Decimal("0")) - (
+            self.outstanding_amount or Decimal("0")
+        )
+        super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         if self.account_id:

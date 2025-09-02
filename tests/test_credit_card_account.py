@@ -89,7 +89,8 @@ class CreditCardAccountTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         tx = form.save()
         card.refresh_from_db()
-        self.assertEqual(card.current_balance, Decimal("200"))
+        self.assertEqual(card.outstanding_amount, Decimal("200"))
+        self.assertEqual(card.available_credit, Decimal("800"))
 
         form = TransactionForm(
             data={
@@ -186,7 +187,8 @@ class CreditCardAccountTests(TestCase):
             entity_destination=self.entity,
         )
         card.refresh_from_db()
-        self.assertEqual(card.current_balance, Decimal("300"))
+        self.assertEqual(card.outstanding_amount, Decimal("300"))
+        self.assertEqual(card.available_credit, Decimal("700"))
 
         form = TransactionForm(
             data={
@@ -220,4 +222,5 @@ class CreditCardAccountTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         card.refresh_from_db()
-        self.assertEqual(card.current_balance, Decimal("100"))
+        self.assertEqual(card.outstanding_amount, Decimal("100"))
+        self.assertEqual(card.available_credit, Decimal("900"))
