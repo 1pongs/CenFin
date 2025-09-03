@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const txTypeSel = document.getElementById('id_transaction_type');
   const accSrcSel = document.getElementById('id_account_source');
   const accDestSel = document.getElementById('id_account_destination');
+  const accSel = document.getElementById('id_account');
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
   const tagify = new Tagify(input, {
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function currentAccount() {
+    if (accSel) return accSel.value;
     const type = txTypeSel.value;
     if (type === 'income') return accDestSel.value;
     if (type === 'expense' || type === 'transfer') return accSrcSel.value;
@@ -37,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   accSrcSel && accSrcSel.addEventListener('change', loadTags);
   accDestSel && accDestSel.addEventListener('change', loadTags);
+  accSel && accSel.addEventListener('change', loadTags);
 
   tagify.on('add', async e => {
     if (e.detail.data.id) return;
