@@ -17,4 +17,5 @@ urlpatterns = [
     path('pair-balance/', views.pair_balance, name='pair_balance'),
     path('tags/', views.tags, name='tags'),
     path('tags/<int:pk>/', views.tag_detail, name='tag_detail'),
+    path('summary/entity/<int:entity_id>/', views.entity_category_summary, name='entity_category_summary'),
 ]

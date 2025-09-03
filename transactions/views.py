@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.db import transaction
+from django.db.models import Sum, Case, When, DecimalField, F, Q
 import json
 from cenfin_proj.utils import (
     get_account_entity_balance,
@@ -559,9 +560,14 @@ def entity_balance(request, pk):
 @require_GET
 def tag_list(request):
     tx_type = request.GET.get("transaction_type")
+    acc = request.GET.get("account")
     tags = CategoryTag.objects.filter(user=request.user)
     if tx_type:
         tags = tags.filter(transaction_type=tx_type)
+    if acc:
+        tags = tags.filter(Q(account_id=acc) | Q(account__isnull=True))
+    else:
+        tags = tags.filter(account__isnull=True)
     data = [{"id": t.pk, "name": t.name} for t in tags.order_by("name")]
     return JsonResponse(data, safe=False)
 
@@ -570,12 +576,14 @@ def tag_list(request):
 def tag_create(request):
     name = request.POST.get("name", "").strip()
     tx_type = request.POST.get("transaction_type")
+    acc = request.POST.get("account") or None
     if not name:
         return JsonResponse({"error": "name"}, status=400)
     tag, _ = CategoryTag.objects.get_or_create(
         user=request.user,
         transaction_type=tx_type,
         name=name,
+        account_id=acc,
     )
     return JsonResponse({"id": tag.pk, "name": tag.name})
 
@@ -610,3 +618,22 @@ def tag_detail(request, pk):
     if request.method == "PATCH":
         return tag_update(request, pk)
     return tag_delete(request, pk)
+
+@require_GET
+def entity_category_summary(request, entity_id):
+    qs = Transaction.objects.filter(
+        user=request.user,
+        parent_transfer__isnull=True,
+        categories__isnull=False,
+    ).filter(Q(entity_source_id=entity_id) | Q(entity_destination_id=entity_id))
+    amount_expr = Case(
+        When(destination_amount__isnull=False, then=F("destination_amount")),
+        default=F("amount"),
+        output_field=DecimalField(),
+    )
+    data = (
+        qs.values("categories__name")
+        .annotate(total=Sum(amount_expr))
+        .order_by("categories__name")
+    )
+    return JsonResponse(list(data), safe=False)

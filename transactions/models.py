@@ -28,14 +28,33 @@ class CategoryTag(models.Model):
     name = models.CharField(max_length=60)
     transaction_type = models.CharField(max_length=20, choices=TXN_TYPE_CHOICES, blank=True, null=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="category_tags")
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="category_tags",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("name", "transaction_type", "user")
+        unique_together = ("user", "transaction_type", "name", "account")
 
     def __str__(self):
         return self.name
 
+def clean(self):
+        super().clean()
+        if self.account_id is None:
+            exists = self.__class__.objects.filter(
+                user=self.user,
+                transaction_type=self.transaction_type,
+                name=self.name,
+                account__isnull=True,
+            ).exclude(pk=self.pk)
+            if exists.exists():
+                raise ValidationError("Global category with this name already exists.")
+                
 class TransactionQuerySet(models.QuerySet):
     def visible(self):
         return self.filter(is_hidden=False)

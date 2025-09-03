@@ -280,9 +280,14 @@ class TransactionForm(forms.ModelForm):
         ]
         tags = []
         tx_type = transaction.transaction_type
+        account = transaction.account_destination if tx_type == "income" else transaction.account_source
+        
         for name in names:
             tag, _ = CategoryTag.objects.get_or_create(
-                user=self.user, transaction_type=tx_type, name=name
+                user=self.user,
+                transaction_type=tx_type,
+                name=name,
+                account=account,
             )
             tags.append(tag)
         transaction.categories.set(tags)

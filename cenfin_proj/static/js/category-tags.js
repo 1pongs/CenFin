@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('id_category_names');
   if (!input) return;
   const txTypeSel = document.getElementById('id_transaction_type');
+  const accSrcSel = document.getElementById('id_account_source');
+  const accDestSel = document.getElementById('id_account_destination');
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
   const tagify = new Tagify(input, {
@@ -9,10 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
     dropdown: { maxItems: 20, classname: 'tags-look', closeOnSelect: false }
   });
 
+  function currentAccount() {
+    const type = txTypeSel.value;
+    if (type === 'income') return accDestSel.value;
+    if (type === 'expense' || type === 'transfer') return accSrcSel.value;
+    return '';
+  }
+
   async function loadTags() {
     const type = txTypeSel.value;
     if (!type) return;
-    const resp = await fetch(`/tags?transaction_type=${encodeURIComponent(type)}`);
+    const acc = currentAccount();
+    const url = `/tags?transaction_type=${encodeURIComponent(type)}${acc ? `&account=${acc}` : ''}`;
+    const resp = await fetch(url);
     if (resp.ok) {
       const data = await resp.json();
       tagify.settings.whitelist = data.map(t => ({ value: t.name, id: t.id }));
@@ -24,12 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
     tagify.removeAllTags();
     loadTags();
   });
+  accSrcSel && accSrcSel.addEventListener('change', loadTags);
+  accDestSel && accDestSel.addEventListener('change', loadTags);
 
   tagify.on('add', async e => {
     if (e.detail.data.id) return;
     const fd = new FormData();
     fd.append('name', e.detail.data.value);
     fd.append('transaction_type', txTypeSel.value);
+    const acc = currentAccount();
+    if (acc) fd.append('account', acc);
     fd.append('csrfmiddlewaretoken', csrf);
     const resp = await fetch('/tags', { method: 'POST', body: fd });
     if (resp.ok) {
