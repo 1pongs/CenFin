@@ -15,6 +15,7 @@ urlpatterns = [
     path("templates/<int:pk>/delete/", views.TemplateDeleteView.as_view(), name="template_delete"),
     path('bulk-action/', views.bulk_action, name='bulk_action'),
     path('pair-balance/', views.pair_balance, name='pair_balance'),
+    path('categories/', views.category_manager, name='category_manager'),
     path('tags/', views.tags, name='tags'),
     path('tags/<int:pk>/', views.tag_detail, name='tag_detail'),
     path('summary/entity/<int:entity_id>/', views.entity_category_summary, name='entity_category_summary'),

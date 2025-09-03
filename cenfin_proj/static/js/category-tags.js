@@ -2,9 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('id_category_names');
   if (!input) return;
   const txTypeSel = document.getElementById('id_transaction_type');
-  const accSrcSel = document.getElementById('id_account_source');
-  const accDestSel = document.getElementById('id_account_destination');
-  const accSel = document.getElementById('id_account');
+  const entSrcSel = document.getElementById('id_entity_source');
+  const entDestSel = document.getElementById('id_entity_destination');
+  const entSel = document.getElementById('id_entity');
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
   const tagify = new Tagify(input, {
@@ -12,19 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
     dropdown: { maxItems: 20, classname: 'tags-look', closeOnSelect: false }
   });
 
-  function currentAccount() {
-    if (accSel) return accSel.value;
+  function currentEntity() {
+    if (entSel) return entSel.value;
     const type = txTypeSel.value;
-    if (type === 'income') return accDestSel.value;
-    if (type === 'expense' || type === 'transfer') return accSrcSel.value;
+    if (type === 'income') return entDestSel.value;
+    if (type === 'expense' || type === 'transfer') return entSrcSel.value;
     return '';
   }
 
   async function loadTags() {
     const type = txTypeSel.value;
     if (!type) return;
-    const acc = currentAccount();
-    const url = `/tags?transaction_type=${encodeURIComponent(type)}${acc ? `&account=${acc}` : ''}`;
+    const ent = currentEntity();
+    const url = `/tags?transaction_type=${encodeURIComponent(type)}${ent ? `&entity=${ent}` : ''}`;
     const resp = await fetch(url);
     if (resp.ok) {
       const data = await resp.json();
@@ -37,17 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
     tagify.removeAllTags();
     loadTags();
   });
-  accSrcSel && accSrcSel.addEventListener('change', loadTags);
-  accDestSel && accDestSel.addEventListener('change', loadTags);
-  accSel && accSel.addEventListener('change', loadTags);
+  entSrcSel && entSrcSel.addEventListener('change', loadTags);
+  entDestSel && entDestSel.addEventListener('change', loadTags);
+  entSel && entSel.addEventListener('change', loadTags);
 
   tagify.on('add', async e => {
     if (e.detail.data.id) return;
     const fd = new FormData();
     fd.append('name', e.detail.data.value);
     fd.append('transaction_type', txTypeSel.value);
-    const acc = currentAccount();
-    if (acc) fd.append('account', acc);
+    const ent = currentEntity();
+    if (ent) fd.append('entity', ent);
     fd.append('csrfmiddlewaretoken', csrf);
     const resp = await fetch('/tags', { method: 'POST', body: fd });
     if (resp.ok) {

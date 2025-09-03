@@ -19,8 +19,12 @@ class CategoryTagScopeTests(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
-        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.entity = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
+        self.acc = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
+        self.entity = Entity.objects.create(
+            entity_name="Vendor", entity_type="personal fund", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, _ = ensure_fixed_entities(self.user)
         Transaction.objects.create(
@@ -50,26 +54,56 @@ class CategoryTagScopeTests(TestCase):
         data.update(overrides)
         return data
 
-    def test_save_categories_scopes_account(self):
+    def test_save_categories_scopes_entity(self):
         form = TransactionForm(data=self._form_data(), user=self.user)
         self.assertTrue(form.is_valid(), form.errors)
         tx = form.save()
         tag = CategoryTag.objects.get(name="Food")
-        self.assertEqual(tag.account, self.acc)
+        self.assertEqual(tag.entity, self.entity)
         self.assertIn(tag, tx.categories.all())
 
-    def test_tag_list_includes_account_and_global(self):
-        CategoryTag.objects.create(user=self.user, transaction_type="expense", name="Global")
-        CategoryTag.objects.create(user=self.user, transaction_type="expense", name="Fuel", account=self.acc)
-        url = reverse("transactions:tags") + f"?transaction_type=expense&account={self.acc.pk}"
+    def test_tag_list_includes_entity_and_global(self):
+        CategoryTag.objects.create(
+            user=self.user, transaction_type="expense", name="Global"
+        )
+        CategoryTag.objects.create(
+            user=self.user,
+            transaction_type="expense",
+            name="Fuel",
+            entity=self.entity,
+        )
+        url = (
+            reverse("transactions:tags")
+            + f"?transaction_type=expense&entity={self.entity.pk}"
+        )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         names = {t["name"] for t in resp.json()}
         self.assertEqual(names, {"Global", "Fuel"})
 
     def test_global_uniqueness(self):
-        CategoryTag.objects.create(user=self.user, transaction_type="expense", name="Food")
-        dup = CategoryTag(user=self.user, transaction_type="expense", name="Food")
+        CategoryTag.objects.create(
+            user=self.user, transaction_type="expense", name="Food"
+        )
+        dup = CategoryTag(
+            user=self.user, transaction_type="expense", name="Food"
+        )
+        with self.assertRaises(ValidationError):
+            dup.full_clean()
+
+    def test_entity_uniqueness(self):
+        CategoryTag.objects.create(
+            user=self.user,
+            transaction_type="expense",
+            name="Food",
+            entity=self.entity,
+        )
+        dup = CategoryTag(
+            user=self.user,
+            transaction_type="expense",
+            name="Food",
+            entity=self.entity,
+        )
         with self.assertRaises(ValidationError):
             dup.full_clean()
 

@@ -105,15 +105,7 @@
       <h6 class="mb-3">Categories</h6>
       <form id="entity-category-form">
         {% csrf_token %}
-        <div class="mb-2">
-          <label for="id_account" class="form-label">Account</label>
-          <select id="id_account" class="form-select">
-            <option value="">-- select account --</option>
-            {% for a in accounts %}
-              <option value="{{ a.id }}">{{ a.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        <input type="hidden" id="id_entity" value="{{ entity.id }}">
         <div class="mb-2">
           <label for="id_transaction_type" class="form-label">Type</label>
           <select id="id_transaction_type" class="form-select">

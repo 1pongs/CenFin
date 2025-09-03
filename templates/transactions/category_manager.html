@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Category Manager{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2>Category Manager</h2>
+  <form id="category-manager-form">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="id_entity" class="form-label">Entity</label>
+      <select id="id_entity" class="form-select">
+        <option value="">-- select entity --</option>
+        {% for e in entities %}
+        <option value="{{ e.id }}">{{ e.entity_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="id_transaction_type" class="form-label">Type</label>
+      <select id="id_transaction_type" class="form-select">
+        <option value="">-- select type --</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+        <option value="transfer">Transfer</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="id_category_names" class="form-label">Categories</label>
+      <input id="id_category_names" class="form-control tag-input" />
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
+<script src="{% static 'js/category-tags.js' %}"></script>
+{% endblock %}

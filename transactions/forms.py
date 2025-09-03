@@ -280,14 +280,18 @@ class TransactionForm(forms.ModelForm):
         ]
         tags = []
         tx_type = transaction.transaction_type
-        account = transaction.account_destination if tx_type == "income" else transaction.account_source
+        entity = (
+            transaction.entity_destination
+            if tx_type == "income"
+            else transaction.entity_source
+        )
         
         for name in names:
             tag, _ = CategoryTag.objects.get_or_create(
                 user=self.user,
                 transaction_type=tx_type,
                 name=name,
-                account=account,
+                entity=entity,
             )
             tags.append(tag)
         transaction.categories.set(tags)
@@ -305,6 +309,9 @@ class TransactionForm(forms.ModelForm):
         elif transaction.account_destination:
             transaction.currency = transaction.account_destination.currency
 
+        if self.user is not None:
+            transaction.user = self.user
+        
         if commit:
             transaction.save()
             self.save_categories(transaction)

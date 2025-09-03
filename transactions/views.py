@@ -8,6 +8,7 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Sum, Case, When, DecimalField, F, Q
 import json
@@ -560,14 +561,14 @@ def entity_balance(request, pk):
 @require_GET
 def tag_list(request):
     tx_type = request.GET.get("transaction_type")
-    acc = request.GET.get("account")
+    ent = request.GET.get("entity")
     tags = CategoryTag.objects.filter(user=request.user)
     if tx_type:
         tags = tags.filter(transaction_type=tx_type)
-    if acc:
-        tags = tags.filter(Q(account_id=acc) | Q(account__isnull=True))
+    if ent:
+        tags = tags.filter(Q(entity_id=ent) | Q(entity__isnull=True))
     else:
-        tags = tags.filter(account__isnull=True)
+        tags = tags.filter(entity__isnull=True)
     data = [{"id": t.pk, "name": t.name} for t in tags.order_by("name")]
     return JsonResponse(data, safe=False)
 
@@ -576,14 +577,14 @@ def tag_list(request):
 def tag_create(request):
     name = request.POST.get("name", "").strip()
     tx_type = request.POST.get("transaction_type")
-    acc = request.POST.get("account") or None
+    ent = request.POST.get("entity") or None
     if not name:
         return JsonResponse({"error": "name"}, status=400)
     tag, _ = CategoryTag.objects.get_or_create(
         user=request.user,
         transaction_type=tx_type,
         name=name,
-        account_id=acc,
+        entity_id=ent,
     )
     return JsonResponse({"id": tag.pk, "name": tag.name})
 
@@ -618,6 +619,20 @@ def tag_detail(request, pk):
     if request.method == "PATCH":
         return tag_update(request, pk)
     return tag_delete(request, pk)
+    
+
+@login_required
+def category_manager(request):
+    entities = Entity.objects.filter(
+        Q(user=request.user) | Q(user__isnull=True),
+        is_active=True,
+        system_hidden=False,
+    )
+    return render(
+        request,
+        "transactions/category_manager.html",
+        {"entities": entities},
+    )
 
 @require_GET
 def entity_category_summary(request, entity_id):
