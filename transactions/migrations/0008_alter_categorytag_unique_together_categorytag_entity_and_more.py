@@ -14,14 +14,20 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='categorytag',
-            unique_together={('user', 'transaction_type', 'name', 'entity')},
-        ),
         migrations.AddField(
             model_name='categorytag',
             name='entity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='category_tags', to='entities.entity'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='category_tags',
+                to='entities.entity',
+            ),
+        ),
+        migrations.AlterUniqueTogether(
+            name='categorytag',
+            unique_together={('user', 'transaction_type', 'name', 'entity')},
         ),
         migrations.RemoveField(
             model_name='categorytag',
