@@ -5,6 +5,16 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def _drop_old_entity_column(apps, schema_editor):
+    """Drop stale entity column created by earlier migrations."""
+    CategoryTag = apps.get_model('transactions', 'CategoryTag')
+    table = CategoryTag._meta.db_table
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        columns = [col.name for col in connection.introspection.get_table_description(cursor, table)]
+        if 'entity_id' in columns:
+            cursor.execute(f'ALTER TABLE {table} DROP COLUMN entity_id')
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,7 +24,20 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        migrations.AlterUniqueTogether(
+            name='categorytag',
+            unique_together=set(),
+        ),
+        migrations.RunPython(
+            code=_drop_old_entity_column,
+            reverse_code=migrations.RunPython.noop,
+        ),
+        migrations.RenameField(
+            model_name='categorytag',
+            old_name='account',
+            new_name='entity',
+        ),
+        migrations.AlterField(
             model_name='categorytag',
             name='entity',
             field=models.ForeignKey(
@@ -28,9 +51,5 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='categorytag',
             unique_together={('user', 'transaction_type', 'name', 'entity')},
-        ),
-        migrations.RemoveField(
-            model_name='categorytag',
-            name='account',
         ),
     ]
