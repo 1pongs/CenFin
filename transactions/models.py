@@ -5,7 +5,7 @@ from decimal import Decimal
 from accounts.models import Account
 from entities.models import Entity
 from currencies.models import Currency
-from django.db.models import JSONField
+from django.db.models import JSONField, Max, Q
 from django.core.exceptions import ValidationError
 from .constants import transaction_type_TX_MAP, TXN_TYPE_CHOICES
 from cenfin_proj.utils import (
@@ -157,6 +157,47 @@ class Transaction(models.Model):
     is_hidden = models.BooleanField(default=False)
     parent_transfer = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='child_transfers')
 
+    # ledger management fields
+    ledger_status = models.CharField(
+        max_length=10,
+        choices=[
+            ("posted", "Posted"),
+            ("reversed", "Reversed"),
+            ("deleted", "Deleted"),
+        ],
+        default="posted",
+        db_index=True,
+    )
+    posted_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    seq_account = models.IntegerField(null=True, blank=True, db_index=True)
+    group_id = models.UUIDField(null=True, blank=True, db_index=True)
+    is_reversal = models.BooleanField(default=False)
+    reversed_transaction = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reversal_children",
+    )
+    is_reversed = models.BooleanField(default=False)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transactions_reversed",
+    )
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transactions_deleted",
+    )
+    
     objects = TransactionManager()
     all_objects = models.Manager()
 
@@ -210,6 +251,8 @@ class Transaction(models.Model):
         self._populate_from_template()
         self._apply_defaults()
 
+        creating = self.pk is None
+        
         account = None
         if self.transaction_type == "income" and self.account_destination_id:
             account = self.account_destination
@@ -217,6 +260,26 @@ class Transaction(models.Model):
             account = self.account_source
         elif self.account_destination_id:
             account = self.account_destination
+
+        if creating:
+            # assign posting timestamp
+            self.posted_at = timezone.now()
+            # compute seq per account ledger
+            accounts = {self.account_source_id, self.account_destination_id}
+            accounts.discard(None)
+            next_seq = 0
+            for acc_id in accounts:
+                last = (
+                    Transaction.all_objects
+                    .filter(
+                        Q(account_source_id=acc_id) | Q(account_destination_id=acc_id),
+                        is_deleted=False,
+                    )
+                    .aggregate(Max("seq_account"))["seq_account__max"] or 0
+                )
+                if last > next_seq:
+                    next_seq = last
+            self.seq_account = next_seq + 1
 
         if not self.currency_id:
             # Loan.save and other callers may explicitly supply a currency. In
