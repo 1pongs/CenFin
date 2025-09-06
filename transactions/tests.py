@@ -152,6 +152,33 @@ class TransactionFormBalanceTest(TestCase):
         self.assertNotIn("Outside", acc_names)
         self.assertNotIn("Outside", ent_names)
 
+    def test_edit_skips_insufficient_balance_check(self):
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("100"),
+            account_source=self.out_acc,
+            account_destination=self.acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="spend",
+            transaction_type="expense",
+            amount=Decimal("50"),
+            account_source=self.acc,
+            account_destination=self.out_acc,
+            entity_source=self.ent,
+            entity_destination=self.out_ent,
+        )
+        data = self._form_data(transaction_type="expense", amount="80")
+        form = TransactionForm(data=data, instance=tx, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
 
 class OutsideEnforcedTest(TestCase):
     def setUp(self):
@@ -204,6 +231,50 @@ class OutsideEnforcedTest(TestCase):
         self.assertEqual(tx.account_destination, self.out_acc)
         self.assertEqual(tx.entity_destination, self.out_ent)
 
+
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
+class TransactionDeleteReversalTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="d", password="p")
+        self.client.force_login(self.user)
+        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.out_acc = ensure_outside_account()
+        self.ent = Entity.objects.create(entity_name="Me", entity_type="personal fund", user=self.user)
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("100"),
+            account_source=self.out_acc,
+            account_destination=self.acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        self.tx = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="spend",
+            transaction_type="expense",
+            amount=Decimal("40"),
+            account_source=self.acc,
+            account_destination=self.out_acc,
+            entity_source=self.ent,
+            entity_destination=self.out_ent,
+        )
+
+    def test_delete_creates_reversal_and_hides_original(self):
+        self.client.get(reverse("transactions:transaction_delete", args=[self.tx.pk]))
+        orig = Transaction.all_objects.get(pk=self.tx.pk)
+        self.assertTrue(orig.is_hidden)
+        rev = Transaction.objects.filter(description__icontains="Reversal", account_destination=self.acc, account_source=self.out_acc).first()
+        self.assertIsNotNone(rev)
+        self.assertEqual(rev.amount, Decimal("40"))
+        
 
 class TemplateOutsideEnforcedTest(TestCase):
     def setUp(self):

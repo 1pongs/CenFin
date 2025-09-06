@@ -32,6 +32,40 @@ from .constants import TXN_TYPE_CHOICES
 
 # Create your views here.
 
+
+def _reverse_and_hide(txn):
+    """Create reversal entry/entries for a transaction then hide the original."""
+    related = [txn] + list(Transaction.all_objects.filter(parent_transfer=txn))
+    rev_parent = None
+    for original in related:
+        has_both = bool(original.account_source_id and original.account_destination_id)
+        if has_both and original.destination_amount is not None:
+            amount = original.destination_amount
+            dest_amount = original.amount
+        else:
+            amount = original.amount
+            dest_amount = None
+
+        rev = Transaction.objects.create(
+            user=original.user,
+            date=timezone.now().date(),
+            description=f"Reversal of {original.description}",
+            transaction_type=original.transaction_type,
+            amount=amount,
+            destination_amount=dest_amount,
+            account_source=original.account_destination,
+            account_destination=original.account_source,
+            entity_source=original.entity_destination,
+            entity_destination=original.entity_source,
+            currency=original.currency,
+            parent_transfer=rev_parent if original is not txn else None,
+            is_hidden=original.is_hidden,
+        )
+        if original is txn:
+            rev_parent = rev
+
+    Transaction.all_objects.filter(Q(pk=txn.pk) | Q(parent_transfer=txn)).update(is_hidden=True)
+
 class TemplateDropdownMixin:
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -119,9 +153,7 @@ class TransactionListView(ListView):
                     if loan:
                         loan.delete()
                         warned = True
-            # delete visible and hidden transactions linked to remaining ids
-            Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
-            qs.exclude(transaction_type="loan_disbursement").delete()
+                _reverse_and_hide(txn)
             if warned:
                 messages.warning(
                     request,
@@ -145,8 +177,7 @@ def bulk_action(request):
                     if loan:
                         loan.delete()
                         warned = True
-            Transaction.all_objects.filter(parent_transfer_id__in=selected_ids, user=request.user).delete()
-            qs.exclude(transaction_type="loan_disbursement").delete()
+                _reverse_and_hide(txn)
             if warned:
                 messages.warning(
                     request,
@@ -399,9 +430,7 @@ def transaction_delete(request, pk):
                 request,
                 "Deleting a loan disbursement also removes the associated loan.",
             )
-            return redirect(reverse('transactions:transaction_list'))
-    Transaction.all_objects.filter(parent_transfer=txn, user=request.user).delete()
-    txn.delete()
+    _reverse_and_hide(txn)
     messages.success(request, "Transaction deleted.")
     return redirect(reverse('transactions:transaction_list'))
 
