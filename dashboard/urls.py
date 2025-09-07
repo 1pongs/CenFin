@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import DashboardView, MonthlyDataView, MonthlyChartDataView
-from .api import dashboard_data, top10_data, category_summary, entity_summary
+from .api import dashboard_data, top10_data, category_summary, entity_summary, analytics_data, monthly_audit
 
 app_name = 'dashboard'
 urlpatterns = [
@@ -11,4 +11,6 @@ urlpatterns = [
     path('api/top10/', top10_data, name='top10-data'),
     path('api/category-summary/', category_summary, name='category-summary'),
     path('api/entity-summary/', entity_summary, name='entity-summary'),
+    path('api/analytics/', analytics_data, name='analytics-data'),
+    path('api/monthly-audit/', monthly_audit, name='monthly-audit'),
 ]

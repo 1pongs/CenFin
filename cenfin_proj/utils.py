@@ -166,9 +166,23 @@ def get_monthly_cash_flow(
             y -= 1
     start_date = date(y, m, 1)
 
-    qs_initial = Transaction.objects.filter(q, date__lt=start_date).select_related("currency", "account_destination", "account_source")
+    qs_initial = Transaction.objects.filter(q, date__lt=start_date).select_related(
+        "currency",
+        "account_destination__currency",
+        "account_destination",
+        "account_source",
+    )
     liquid_bal = Decimal("0")
     non_liquid_bal = Decimal("0")
+    def amt_in(tx):
+        if (
+            getattr(tx, "destination_amount", None) is not None
+            and getattr(tx, "account_destination", None)
+            and getattr(tx.account_destination, "currency", None)
+        ):
+            return convert_to_base(tx.destination_amount or Decimal("0"), tx.account_destination.currency, currency, user=user)
+        return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+
     for tx in qs_initial:
         amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         ttype = (tx.transaction_type or "").lower()
@@ -177,15 +191,15 @@ def get_monthly_cash_flow(
         if ttype == "transfer" and dest_outside:
             pass
         elif (tx.asset_type_destination or "").lower() == "liquid":
-            liquid_bal += amt
+            liquid_bal += amt_in(tx)
         elif ttype == "transfer" and src_outside:
             pass
         elif (tx.asset_type_source or "").lower() == "liquid":
             liquid_bal -= amt
         if ttype == "transfer" and dest_outside:
-            non_liquid_bal += amt
+            non_liquid_bal += amt_in(tx)
         elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            non_liquid_bal += amt
+            non_liquid_bal += amt_in(tx)
         elif ttype == "transfer" and src_outside:
             non_liquid_bal -= amt
         elif (tx.asset_type_source or "").lower() == "non_liquid":
@@ -194,7 +208,7 @@ def get_monthly_cash_flow(
     month_map: dict[date, dict] = {}
     qs = (
         Transaction.objects.filter(q, date__gte=start_date)
-        .select_related("currency", "account_destination", "account_source")
+        .select_related("currency", "account_destination__currency", "account_destination", "account_source")
         .order_by("date")
     )
     for tx in qs:
@@ -208,30 +222,31 @@ def get_monthly_cash_flow(
                 "non_liquid_delta": Decimal("0"),
             },
         )
-        amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_dest = amt_in(tx)
         if (tx.transaction_type_destination or "").lower() == "income":
-            row["income"] += amt
+            row["income"] += amt_dest
         if (tx.transaction_type_source or "").lower() == "expense":
-            row["expenses"] += amt
+            row["expenses"] += amt_src
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
         if ttype == "transfer" and dest_outside:
             pass
         elif (tx.asset_type_destination or "").lower() == "liquid":
-            row["liquid_delta"] += amt
+            row["liquid_delta"] += amt_dest
         elif ttype == "transfer" and src_outside:
             pass
         elif (tx.asset_type_source or "").lower() == "liquid":
-            row["liquid_delta"] -= amt
+            row["liquid_delta"] -= amt_src
         if ttype == "transfer" and dest_outside:
-            row["non_liquid_delta"] += amt
+            row["non_liquid_delta"] += amt_dest
         elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            row["non_liquid_delta"] += amt
+            row["non_liquid_delta"] += amt_dest
         elif ttype == "transfer" and src_outside:
-            row["non_liquid_delta"] -= amt
+            row["non_liquid_delta"] -= amt_src
         elif (tx.asset_type_source or "").lower() == "non_liquid":
-            row["non_liquid_delta"] -= amt
+            row["non_liquid_delta"] -= amt_src
 
     months_seq = []
     y = start_date.year
@@ -306,24 +321,39 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
     if entity_id and not Transaction.objects.filter(q).exists():
         return []
 
-    qs_initial = Transaction.objects.filter(q, date__lt=start_date).select_related("currency")
+    qs_initial = Transaction.objects.filter(q, date__lt=start_date).select_related(
+        "currency",
+        "account_destination__currency",
+        "account_destination",
+        "account_source",
+    )
     liquid_bal = Decimal("0")
     non_liquid_bal = Decimal("0")
+    def _ms_amt_in(tx):
+        if (
+            getattr(tx, "destination_amount", None) is not None
+            and getattr(tx, "account_destination", None)
+            and getattr(tx.account_destination, "currency", None)
+        ):
+            return convert_to_base(tx.destination_amount or Decimal("0"), tx.account_destination.currency, currency, user=user)
+        return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+
     for tx in qs_initial:
-        amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_dest = _ms_amt_in(tx)
         if (tx.asset_type_destination or "").lower() == "liquid":
-            liquid_bal += amt
+            liquid_bal += amt_dest
         elif (tx.asset_type_source or "").lower() == "liquid":
-            liquid_bal -= amt
+            liquid_bal -= amt_src
         if (tx.asset_type_destination or "").lower() == "non_liquid":
-            non_liquid_bal += amt
+            non_liquid_bal += amt_dest
         elif (tx.asset_type_source or "").lower() == "non_liquid":
-            non_liquid_bal -= amt
+            non_liquid_bal -= amt_src
 
     month_map: dict[date, dict] = {}
     qs = (
         Transaction.objects.filter(q, date__gte=start_date)
-        .select_related("currency")
+        .select_related("currency", "account_destination__currency", "account_destination", "account_source")
         .order_by("date")
     )
     for tx in qs:
@@ -337,19 +367,20 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
                 "non_liquid_delta": Decimal("0"),
             },
         )
-        amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_dest = _ms_amt_in(tx)
         if (tx.transaction_type_destination or "").lower() == "income":
-            row["income"] += amt
+            row["income"] += amt_dest
         if (tx.transaction_type_source or "").lower() == "expense":
-            row["expenses"] += amt
+            row["expenses"] += amt_src
         if (tx.asset_type_destination or "").lower() == "liquid":
-            row["liquid_delta"] += amt
+            row["liquid_delta"] += amt_dest
         elif (tx.asset_type_source or "").lower() == "liquid":
-            row["liquid_delta"] -= amt
+            row["liquid_delta"] -= amt_src
         if (tx.asset_type_destination or "").lower() == "non_liquid":
-            row["non_liquid_delta"] += amt
+            row["non_liquid_delta"] += amt_dest
         elif (tx.asset_type_source or "").lower() == "non_liquid":
-            row["non_liquid_delta"] -= amt
+            row["non_liquid_delta"] -= amt_src
 
     months = []
     y = start_date.year
@@ -439,9 +470,23 @@ def get_monthly_cash_flow_range(
             m = 1
             y += 1
 
-    qs_initial = Transaction.objects.filter(q, date__lt=start_month).select_related("currency", "account_destination", "account_source")
+    qs_initial = Transaction.objects.filter(q, date__lt=start_month).select_related(
+        "currency",
+        "account_destination__currency",
+        "account_destination",
+        "account_source",
+    )
     liquid_bal = Decimal("0")
     non_liquid_bal = Decimal("0")
+    def _range_amt_in(tx):
+        if (
+            getattr(tx, "destination_amount", None) is not None
+            and getattr(tx, "account_destination", None)
+            and getattr(tx.account_destination, "currency", None)
+        ):
+            return convert_to_base(tx.destination_amount or Decimal("0"), tx.account_destination.currency, currency, user=user)
+        return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+
     for tx in qs_initial:
         amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         ttype = (tx.transaction_type or "").lower()
@@ -450,15 +495,15 @@ def get_monthly_cash_flow_range(
         if ttype == "transfer" and dest_outside:
             pass
         elif (tx.asset_type_destination or "").lower() == "liquid":
-            liquid_bal += amt
+            liquid_bal += _range_amt_in(tx)
         elif ttype == "transfer" and src_outside:
             pass
         elif (tx.asset_type_source or "").lower() == "liquid":
             liquid_bal -= amt
         if ttype == "transfer" and dest_outside:
-            non_liquid_bal += amt
+            non_liquid_bal += _range_amt_in(tx)
         elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            non_liquid_bal += amt
+            non_liquid_bal += _range_amt_in(tx)
         elif ttype == "transfer" and src_outside:
             non_liquid_bal -= amt
         elif (tx.asset_type_source or "").lower() == "non_liquid":
@@ -467,7 +512,7 @@ def get_monthly_cash_flow_range(
     month_map: dict[date, dict] = {}
     qs = (
         Transaction.objects.filter(q, date__range=[start_month, end])
-        .select_related("currency", "account_destination", "account_source")
+        .select_related("currency", "account_destination__currency", "account_destination", "account_source")
         .order_by("date")
     )
     for tx in qs:
@@ -481,30 +526,31 @@ def get_monthly_cash_flow_range(
                 "non_liquid_delta": Decimal("0"),
             },
         )
-        amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
+        amt_dest = _range_amt_in(tx)
         if (tx.transaction_type_destination or "").lower() == "income":
-            row["income"] += amt
+            row["income"] += amt_dest
         if (tx.transaction_type_source or "").lower() == "expense":
-            row["expenses"] += amt
+            row["expenses"] += amt_src
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
         if ttype == "transfer" and dest_outside:
             pass
         elif (tx.asset_type_destination or "").lower() == "liquid":
-            row["liquid_delta"] += amt
+            row["liquid_delta"] += amt_dest
         elif ttype == "transfer" and src_outside:
             pass
         elif (tx.asset_type_source or "").lower() == "liquid":
-            row["liquid_delta"] -= amt
+            row["liquid_delta"] -= amt_src
         if ttype == "transfer" and dest_outside:
-            row["non_liquid_delta"] += amt
+            row["non_liquid_delta"] += amt_dest
         elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            row["non_liquid_delta"] += amt
+            row["non_liquid_delta"] += amt_dest
         elif ttype == "transfer" and src_outside:
-            row["non_liquid_delta"] -= amt
+            row["non_liquid_delta"] -= amt_src
         elif (tx.asset_type_source or "").lower() == "non_liquid":
-            row["non_liquid_delta"] -= amt
+            row["non_liquid_delta"] -= amt_src
 
     summary = []
     for d in months_seq:

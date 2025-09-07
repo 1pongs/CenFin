@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from transactions.models import Transaction
 from transactions.constants import TXN_TYPE_CHOICES
 from entities.models import Entity
+from transactions.models import CategoryTag
 from cenfin_proj.utils import (
     get_monthly_summary,
     get_monthly_cash_flow,
@@ -109,6 +110,15 @@ class DashboardView(TemplateView):
         ctx["today"] = today
         
         ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
+        # Unique category names for the analytics filter
+        cat_qs = CategoryTag.objects.filter(user=self.request.user).order_by("name")
+        cat_names = []
+        last = None
+        for n in cat_qs.values_list("name", flat=True):
+            if n and n != last:
+                cat_names.append(n)
+                last = n
+        ctx["categories"] = cat_names
         params = self.request.GET
 
         # Defaults for the date filters used by the charts. These are separate

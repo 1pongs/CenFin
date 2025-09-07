@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const ctx1 = document.getElementById('cashFlowAssetsChart');
   const dataUrl = (ctx1 && ctx1.dataset) ? ctx1.dataset.apiUrl : '';
+  const auditBtn = document.getElementById('cashFlowAuditBtn');
+  const auditUrl = (auditBtn && auditBtn.dataset) ? auditBtn.dataset.url : '';
   let flowChart = null;
 
   function createFlowChart(){
@@ -59,13 +61,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ---- Analytics: categories + entities ----
-  const catCanvas = document.getElementById('categoryChart');
-  const entCanvas = document.getElementById('entityChart');
-  const topEl = document.getElementById('topEntriesChart');
-  const topUrl = (topEl && topEl.dataset) ? topEl.dataset.apiUrl : '';
+  const analyticsCanvas = document.getElementById('analyticsChart');
+  const analyticsUrl = (analyticsCanvas && analyticsCanvas.dataset) ? analyticsCanvas.dataset.apiUrl : '';
   const noDataTop = document.getElementById('topNoDataMsg');
-  const catUrl = (catCanvas && catCanvas.dataset) ? catCanvas.dataset.apiUrl : '';
-  const entUrl = (entCanvas && entCanvas.dataset) ? entCanvas.dataset.apiUrl : '';
+  const entCheckboxes = () => Array.from(document.querySelectorAll('.entity-option'));
+  const catCheckboxes = () => Array.from(document.querySelectorAll('.category-option'));
+  const getSelectedEntities = () => entCheckboxes().filter(cb=>cb.checked).map(cb=>cb.value);
+  const getSelectedCategories = () => catCheckboxes().filter(cb=>cb.checked).map(cb=>cb.value);
+  function updateDropdownLabels(){
+    const entBtn = document.getElementById('entitiesDropdownBtn');
+    const catBtn = document.getElementById('categoriesDropdownBtn');
+    const entSel = getSelectedEntities();
+    const catSel = getSelectedCategories();
+    if(entBtn){
+      entBtn.textContent = entSel.length ? `${entSel.length} selected` : 'All entities';
+    }
+    if(catBtn){
+      catBtn.textContent = catSel.length ? `${catSel.length} selected` : 'All categories';
+    }
+  }
   const labelPlugin = {
     id:'barLabel',
     afterDatasetsDraw(chart){
@@ -86,38 +100,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Category donut
-  let catChart = null;
-  function renderCategoryChart(rows){
-    if(!catCanvas) return;
-    if(catChart) { catChart.destroy(); catChart = null; }
-    if(!rows || !rows.length){ noDataTop.classList.remove('d-none'); catCanvas.classList.add('invisible'); return; }
-    noDataTop.classList.add('d-none'); catCanvas.classList.remove('invisible');
-    catChart = new Chart(catCanvas, {
-      type:'doughnut',
-      data:{labels: rows.map(r=>r.name), datasets:[{data: rows.map(r=>r.total)}]},
-      options:{responsive:true, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${formatPeso(ctx.parsed)}`}}}}
-    });
-  }
-
-  // Entity bars
-  let entChart = null;
-  function renderEntityChart(rows){
-    if(!entCanvas) return;
-    if(entChart) { entChart.destroy(); entChart = null; }
-    if(!rows || !rows.length){ noDataTop.classList.remove('d-none'); entCanvas.classList.add('invisible'); return; }
-    noDataTop.classList.add('d-none'); entCanvas.classList.remove('invisible');
-    entChart = new Chart(entCanvas, {
+  // Unified analytics chart
+  let analyticsChart = null;
+  function renderAnalytics(payload){
+    if(!analyticsCanvas) return;
+    if(analyticsChart){ analyticsChart.destroy(); analyticsChart = null; }
+    const empty = !payload || !Array.isArray(payload.labels) || payload.labels.length === 0 || !Array.isArray(payload.series) || payload.series.length === 0;
+    if(empty){
+      noDataTop?.classList.remove('d-none');
+      analyticsCanvas.classList.add('invisible');
+      return;
+    }
+    noDataTop?.classList.add('d-none');
+    analyticsCanvas.classList.remove('invisible');
+    const palette = {
+      'Income': 'rgba(25,135,84,0.7)',
+      'Expenses': 'rgba(220,53,69,0.7)'
+    };
+    analyticsChart = new Chart(analyticsCanvas, {
       type:'bar',
       data:{
-        labels: rows.map(r=>r.entity),
-        datasets:[
-          {label:'Income', backgroundColor:'rgba(25,135,84,0.6)', data: rows.map(r=>r.income)},
-          {label:'Expenses', backgroundColor:'rgba(220,53,69,0.6)', data: rows.map(r=>r.expenses)},
-          {label:'Capital', backgroundColor:'rgba(108,117,125,0.6)', data: rows.map(r=>r.capital)}
-        ]
+        labels: payload.labels,
+        datasets: (payload.series || []).map(s => ({
+          label: s.name,
+          backgroundColor: palette[s.name] || 'rgba(13,110,253,0.6)',
+          data: (s.data || []).map(Number)
+        }))
       },
-      options:{responsive:true, scales:{y:{beginAtZero:true}}, interaction:{mode:'index', intersect:false}}
+      options:{
+        responsive:true,
+        scales:{ y:{ beginAtZero:true } },
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label}: ${formatPeso(ctx.parsed.y)}` } } }
+      }
     });
   }
 
@@ -245,65 +260,52 @@ document.addEventListener('DOMContentLoaded', () => {
     debounceId = setTimeout(loadData, 200);
   }
 
-  async function fetchTopData(){
-    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
-    const params = new URLSearchParams();
-    if(ids) params.set('entities', ids);
-    if(txnTypeSel.value) params.set('txn_type', txnTypeSel.value);
-    if(topStart.value) params.set('start', topStart.value);
-    if(topEnd.value) params.set('end', topEnd.value);
+  function updateAuditLink(){
     try{
-      const resp = await fetch(`${topUrl}?${params.toString()}`, {credentials:'same-origin'});
-      if(resp.ok) return await resp.json();
-    }catch(err){
-      console.error(err);
-    }
-    return {labels:[], amounts:[], types:[]};
+      if(!auditBtn || !auditUrl) return;
+      const params = new URLSearchParams();
+      const entVal = entitySel?.value;
+      if(entVal && entVal !== 'overall') params.set('entity_id', entVal);
+      if(cashStart?.value) params.set('start', cashStart.value);
+      if(cashEnd?.value) params.set('end', cashEnd.value);
+      auditBtn.href = `${auditUrl}?${params.toString()}`;
+    }catch(e){ console.error(e); }
   }
 
-  async function fetchCategoryData(){
-    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
-    const params = new URLSearchParams();
-    params.set('type', txnTypeSel.value === 'income' ? 'income' : 'expense');
-    if(ids) params.set('entities', ids);
-    if(topStart.value) params.set('start', topStart.value);
-    if(topEnd.value) params.set('end', topEnd.value);
-    const resp = await fetch(`${catUrl}?${params.toString()}`, {credentials:'same-origin'});
-    if(resp.ok) return await resp.json();
-    return [];
-  }
+  // legacy helper kept to avoid errors if referenced; returns empty payload
+  async function fetchTopData(){ return {labels:[], amounts:[], types:[]}; }
 
-  async function fetchEntityData(){
-    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
-    const params = new URLSearchParams();
-    if(ids) params.set('entities', ids);
-    if(topStart.value) params.set('start', topStart.value);
-    if(topEnd.value) params.set('end', topEnd.value);
-    const resp = await fetch(`${entUrl}?${params.toString()}`, {credentials:'same-origin'});
-    if(resp.ok) return await resp.json();
-    return [];
-  }
+  // legacy category/entity fetchers no longer used
 
   async function loadAnalytics(){
-    if(document.getElementById('view-cats') && !document.getElementById('view-cats').classList.contains('d-none')){
-      const rows = await fetchCategoryData();
-      renderCategoryChart(rows);
-    } else if(document.getElementById('view-ents')){
-      const rows = await fetchEntityData();
-      renderEntityChart(rows);
-    }
+    const payload = await (async () => {
+      if(analyticsUrl){
+        const ids = getSelectedEntities().join(',');
+        const cats = getSelectedCategories().join(',');
+        const dim = cats ? 'categories' : 'entities';
+        const params = new URLSearchParams();
+        params.set('dimension', dim);
+        if(ids) params.set('entities', ids);
+        if(cats) params.set('categories', cats);
+        if(topStart?.value) params.set('start', topStart.value);
+        if(topEnd?.value) params.set('end', topEnd.value);
+        const resp = await fetch(`${analyticsUrl}?${params.toString()}`, {credentials:'same-origin'});
+        if(resp.ok) return await resp.json();
+      }
+      return {labels:[], series:[]};
+    })();
+    renderAnalytics(payload);
   }
 
+  // Debounced analytics reload
   function debouncedTop(){
     clearTimeout(debounceTopId);
-    debounceTopId = setTimeout(loadTop, 200);
+    debounceTopId = setTimeout(loadAnalytics, 200);
   }
 
-  entitySel?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
-  cashStart?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
-  cashEnd?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
-  const entitySelTop = document.getElementById('entitiesFilter');
-  const txnTypeSel = document.getElementById('txnTypeFilter');
+  entitySel?.addEventListener('change', ()=>{ updateQuery(); updateAuditLink(); debouncedLoad(); });
+  cashStart?.addEventListener('change', ()=>{ updateQuery(); updateAuditLink(); debouncedLoad(); });
+  cashEnd?.addEventListener('change', ()=>{ updateQuery(); updateAuditLink(); debouncedLoad(); });
   const topStart = document.getElementById('topStart');
   const topEnd = document.getElementById('topEnd');
 
@@ -311,12 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyInitialFilters(){
     const entParam = urlParams.get('entities');
     if(entParam){
-      const ids = entParam.split(',');
-      [...entitySelTop.options].forEach(o=>{ o.selected = ids.includes(o.value); });
+      const ids = new Set(entParam.split(','));
+      entCheckboxes().forEach(cb=>{ cb.checked = ids.has(cb.value); });
     }
-    const tx = urlParams.get('txn_type');
-    if(tx){
-      txnTypeSel.value = tx;
+    const catsParam = urlParams.get('categories');
+    if(catsParam){
+      const names = new Set(catsParam.split(','));
+      catCheckboxes().forEach(cb=>{ cb.checked = names.has(cb.value); });
     }
     const startParam = urlParams.get('start');
     const endParam = urlParams.get('end');
@@ -331,16 +334,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateQuery(){
-    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
+    const ids = getSelectedEntities().join(',');
     if(ids) urlParams.set('entities', ids); else urlParams.delete('entities');
-    urlParams.set('txn_type', txnTypeSel.value);
+    const cats = getSelectedCategories().join(',');
+    if(cats) urlParams.set('categories', cats); else urlParams.delete('categories');
     if(cashStart.value) urlParams.set('start', cashStart.value);
     if(cashEnd.value) urlParams.set('end', cashEnd.value);
     history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
   }
 
-  entitySelTop?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
-  txnTypeSel?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  entCheckboxes().forEach(cb=>cb.addEventListener('change', ()=>{ updateDropdownLabels(); updateQuery(); loadAnalytics(); }));
+  catCheckboxes().forEach(cb=>cb.addEventListener('change', ()=>{ updateDropdownLabels(); updateQuery(); loadAnalytics(); }));
   topStart?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
   topEnd?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
 
@@ -358,42 +362,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearTopBtn = document.getElementById('clearTopFilter');
   if(clearTopBtn){
     clearTopBtn.addEventListener('click', () => {
-      txnTypeSel.value = txnTypeSel.dataset.default || 'all';
-      [...entitySelTop.options].forEach(o => { o.selected = false; });
+      entCheckboxes().forEach(cb=>cb.checked=false);
+      catCheckboxes().forEach(cb=>cb.checked=false);
+      updateDropdownLabels();
       topStart.value = topStart.dataset.default || '';
       topEnd.value = topEnd.dataset.default || '';
       updateQuery();
-      loadTop();
+      loadAnalytics();
     });
   }
 
   applyInitialFilters();
+  updateAuditLink();
 
-  // Tab switching for analytics card
-  const tabCats = document.getElementById('tab-cats');
-  const tabEnts = document.getElementById('tab-ents');
-  function switchTab(target){
-    const vc = document.getElementById('view-cats');
-    const ve = document.getElementById('view-ents');
-    if(target==='cats'){
-      vc.classList.remove('d-none');
-      ve.classList.add('d-none');
-      tabCats.classList.add('active');
-      tabEnts.classList.remove('active');
-    } else {
-      vc.classList.add('d-none');
-      ve.classList.remove('d-none');
-      tabCats.classList.remove('active');
-      tabEnts.classList.add('active');
-    }
-    loadAnalytics();
-  }
-  tabCats?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('cats'); });
-  tabEnts?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('ents'); });
+  // Select all/none helpers for multi-selects
+  const btnSelAllEnt = document.getElementById('selectAllEntities');
+  const btnClrEnt = document.getElementById('clearEntities');
+  const btnSelAllCat = document.getElementById('selectAllCategories');
+  const btnClrCat = document.getElementById('clearCategories');
+  btnSelAllEnt?.addEventListener('click', ()=>{ entCheckboxes().forEach(cb=>cb.checked=true); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
+  btnClrEnt?.addEventListener('click', ()=>{ entCheckboxes().forEach(cb=>cb.checked=false); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
+  btnSelAllCat?.addEventListener('click', ()=>{ catCheckboxes().forEach(cb=>cb.checked=true); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
+  btnClrCat?.addEventListener('click', ()=>{ catCheckboxes().forEach(cb=>cb.checked=false); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
 
   // Try to render immediately with server data; if not available, fetch.
   if(!bootstrapFromServer()){
     loadData();
   }
-  switchTab('cats');
+  updateDropdownLabels();
+  loadAnalytics();
 });

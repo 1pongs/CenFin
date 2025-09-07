@@ -21,10 +21,11 @@
 <div class="row mt-5 g-3">
   <div class="col-md-6">
     <h2>Monthly Cash‑Flow vs Assets</h2>
-    <div class="card shadow-sm">
-      <div class="card-body">
+        <div class="card shadow-sm">
+          <div class="card-body">
         <div class="d-flex justify-content-end mb-2">
           <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cashFlowFilterModal">Filter</button>
+          <a id="cashFlowAuditBtn" class="btn btn-sm btn-outline-secondary ms-2" target="_blank" data-url="{% url 'dashboard:monthly-audit' %}">Debug</a>
         </div>
         <!-- Modal for cash flow chart filters -->
         <div class="modal fade" id="cashFlowFilterModal" tabindex="-1" aria-labelledby="cashFlowFilterLabel" aria-hidden="true">
@@ -71,13 +72,9 @@
   </div>
   <div class="col-md-6">
     <h2>Analytics</h2>
-    <div class="card shadow-sm">
+    <div class="card shadow-sm" id="analytics-panel">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <ul class="nav nav-tabs card-header-tabs">
-            <li class="nav-item"><a class="nav-link active" id="tab-cats" href="#" data-target="cats">Categories</a></li>
-            <li class="nav-item"><a class="nav-link" id="tab-ents" href="#" data-target="ents">Entities</a></li>
-          </ul>
+        <div class="d-flex justify-content-end mb-2">
           <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#topListFilterModal">Filter</button>
         </div>
 
@@ -98,21 +95,46 @@
                     <input id="topEnd" type="date" class="form-control form-control-sm" value="{{ range_end_top|date:'Y-m-d' }}" data-default="{{ default_range_end_top|date:'Y-m-d' }}">
                   </div>
                 </div>
-                <div class="row g-2 flex-nowrap dashboard-filter">
-                  <div class="col-auto" style="width:110px;">
-                    <select id="txnTypeFilter" aria-label="Transaction Type Filter" class="form-select form-select-sm" data-default="all">
-                      <option value="all"{% if selected_txn_type == 'all' %} selected{% endif %}>All</option>
-                      {% for val,label in txn_type_choices %}
-                        <option value="{{ val }}"{% if val == selected_txn_type %} selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
+                <div class="row g-3 dashboard-filter mb-2">
+                  <div class="col-sm-6">
+                    <label class="form-label small mb-1">Entities</label>
+                    <div class="dropdown w-100">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="entitiesDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        Select entities
+                      </button>
+                      <div class="dropdown-menu w-100 p-2" aria-labelledby="entitiesDropdownBtn" style="max-height:260px; overflow:auto;">
+                        <div class="d-flex gap-2 mb-2">
+                          <button type="button" class="btn btn-light btn-sm" id="selectAllEntities">All</button>
+                          <button type="button" class="btn btn-light btn-sm" id="clearEntities">None</button>
+                        </div>
+                        {% for e in entities %}
+                          <div class="form-check">
+                            <input class="form-check-input entity-option" type="checkbox" value="{{ e.id }}" id="ent-{{ e.id }}"{% if e.id in selected_entities %} checked{% endif %}>
+                            <label class="form-check-label" for="ent-{{ e.id }}">{{ e.entity_name }}</label>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-auto" style="width:120px;">
-                    <select id="entitiesFilter" multiple aria-label="Entities Filter" class="form-select form-select-sm" data-default="">
-                      {% for e in entities %}
-                        <option value="{{ e.id }}"{% if e.id in selected_entities %} selected{% endif %}>{{ e.entity_name }}</option>
-                      {% endfor %}
-                    </select>
+                  <div class="col-sm-6">
+                    <label class="form-label small mb-1">Categories</label>
+                    <div class="dropdown w-100">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="categoriesDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        Select categories (optional)
+                      </button>
+                      <div class="dropdown-menu w-100 p-2" aria-labelledby="categoriesDropdownBtn" style="max-height:260px; overflow:auto;">
+                        <div class="d-flex gap-2 mb-2">
+                          <button type="button" class="btn btn-light btn-sm" id="selectAllCategories">All</button>
+                          <button type="button" class="btn btn-light btn-sm" id="clearCategories">None</button>
+                        </div>
+                        {% for name in categories %}
+                          <div class="form-check">
+                            <input class="form-check-input category-option" type="checkbox" value="{{ name }}" id="cat-{{ forloop.counter }}">
+                            <label class="form-check-label" for="cat-{{ forloop.counter }}">{{ name }}</label>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -125,12 +147,7 @@
         </div>
         <div class="position-relative">
           <div id="topNoDataMsg" class="position-absolute top-50 start-50 translate-middle fw-semibold d-none">No data available</div>
-          <div id="view-cats">
-            <canvas id="categoryChart" height="180" data-api-url="{% url 'dashboard:category-summary' %}"></canvas>
-          </div>
-          <div id="view-ents" class="d-none">
-            <canvas id="entityChart" height="180" data-api-url="{% url 'dashboard:entity-summary' %}"></canvas>
-          </div>
+          <canvas id="analyticsChart" height="180" data-api-url="{% url 'dashboard:analytics-data' %}"></canvas>
         </div>
       </div>
     </div>
