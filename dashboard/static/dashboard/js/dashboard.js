@@ -1,15 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const bigTickets = JSON.parse(document.getElementById('top-big-data').textContent);
+  const bigTicketsEl = document.getElementById('top-big-data');
+  const bigTickets = bigTicketsEl ? JSON.parse(bigTicketsEl.textContent || '[]') : [];
   
   function formatPeso(val){
     return `\u20B1${Number(val).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
   }
 
   const ctx1 = document.getElementById('cashFlowAssetsChart');
-  const dataUrl = ctx1.dataset.apiUrl;
+  const dataUrl = (ctx1 && ctx1.dataset) ? ctx1.dataset.apiUrl : '';
   let flowChart = null;
 
   function createFlowChart(){
+    if(!ctx1) return;
     flowChart = new Chart(ctx1, {
       plugins: [],
       data:{
@@ -59,10 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- Analytics: categories + entities ----
   const catCanvas = document.getElementById('categoryChart');
   const entCanvas = document.getElementById('entityChart');
-  const topUrl = document.getElementById('topEntriesChart')?.dataset.apiUrl || '';
+  const topEl = document.getElementById('topEntriesChart');
+  const topUrl = (topEl && topEl.dataset) ? topEl.dataset.apiUrl : '';
   const noDataTop = document.getElementById('topNoDataMsg');
-  const catUrl = catCanvas?.dataset.apiUrl;
-  const entUrl = entCanvas?.dataset.apiUrl;
+  const catUrl = (catCanvas && catCanvas.dataset) ? catCanvas.dataset.apiUrl : '';
+  const entUrl = (entCanvas && entCanvas.dataset) ? entCanvas.dataset.apiUrl : '';
   const labelPlugin = {
     id:'barLabel',
     afterDatasetsDraw(chart){
@@ -204,8 +207,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadData(){
+    if(!dataUrl){
+      if(!bootstrapFromServer()) return; // nothing to draw
+      return;
+    }
     const data = await fetchData(entitySel.value, cashStart.value, cashEnd.value);
     refreshChart(data);
+  }
+
+  // If the API call doesn't happen (e.g., blocked by browser or offline),
+  // draw using server-provided monthly summary embedded in the page.
+  function bootstrapFromServer(){
+    try{
+      const el = document.getElementById('initial-flow');
+      if(!el) return false;
+      const summary = JSON.parse(el.textContent || '[]');
+      if(!Array.isArray(summary) || summary.length === 0) return false;
+      const payload = {
+        labels: summary.map(r=>r.month),
+        datasets: {
+          income: summary.map(r=>Number(r.income || 0)),
+          expenses: summary.map(r=>Number(r.expenses || 0)),
+          liquid: summary.map(r=>Number(r.liquid || 0)),
+          asset: summary.map(r=>Number(r.non_liquid || 0)),
+        }
+      };
+      refreshChart(payload);
+      return true;
+    }catch(e){
+      console.error(e);
+      return false;
+    }
   }
 
   function debouncedLoad(){
@@ -267,9 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
     debounceTopId = setTimeout(loadTop, 200);
   }
 
-  entitySel.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
-  cashStart.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
-  cashEnd.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
+  entitySel?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
+  cashStart?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
+  cashEnd?.addEventListener('change', ()=>{ updateQuery(); debouncedLoad(); });
   const entitySelTop = document.getElementById('entitiesFilter');
   const txnTypeSel = document.getElementById('txnTypeFilter');
   const topStart = document.getElementById('topStart');
@@ -307,10 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
     history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
   }
 
-  entitySelTop.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
-  txnTypeSel.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
-  topStart.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
-  topEnd.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  entitySelTop?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  txnTypeSel?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  topStart?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  topEnd?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
 
   const clearCashBtn = document.getElementById('clearCashFilter');
   if(clearCashBtn){
@@ -359,6 +391,9 @@ document.addEventListener('DOMContentLoaded', () => {
   tabCats?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('cats'); });
   tabEnts?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('ents'); });
 
-  loadData();
+  // Try to render immediately with server data; if not available, fetch.
+  if(!bootstrapFromServer()){
+    loadData();
+  }
   switchTab('cats');
 });

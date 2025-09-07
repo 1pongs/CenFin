@@ -144,5 +144,5 @@
   <script src="{% static 'dashboard/js/chart.min.js' %}"></script>
   {{ monthly_summary|json_script:"initial-flow" }}
   {{ top10_big_tickets|json_script:"top-big-data" }}
-  <script src="{% static 'dashboard/js/dashboard.js' %}"></script>
+  <script src="{% static 'dashboard/js/dashboard.js' %}?v=2"></script>
 {% endblock %}
