@@ -56,9 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
     flowChart.config.plugins.push(verticalLine);
   }
 
-  const ctx2 = document.getElementById('topEntriesChart');
-  const topUrl = ctx2.dataset.apiUrl;
+  // ---- Analytics: categories + entities ----
+  const catCanvas = document.getElementById('categoryChart');
+  const entCanvas = document.getElementById('entityChart');
+  const topUrl = document.getElementById('topEntriesChart')?.dataset.apiUrl || '';
   const noDataTop = document.getElementById('topNoDataMsg');
+  const catUrl = catCanvas?.dataset.apiUrl;
+  const entUrl = entCanvas?.dataset.apiUrl;
   const labelPlugin = {
     id:'barLabel',
     afterDatasetsDraw(chart){
@@ -79,45 +83,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  let ticketChart = null;
-
-  function createTicketChart(payload){
-    ticketChart = new Chart(ctx2, {
-      type:'bar',
-      data:{
-        labels: payload.labels,
-        datasets:[{
-          data: payload.amounts,
-          backgroundColor: payload.types.map(t => {
-            if(t==='income') return 'rgba(25,135,84,0.7)';
-            if(t==='expense') return 'rgba(220,53,69,0.7)';
-            if(t==='asset') return 'rgba(23,162,184,0.7)';
-            return 'gray';
-          })
-        }]
-      },
-      options:{
-        responsive:true,
-        indexAxis:'y',
-        scales:{ x:{beginAtZero:true} },
-        plugins:{
-          legend:{display:false},
-          tooltip:{ callbacks:{ label:ctx=>`${ctx.label}: ${formatPeso(ctx.parsed.x)}` } }
-        }
-      },
-      plugins:[labelPlugin]
+  // Category donut
+  let catChart = null;
+  function renderCategoryChart(rows){
+    if(!catCanvas) return;
+    if(catChart) { catChart.destroy(); catChart = null; }
+    if(!rows || !rows.length){ noDataTop.classList.remove('d-none'); catCanvas.classList.add('invisible'); return; }
+    noDataTop.classList.add('d-none'); catCanvas.classList.remove('invisible');
+    catChart = new Chart(catCanvas, {
+      type:'doughnut',
+      data:{labels: rows.map(r=>r.name), datasets:[{data: rows.map(r=>r.total)}]},
+      options:{responsive:true, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${formatPeso(ctx.parsed)}`}}}}
     });
   }
 
-  if(bigTickets.length){
-    createTicketChart({
-      labels: bigTickets.map(r => r.category),
-      amounts: bigTickets.map(r => r.amount),
-      types: bigTickets.map(r => r.type)
+  // Entity bars
+  let entChart = null;
+  function renderEntityChart(rows){
+    if(!entCanvas) return;
+    if(entChart) { entChart.destroy(); entChart = null; }
+    if(!rows || !rows.length){ noDataTop.classList.remove('d-none'); entCanvas.classList.add('invisible'); return; }
+    noDataTop.classList.add('d-none'); entCanvas.classList.remove('invisible');
+    entChart = new Chart(entCanvas, {
+      type:'bar',
+      data:{
+        labels: rows.map(r=>r.entity),
+        datasets:[
+          {label:'Income', backgroundColor:'rgba(25,135,84,0.6)', data: rows.map(r=>r.income)},
+          {label:'Expenses', backgroundColor:'rgba(220,53,69,0.6)', data: rows.map(r=>r.expenses)},
+          {label:'Capital', backgroundColor:'rgba(108,117,125,0.6)', data: rows.map(r=>r.capital)}
+        ]
+      },
+      options:{responsive:true, scales:{y:{beginAtZero:true}}, interaction:{mode:'index', intersect:false}}
     });
-  } else {
-    ctx2.classList.add('invisible');
-    noDataTop.classList.remove('d-none');
   }
 
   const entitySel = document.getElementById('entitySelect');
@@ -231,34 +229,37 @@ document.addEventListener('DOMContentLoaded', () => {
     return {labels:[], amounts:[], types:[]};
   }
 
-  function refreshTop10(payload){
-    if(!payload.labels || payload.labels.length === 0){
-      ctx2.classList.add('invisible');
-      noDataTop.classList.remove('d-none');
-      if(ticketChart){ ticketChart.destroy(); ticketChart = null; }
-      return;
-    }
-    noDataTop.classList.add('d-none');
-    ctx2.classList.remove('invisible');
-    if(!ticketChart){
-      createTicketChart(payload);
-      return;
-    }
-    ticketChart.data.labels = payload.labels || [];
-    const amounts = (payload.amounts || []).map(Number);
-    ticketChart.data.datasets[0].data = amounts;
-    ticketChart.data.datasets[0].backgroundColor = (payload.types || []).map(t=>{
-      if(t==='income') return 'rgba(40,167,69,0.7)';
-      if(t==='expense') return 'rgba(220,53,69,0.7)';
-      if(t==='asset') return 'rgba(23,162,184,0.7)';
-      return 'gray';
-    });
-    ticketChart.update();
+  async function fetchCategoryData(){
+    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
+    const params = new URLSearchParams();
+    params.set('type', txnTypeSel.value === 'income' ? 'income' : 'expense');
+    if(ids) params.set('entities', ids);
+    if(topStart.value) params.set('start', topStart.value);
+    if(topEnd.value) params.set('end', topEnd.value);
+    const resp = await fetch(`${catUrl}?${params.toString()}`, {credentials:'same-origin'});
+    if(resp.ok) return await resp.json();
+    return [];
   }
 
-  async function loadTop(){
-    const data = await fetchTopData();
-    refreshTop10(data);
+  async function fetchEntityData(){
+    const ids = [...entitySelTop.selectedOptions].map(o=>o.value).join(',');
+    const params = new URLSearchParams();
+    if(ids) params.set('entities', ids);
+    if(topStart.value) params.set('start', topStart.value);
+    if(topEnd.value) params.set('end', topEnd.value);
+    const resp = await fetch(`${entUrl}?${params.toString()}`, {credentials:'same-origin'});
+    if(resp.ok) return await resp.json();
+    return [];
+  }
+
+  async function loadAnalytics(){
+    if(document.getElementById('view-cats') && !document.getElementById('view-cats').classList.contains('d-none')){
+      const rows = await fetchCategoryData();
+      renderCategoryChart(rows);
+    } else if(document.getElementById('view-ents')){
+      const rows = await fetchEntityData();
+      renderEntityChart(rows);
+    }
   }
 
   function debouncedTop(){
@@ -306,10 +307,10 @@ document.addEventListener('DOMContentLoaded', () => {
     history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
   }
 
-  entitySelTop.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
-  txnTypeSel.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
-  topStart.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
-  topEnd.addEventListener('change', ()=>{ updateQuery(); debouncedTop(); });
+  entitySelTop.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  txnTypeSel.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  topStart.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
+  topEnd.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
 
   const clearCashBtn = document.getElementById('clearCashFilter');
   if(clearCashBtn){
@@ -336,6 +337,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyInitialFilters();
 
+  // Tab switching for analytics card
+  const tabCats = document.getElementById('tab-cats');
+  const tabEnts = document.getElementById('tab-ents');
+  function switchTab(target){
+    const vc = document.getElementById('view-cats');
+    const ve = document.getElementById('view-ents');
+    if(target==='cats'){
+      vc.classList.remove('d-none');
+      ve.classList.add('d-none');
+      tabCats.classList.add('active');
+      tabEnts.classList.remove('active');
+    } else {
+      vc.classList.add('d-none');
+      ve.classList.remove('d-none');
+      tabCats.classList.remove('active');
+      tabEnts.classList.add('active');
+    }
+    loadAnalytics();
+  }
+  tabCats?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('cats'); });
+  tabEnts?.addEventListener('click', (e)=>{ e.preventDefault(); switchTab('ents'); });
+
   loadData();
-  loadTop();
+  switchTab('cats');
 });

@@ -20,6 +20,9 @@
 {# MAIN CONTENT                                                             #}
 {# ------------------------------------------------------------------------- #}
 {% block content %}
+{% if back_url %}
+  {% include "includes/back_button.html" with url=back_url %}
+{% endif %}
 <h1 class="mb-4">Transactions</h1>
 <div class="container-lg py-1">
   <!-- ================= TOP TOOLBAR ================= -->

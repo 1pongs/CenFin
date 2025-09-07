@@ -16,6 +16,7 @@
     <a href="{% url 'entities:edit' entity.pk %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary me-2">Edit</a>
     <a href="{% url 'entities:delete' entity.pk %}" class="btn btn-sm btn-danger">Delete</a>
     {% endif %}
+    <a href="{% url 'entities:analytics' entity.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Analytics</a>
   </div>
 </div>
 

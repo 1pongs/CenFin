@@ -12,7 +12,8 @@ from decimal import Decimal
 from django.db.models import Sum, Count
 
 from cenfin_proj.utils import get_account_entity_balance
-from utils.currency import convert_to_base
+from utils.currency import convert_to_base, get_active_currency
+from django.db.models.functions import TruncMonth
 
 
 from entities.models import Entity
@@ -483,3 +484,190 @@ def api_create_entity(request):
         ent.save()
         return JsonResponse({"id": ent.pk, "name": ent.entity_name})
     return JsonResponse({"errors": form.errors}, status=400)
+
+
+# -------------------- Analytics --------------------
+
+class EntityAnalyticsView(TemplateView):
+    template_name = "entities/entity_analytics.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        entity_pk = self.kwargs["pk"]
+        entity = get_object_or_404(Entity, pk=entity_pk, user=self.request.user)
+        ctx["entity"] = entity
+        active = get_active_currency(self.request)
+        ctx["display_currency"] = active.code if active else (getattr(self.request.user, "base_currency", None) or "PHP")
+        return ctx
+
+
+def _parse_dates(request):
+    from datetime import datetime
+    fmt = "%Y-%m-%d"
+    start_s = request.GET.get("start")
+    end_s = request.GET.get("end")
+    start = end = None
+    try:
+        if start_s:
+            start = datetime.strptime(start_s, fmt).date()
+    except Exception:
+        start = None
+    try:
+        if end_s:
+            end = datetime.strptime(end_s, fmt).date()
+    except Exception:
+        end = None
+    return start, end
+
+
+def entity_kpis(request, pk):
+    entity = get_object_or_404(Entity, pk=pk, user=request.user)
+    start, end = _parse_dates(request)
+
+    q_base = Transaction.objects.filter(user=request.user, parent_transfer__isnull=True)
+    if start:
+        q_base = q_base.filter(date__gte=start)
+    if end:
+        q_base = q_base.filter(date__lte=end)
+
+    # Income: true income only (exclude transfers/capital). Use mapped dest type.
+    income_qs = (
+        q_base.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type_destination__iexact="Income",
+        ).select_related("currency")
+    )
+    # Expenses: true expenses only (exclude transfers)
+    expense_qs = (
+        q_base.filter(
+            entity_source=entity,
+            asset_type_source__iexact="liquid",
+            transaction_type_source__iexact="Expense",
+        ).select_related("currency")
+    )
+    # Capital: net transfers (in - out)
+    cap_in_qs = (
+        q_base.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type__iexact="transfer",
+        ).select_related("currency")
+    )
+    cap_out_qs = (
+        q_base.filter(
+            entity_source=entity,
+            asset_type_source__iexact="liquid",
+            transaction_type__iexact="transfer",
+        ).select_related("currency")
+    )
+
+    def inflow_amount_and_currency(tx):
+        # Use destination_amount when present; it is denominated in the
+        # destination account's currency, not tx.currency.
+        if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
+            return tx.destination_amount, tx.account_destination.currency
+        return (tx.amount, tx.currency)
+
+    income = sum((
+        convert_to_base(*inflow_amount_and_currency(tx), request=request, user=request.user)
+        for tx in income_qs
+    ), Decimal("0"))
+    expenses = sum((
+        convert_to_base(tx.amount or 0, tx.currency, request=request, user=request.user)
+        for tx in expense_qs
+    ), Decimal("0"))
+    capital_in = sum((
+        convert_to_base(*inflow_amount_and_currency(tx), request=request, user=request.user)
+        for tx in cap_in_qs
+    ), Decimal("0"))
+    capital_out = sum((convert_to_base(tx.amount or 0, tx.currency, request=request, user=request.user) for tx in cap_out_qs), Decimal("0"))
+    capital_net = capital_in - capital_out
+    return JsonResponse({
+        "income": str(income),
+        "expenses": str(expenses),
+        "capital": str(capital_net),
+        "net": str(income - expenses),
+        "currency": (get_active_currency(request).code if get_active_currency(request) else "PHP"),
+    })
+
+
+def entity_category_summary_api(request, pk):
+    entity = get_object_or_404(Entity, pk=pk, user=request.user)
+    start, end = _parse_dates(request)
+    mode = request.GET.get("type", "expense")
+    q = Transaction.objects.filter(user=request.user, parent_transfer__isnull=True).prefetch_related("categories").select_related("currency")
+    if start:
+        q = q.filter(date__gte=start)
+    if end:
+        q = q.filter(date__lte=end)
+    if mode == "income":
+        # Only true income
+        q = q.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type_destination__iexact="Income",
+        )
+        def get_amount_and_currency(tx):
+            if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
+                return tx.destination_amount, tx.account_destination.currency
+            return tx.amount, tx.currency
+    else:
+        # Only true expenses
+        q = q.filter(
+            entity_source=entity,
+            asset_type_source__iexact="liquid",
+            transaction_type_source__iexact="Expense",
+        )
+        def get_amount_and_currency(tx):
+            return tx.amount, tx.currency
+
+    totals = {}
+    for tx in q:
+        cats = list(tx.categories.all())
+        if not cats:
+            continue
+        amt_val, amt_cur = get_amount_and_currency(tx)
+        amt = convert_to_base(amt_val or 0, amt_cur, request=request, user=request.user)
+        for c in cats:
+            totals[c.name] = totals.get(c.name, Decimal("0")) + amt
+    # Return top N by amount, ordered desc
+    data = sorted(({"name": k, "total": str(v)} for k, v in totals.items()), key=lambda r: Decimal(r["total"]), reverse=True)
+    return JsonResponse(data, safe=False)
+
+
+def entity_category_timeseries_api(request, pk):
+    entity = get_object_or_404(Entity, pk=pk, user=request.user)
+    start, end = _parse_dates(request)
+    category = request.GET.get("category")  # name or id
+    interval = request.GET.get("interval", "month")  # future-proof
+
+    q = Transaction.objects.filter(user=request.user, parent_transfer__isnull=True).prefetch_related("categories").select_related("currency")
+    if start:
+        q = q.filter(date__gte=start)
+    if end:
+        q = q.filter(date__lte=end)
+    # Expenses by default (true expenses only)
+    q = q.filter(
+        entity_source=entity,
+        asset_type_source__iexact="liquid",
+        transaction_type_source__iexact="Expense",
+    )
+
+    # Filter by category name or id
+    if category:
+        try:
+            # allow numeric id
+            cat_id = int(category)
+            q = q.filter(categories__id=cat_id)
+        except (ValueError, TypeError):
+            q = q.filter(categories__name=category)
+
+    buckets = {}
+    for tx in q:
+        key = tx.date.replace(day=1)
+        amt = convert_to_base(tx.amount or 0, tx.currency, request=request, user=request.user)
+        buckets[key] = buckets.get(key, Decimal("0")) + amt
+
+    rows = sorted(({"period": d.strftime("%Y-%m-01"), "total": str(v)} for d, v in buckets.items()), key=lambda r: r["period"]) 
+    return JsonResponse(rows, safe=False)

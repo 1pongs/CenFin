@@ -33,11 +33,21 @@ from .constants import TXN_TYPE_CHOICES
 # Create your views here.
 
 
-def _reverse_and_hide(txn):
-    """Create reversal entry/entries for a transaction then hide the original."""
+def _reverse_and_hide(txn, actor=None):
+    """Create reversal entry/entries for a transaction then hide the original.
+
+    - Reversal entries are always hidden and flagged with `is_reversal=True`.
+    - Original entries are marked as reversed exactly once.
+    - If the transaction is already a reversal or already reversed, this is a no-op.
+    """
+    if getattr(txn, "is_reversal", False) or getattr(txn, "is_reversed", False):
+        return
+
     related = [txn] + list(Transaction.all_objects.filter(parent_transfer=txn))
     rev_parent = None
     for original in related:
+        if getattr(original, "is_reversal", False) or getattr(original, "is_reversed", False):
+            continue
         has_both = bool(original.account_source_id and original.account_destination_id)
         if has_both and original.destination_amount is not None:
             amount = original.destination_amount
@@ -59,10 +69,19 @@ def _reverse_and_hide(txn):
             entity_destination=original.entity_source,
             currency=original.currency,
             parent_transfer=rev_parent if original is not txn else None,
-            is_hidden=original.is_hidden,
+            is_hidden=True,
+            is_reversal=True,
+            reversed_transaction=original,
         )
         if original is txn:
             rev_parent = rev
+        # mark original as reversed
+        original.is_reversed = True
+        original.reversed_at = timezone.now()
+        if actor is not None:
+            original.reversed_by = actor
+        original.ledger_status = "reversed"
+        original.save(update_fields=["is_reversed", "reversed_at", "reversed_by", "ledger_status"])
 
     Transaction.all_objects.filter(Q(pk=txn.pk) | Q(parent_transfer=txn)).update(is_hidden=True)
 
@@ -85,7 +104,19 @@ class TransactionListView(ListView):
             .filter(user=self.request.user)
             .select_related("currency")
         )
+        # Do not display reversal entries in the list
+        qs = qs.filter(is_reversal=False).exclude(description__istartswith="reversal of")
         params = self.request.GET
+
+        # Pair filter: when both account and entity are provided, show
+        # transactions involving that specific pair in either direction.
+        pair_account = params.get("account")
+        pair_entity = params.get("entity")
+        if pair_account and pair_entity:
+            qs = qs.filter(
+                Q(account_source_id=pair_account, entity_source_id=pair_entity)
+                | Q(account_destination_id=pair_account, entity_destination_id=pair_entity)
+            )
 
         search = params.get("q", "").strip()
         if search:
@@ -138,6 +169,17 @@ class TransactionListView(ListView):
         params = self.request.GET
         ctx["search"] = params.get("q", "")
         ctx["sort"] = params.get("sort", "-date")
+
+        # Back link to the entity accounts page when filtered by a specific
+        # account/entity pair.
+        pair_entity = params.get("entity")
+        pair_account = params.get("account")
+        if pair_entity and pair_account:
+            try:
+                ent_id = int(pair_entity)
+                ctx["back_url"] = reverse("entities:accounts", args=[ent_id])
+            except Exception:
+                pass
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -145,7 +187,7 @@ class TransactionListView(ListView):
         selected_ids = request.POST.getlist("selected_ids")
 
         if action == "delete" and selected_ids:
-            qs = Transaction.objects.filter(user=request.user, id__in=selected_ids)
+            qs = Transaction.objects.filter(user=request.user, id__in=selected_ids, is_reversal=False)
             warned = False
             for txn in qs:
                 if txn.transaction_type == "loan_disbursement":
@@ -153,7 +195,7 @@ class TransactionListView(ListView):
                     if loan:
                         loan.delete()
                         warned = True
-                _reverse_and_hide(txn)
+                _reverse_and_hide(txn, actor=request.user)
             if warned:
                 messages.warning(
                     request,
@@ -169,7 +211,7 @@ def bulk_action(request):
 
         if selected_ids:
 
-            qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids)
+            qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids, is_reversal=False)
             warned = False
             for txn in qs:
                 if txn.transaction_type == "loan_disbursement":
@@ -177,7 +219,7 @@ def bulk_action(request):
                     if loan:
                         loan.delete()
                         warned = True
-                _reverse_and_hide(txn)
+                _reverse_and_hide(txn, actor=request.user)
             if warned:
                 messages.warning(
                     request,
@@ -430,7 +472,7 @@ def transaction_delete(request, pk):
                 request,
                 "Deleting a loan disbursement also removes the associated loan.",
             )
-    _reverse_and_hide(txn)
+    _reverse_and_hide(txn, actor=request.user)
     messages.success(request, "Transaction deleted.")
     return redirect(reverse('transactions:transaction_list'))
 

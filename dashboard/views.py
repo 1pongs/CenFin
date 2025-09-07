@@ -27,29 +27,72 @@ class DashboardView(TemplateView):
 
         base_cur = get_active_currency(self.request)
         ctx["base_currency"] = base_cur
-        income = expenses = liquid = asset = Decimal("0")
-        qs_all = Transaction.objects.filter(user=self.request.user).select_related("currency")
+        income = expenses = liquid = asset = liabilities = Decimal("0")
+        qs_all = (
+            Transaction.objects.filter(user=self.request.user)
+            .select_related("currency", "account_destination__currency", "account_destination", "account_source")
+        )
+        def inflow_base(tx):
+            # Prefer destination_amount in the destination account's currency
+            if (
+                getattr(tx, "destination_amount", None) is not None
+                and getattr(tx, "account_destination", None)
+                and getattr(tx.account_destination, "currency", None)
+            ):
+                return convert_to_base(
+                    tx.destination_amount or Decimal("0"),
+                    tx.account_destination.currency,
+                    base_cur,
+                    user=self.request.user,
+                )
+            return convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
+        def outflow_base(tx):
+            return convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
+
         for tx in qs_all:
-            amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
-            if tx.transaction_type_destination == "Income":
-                income += amt
-            if tx.transaction_type_source == "Expense":
-                expenses += amt
-            if tx.asset_type_destination == "Liquid":
-                liquid += amt
-            elif tx.asset_type_source == "Liquid":
-                liquid -= amt
-            if tx.asset_type_destination == "Non-Liquid":
-                asset += amt
-            elif tx.asset_type_source == "Non-Liquid":
-                asset -= amt
+            tdest = (tx.transaction_type_destination or "").lower()
+            tsrc = (tx.transaction_type_source or "").lower()
+            adest = (tx.asset_type_destination or "").lower()
+            asrc = (tx.asset_type_source or "").lower()
+            ttype = (tx.transaction_type or "").lower()
+            dest_is_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
+            src_is_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
+            if tdest == "income":
+                income += inflow_base(tx)
+            if tsrc == "expense":
+                expenses += outflow_base(tx)
+            # Treat transfer to Outside as moving to non-liquid Asset, and
+            # transfer from Outside as moving from Asset (not Liquid).
+            if ttype == "transfer" and dest_is_outside:
+                asset += inflow_base(tx)
+            elif adest == "liquid":
+                liquid += inflow_base(tx)
+            if ttype == "transfer" and src_is_outside:
+                asset -= outflow_base(tx)
+            elif asrc == "liquid":
+                liquid -= outflow_base(tx)
+            if adest == "non_liquid" and not (ttype == "transfer" and dest_is_outside):
+                asset += inflow_base(tx)
+            elif asrc == "non_liquid" and not (ttype == "transfer" and src_is_outside):
+                asset -= outflow_base(tx)
+
+        # Liabilities from loans and credit cards
+        from liabilities.models import Loan, CreditCard
+        from currencies.models import Currency
+        for loan in Loan.objects.filter(user=self.request.user):
+            cur = Currency.objects.filter(code=loan.currency).first()
+            liabilities += convert_to_base(loan.outstanding_balance or Decimal("0"), cur, base_cur, user=self.request.user)
+        for card in CreditCard.objects.filter(user=self.request.user):
+            cur = Currency.objects.filter(code=card.currency).first()
+            liabilities += convert_to_base(card.outstanding_amount or Decimal("0"), cur, base_cur, user=self.request.user)
 
         aggregates = {
             "income": income,
             "expenses": expenses,
             "liquid": liquid,
             "asset": asset,
-            "net": income - expenses + asset,
+            "liabilities": liabilities,
+            "net": liquid + asset - liabilities,
         }
 
         ctx["totals"] = aggregates
@@ -59,7 +102,7 @@ class DashboardView(TemplateView):
             ("Expenses",  "expenses",  "danger"),
             ("Liquid", "liquid", "warning"),
             ("Asset", "asset", "info"),
-            ("Net Worth", "net",       "primary"),
+            ("Liabilities", "liabilities", "secondary"),
         ]
         ctx["monthly_summary"] = get_monthly_summary(user=self.request.user, currency=base_cur)
         today = timezone.now().date()

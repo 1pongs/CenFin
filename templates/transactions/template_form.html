@@ -224,7 +224,7 @@
     const type = txTypeSel.value;
     const accVal = outsideValues(accSrc);
     const entVal = outsideValues(entSrc);
-    const hideOutside = type === 'transfer' || type === 'income';
+    const hideOutside = type === 'income';
     [accDest, entDest].forEach(sel => {
       if (!sel) return;
       const opt = outsideOption(sel);

@@ -6,14 +6,72 @@ from django.db import migrations, models
 
 
 def _drop_old_entity_column(apps, schema_editor):
-    """Drop stale entity column created by earlier migrations."""
+    """Drop any legacy entity_id FK and column prior to renaming account->entity.
+
+    On some databases, an earlier branch/migration created an `entity_id` column with
+    a foreign key to `entities_entity`. MySQL refuses to drop a column that is still
+    referenced by a foreign key, so we first drop any FK constraints for `entity_id`
+    on the `transactions_categorytag` table, then drop the column if present.
+    """
     CategoryTag = apps.get_model('transactions', 'CategoryTag')
     table = CategoryTag._meta.db_table
     connection = schema_editor.connection
     with connection.cursor() as cursor:
+        # Check if the legacy column exists
         columns = [col.name for col in connection.introspection.get_table_description(cursor, table)]
-        if 'entity_id' in columns:
-            cursor.execute(f'ALTER TABLE {table} DROP COLUMN entity_id')
+        if 'entity_id' not in columns:
+            return
+
+        # Drop any foreign key constraints on entity_id (names can vary between DBs)
+        cursor.execute(
+            """
+            SELECT CONSTRAINT_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+              AND COLUMN_NAME = 'entity_id'
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+            """,
+            [table],
+        )
+        fk_names = [row[0] for row in cursor.fetchall()]
+        for fk in fk_names:
+            cursor.execute(f"ALTER TABLE {table} DROP FOREIGN KEY `{fk}`")
+
+        # Now it is safe to drop the column
+        cursor.execute(f'ALTER TABLE {table} DROP COLUMN entity_id')
+
+
+def _drop_conflicting_unique_indexes(apps, schema_editor):
+    """Drop any pre-existing unique index matching the intended unique_together.
+
+    This avoids duplicate unique indexes when Django creates its own for
+    (user_id, transaction_type, name, entity_id).
+    """
+    CategoryTag = apps.get_model('transactions', 'CategoryTag')
+    table = CategoryTag._meta.db_table
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT INDEX_NAME
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+            GROUP BY INDEX_NAME
+            HAVING MIN(NON_UNIQUE) = 0
+               AND (
+                 GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'user_id,transaction_type,name'
+                 OR
+                 GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'user_id,transaction_type,name,entity_id'
+                 OR GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'user_id,transaction_type,name,account_id'
+               )
+            """,
+            [table],
+        )
+        idx_names = [row[0] for row in cursor.fetchall()]
+        for idx in idx_names:
+            cursor.execute(f"ALTER TABLE {table} DROP INDEX `{idx}`")
 
 class Migration(migrations.Migration):
 
@@ -24,9 +82,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='categorytag',
-            unique_together=set(),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    code=_drop_conflicting_unique_indexes,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterUniqueTogether(
+                    name='categorytag',
+                    unique_together=set(),
+                ),
+            ],
         ),
         migrations.RunPython(
             code=_drop_old_entity_column,
