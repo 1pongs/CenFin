@@ -78,18 +78,15 @@ def get_entity_aggregate_rows(user, disp_code: str):
         .select_related("currency", "account_destination__currency")
     )
     for tx in txs:
-        # Skip only pure internal moves where asset class doesn't change
+        # Skip only pure internal moves where the entity doesn't change and
+        # the asset class remains the same. Using the same account should NOT
+        # suppress entity-level effects when entities differ.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             src_t = (getattr(tx, "asset_type_source", "") or "").lower()
             dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
             if src_t == dst_t:
@@ -160,18 +157,14 @@ def get_entity_non_liquid_totals(user, disp_code: str):
         .select_related("currency", "account_destination__currency")
     )
     for tx in txs:
-        # Skip only pure internal moves where asset class doesn't change
+        # Skip only pure internal moves where the entity doesn't change and
+        # the asset class remains the same.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             src_t = (getattr(tx, "asset_type_source", "") or "").lower()
             dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
             if src_t == dst_t:

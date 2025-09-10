@@ -17,7 +17,7 @@
       <select id="id_entity" class="form-select">
         <option value="">-- select entity --</option>
         {% for e in entities %}
-        <option value="{{ e.id }}">{{ e.entity_name }}</option>
+        <option value="{{ e.id }}" {% if request.GET.entity and request.GET.entity|stringformat:'s' == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -25,20 +25,36 @@
       <label for="id_transaction_type" class="form-label">Type</label>
       <select id="id_transaction_type" class="form-select">
         <option value="">-- select type --</option>
-        <option value="income">Income</option>
-        <option value="expense">Expense</option>
-        <option value="transfer">Transfer</option>
+        <option value="income" {% if request.GET.type == 'income' %}selected{% endif %}>Income</option>
+        <option value="expense" {% if request.GET.type == 'expense' %}selected{% endif %}>Expense</option>
+        <option value="transfer" {% if request.GET.type == 'transfer' %}selected{% endif %}>Transfer</option>
       </select>
     </div>
-    <div class="mb-3">
-      <label for="id_category_names" class="form-label">Categories</label>
-      <input id="id_category_names" class="form-control tag-input" />
-    </div>
+    {# The Tagify input is hidden on the manager page; we use the Add field below #}
   </form>
+
+  <hr>
+  <h5 class="mb-3">Existing Categories</h5>
+  <div class="input-group mb-3">
+    <input id="new-category" class="form-control" placeholder="New category name">
+    <button id="btn-add-category" class="btn btn-primary" type="button">Add</button>
+  </div>
+  <ul id="category-list" class="list-group"></ul>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
 <script src="{% static 'js/category-tags.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const ent = document.getElementById('id_entity');
+    const type = document.getElementById('id_transaction_type');
+    // If both are preselected via query params, trigger change to load tags
+    if (ent && ent.value && type && type.value) {
+      ent.dispatchEvent(new Event('change'));
+      type.dispatchEvent(new Event('change'));
+    }
+  });
+</script>
 {% endblock %}

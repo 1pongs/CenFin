@@ -738,7 +738,7 @@ def category_manager(request):
         Q(user=request.user) | Q(user__isnull=True),
         is_active=True,
         system_hidden=False,
-    )
+    ).exclude(entity_type="outside").exclude(entity_name="Outside")
     return render(
         request,
         "transactions/category_manager.html",

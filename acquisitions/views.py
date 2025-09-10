@@ -197,6 +197,12 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         self.object = get_object_or_404(Acquisition, pk=kwargs["pk"], user=request.user)
         return super().dispatch(request, *args, **kwargs)
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Expose the acquisition object so templates can show Edit/Delete controls
+        ctx["object"] = self.object
+        return ctx
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         if self.request.method in ("GET", "HEAD"):

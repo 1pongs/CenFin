@@ -76,18 +76,15 @@ def get_entity_liquid_nonliquid_totals(user, disp_code: str) -> dict[int, dict[s
     )
 
     for tx in txs:
-        # Skip only pure internal moves where asset class doesn't change
+        # Skip only pure internal moves where the entity doesn't change and the
+        # asset class remains the same. Using the same account should not
+        # suppress entity-level effects when entities differ.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             src_t = (getattr(tx, "asset_type_source", "") or "").lower()
             dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
             if src_t == dst_t:
@@ -164,9 +161,14 @@ def get_entity_liquid_nonliquid_totals(user, disp_code: str) -> dict[int, dict[s
 
 
 def get_entity_balance(entity_id, user=None):
-    """Return balance for a single entity."""
+    """Return balance for a single entity.
+
+    Only include top-level, visible transactions to avoid double counting
+    hidden child legs created for cross-currency transfers.
+    """
     from transactions.models import Transaction
-    qs = Transaction.all_objects.filter(child_transfers__isnull=True)
+    # Use default manager (excludes hidden) and restrict to top-level rows
+    qs = Transaction.objects.filter(parent_transfer__isnull=True)
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
@@ -208,9 +210,14 @@ def get_account_balance(account_id, user=None):
 
 
 def get_account_entity_balance(account_id, entity_id, user=None):
-    """Return balance for an account/entity pair."""
+    """Return balance for an account/entity pair.
+
+    Only include top-level, visible transactions to avoid double counting
+    hidden child legs created for cross-currency transfers.
+    """
     from transactions.models import Transaction
-    qs = Transaction.all_objects.filter(child_transfers__isnull=True)
+    # Use default manager (excludes hidden) and restrict to top-level rows
+    qs = Transaction.objects.filter(parent_transfer__isnull=True)
     if user is not None:
         qs = qs.filter(user=user)
     inflow = (
@@ -295,18 +302,14 @@ def get_monthly_cash_flow(
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
-        # Skip only pure internal moves where asset class doesn't change.
+        # Skip only pure internal moves where the entity doesn't change and
+        # the asset class remains the same.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             src_t = (getattr(tx, "asset_type_source", "") or "").lower()
             dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
             if src_t == dst_t:
@@ -342,18 +345,14 @@ def get_monthly_cash_flow(
         .order_by("date")
     )
     for tx in qs:
-        # Skip only pure internal moves where asset class doesn't change.
+        # Skip only pure internal moves where the entity doesn't change and
+        # the asset class remains the same.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             src_t = (getattr(tx, "asset_type_source", "") or "").lower()
             dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
             if src_t == dst_t:
@@ -670,18 +669,13 @@ def get_monthly_cash_flow_range(
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
-        # Skip internal movements where entity or account is identical
+        # Skip only when the entity does not change (pure internal move)
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             continue
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id
@@ -711,18 +705,13 @@ def get_monthly_cash_flow_range(
         .order_by("date")
     )
     for tx in qs:
-        # Skip internal movements where entity or account is identical
+        # Skip only when the entity does not change (pure internal move)
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
         )
-        same_account = (
-            getattr(tx, "account_source_id", None)
-            and getattr(tx, "account_destination_id", None)
-            and tx.account_source_id == tx.account_destination_id
-        )
-        if same_entity or same_account:
+        if same_entity:
             continue
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id

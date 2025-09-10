@@ -413,6 +413,11 @@ class EntityAccountsView(TemplateView):
                 )
 
             results = list(balances.values())
+            # Hide the special Outside account from the entity Accounts list
+            results = [
+                r for r in results
+                if (r.get("type") != "Outside" and (r.get("name") or "") != "Outside")
+            ]
         
             q = params.get("q", "").strip().lower()
             if q:

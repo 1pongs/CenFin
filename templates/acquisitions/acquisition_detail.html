@@ -12,7 +12,6 @@
     <h1 class="h3 mb-0">{{ object.name }}</h1>
     <div class="d-flex gap-2">
       <a href="{% url 'acquisitions:acquisition-update' object.pk %}" class="btn btn-sm btn-primary">Edit</a>
-      <a href="{% url 'acquisitions:acquisition-delete' object.pk %}" class="btn btn-sm btn-danger">Delete</a>
     </div>
   </div>
   <dl class="row">
