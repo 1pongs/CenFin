@@ -51,6 +51,19 @@ class DashboardView(TemplateView):
             return convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
 
         for tx in qs_all:
+            # Skip internal movements where entity or account is identical
+            same_entity = (
+                getattr(tx, "entity_source_id", None)
+                and getattr(tx, "entity_destination_id", None)
+                and tx.entity_source_id == tx.entity_destination_id
+            )
+            same_account = (
+                getattr(tx, "account_source_id", None)
+                and getattr(tx, "account_destination_id", None)
+                and tx.account_source_id == tx.account_destination_id
+            )
+            if same_entity or same_account:
+                continue
             tdest = (tx.transaction_type_destination or "").lower()
             tsrc = (tx.transaction_type_source or "").lower()
             adest = (tx.asset_type_destination or "").lower()

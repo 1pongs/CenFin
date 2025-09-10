@@ -140,7 +140,8 @@ class Loan(models.Model):
         )
         from transactions.models import Transaction
         if tx_ids:
-            Transaction.objects.filter(id__in=tx_ids).delete()
+            # Include hidden rows when deleting transactions tied to the loan
+            Transaction.all_objects.filter(id__in=tx_ids).delete()
         super().delete(*args, **kwargs)
 
 class LoanPayment(models.Model):

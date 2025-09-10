@@ -230,6 +230,31 @@ class Transaction(models.Model):
     # auto-fill before validation *and* before saving
     def clean(self):
         self._populate_from_template()
+        # Auto-map certain Outside transfers to Buy Acquisition when created
+        # from the generic transaction form or API:
+        # If destination account is Outside and either the entity source
+        # equals the entity destination OR the user selected Transfer,
+        # treat this as a Buy Acquisition so it correctly posts from Liquid
+        # to Non‑Liquid.
+        try:
+            dest_is_outside = bool(
+                getattr(self, "account_destination", None)
+                and (
+                    getattr(self.account_destination, "account_type", None) == "Outside"
+                    or getattr(self.account_destination, "account_name", None) == "Outside"
+                )
+            )
+        except Exception:
+            dest_is_outside = False
+        same_entity = (
+            getattr(self, "entity_source_id", None)
+            and getattr(self, "entity_destination_id", None)
+            and self.entity_source_id == self.entity_destination_id
+        )
+        if dest_is_outside and (same_entity or (self.transaction_type or "").lower() == "transfer"):
+            # Use the label form to satisfy model choices; mapping handles underscores
+            self.transaction_type = "buy acquisition"
+
         self._apply_defaults()
         super().clean()
 

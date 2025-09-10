@@ -75,6 +75,19 @@ def top10_data(request):
     base_cur = get_active_currency(request)
     entries = []
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, 'entity_source_id', None)
+            and getattr(tx, 'entity_destination_id', None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, 'account_source_id', None)
+            and getattr(tx, 'account_destination_id', None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
         amt = convert_to_base(abs(tx.amount or 0), tx.currency, base_cur, user=request.user)
         if tx.transaction_type_destination == "Income":
             entry_type = "income"
@@ -141,6 +154,19 @@ def category_summary(request):
     base_cur = get_active_currency(request)
     totals = {}
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, 'entity_source_id', None)
+            and getattr(tx, 'entity_destination_id', None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, 'account_source_id', None)
+            and getattr(tx, 'account_destination_id', None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
         cats = list(tx.categories.all())
         if not cats:
             continue
@@ -193,16 +219,37 @@ def entity_summary(request):
             q = q.filter(date__lte=end)
         inc = exp = cap_in = cap_out = Decimal('0')
         for tx in q.filter(entity_destination=e, transaction_type_destination__iexact='Income'):
+            # Skip internal same-entity/account movements
+            if (
+                (tx.entity_source_id and tx.entity_destination_id and tx.entity_source_id == tx.entity_destination_id)
+                or (tx.account_source_id and tx.account_destination_id and tx.account_source_id == tx.account_destination_id)
+            ):
+                continue
             val = tx.destination_amount if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, 'currency', None) else tx.amount
             cur = tx.account_destination.currency if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, 'currency', None) else tx.currency
             inc += convert_to_base(val or 0, cur, base_cur, user=request.user)
         for tx in q.filter(entity_source=e, transaction_type_source__iexact='Expense'):
+            if (
+                (tx.entity_source_id and tx.entity_destination_id and tx.entity_source_id == tx.entity_destination_id)
+                or (tx.account_source_id and tx.account_destination_id and tx.account_source_id == tx.account_destination_id)
+            ):
+                continue
             exp += convert_to_base(tx.amount or 0, tx.currency, base_cur, user=request.user)
         for tx in q.filter(entity_destination=e, transaction_type__iexact='transfer'):
+            if (
+                (tx.entity_source_id and tx.entity_destination_id and tx.entity_source_id == tx.entity_destination_id)
+                or (tx.account_source_id and tx.account_destination_id and tx.account_source_id == tx.account_destination_id)
+            ):
+                continue
             val = tx.destination_amount if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, 'currency', None) else tx.amount
             cur = tx.account_destination.currency if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, 'currency', None) else tx.currency
             cap_in += convert_to_base(val or 0, cur, base_cur, user=request.user)
         for tx in q.filter(entity_source=e, transaction_type__iexact='transfer'):
+            if (
+                (tx.entity_source_id and tx.entity_destination_id and tx.entity_source_id == tx.entity_destination_id)
+                or (tx.account_source_id and tx.account_destination_id and tx.account_source_id == tx.account_destination_id)
+            ):
+                continue
             cap_out += convert_to_base(tx.amount or 0, tx.currency, base_cur, user=request.user)
         results.append({
             'entity': e.entity_name,
@@ -282,6 +329,19 @@ def analytics_data(request):
         totals_inc: dict[str, Decimal] = {}
         totals_exp: dict[str, Decimal] = {}
         for tx in qs:
+            # Skip internal movements where entity or account is identical
+            same_entity = (
+                getattr(tx, 'entity_source_id', None)
+                and getattr(tx, 'entity_destination_id', None)
+                and tx.entity_source_id == tx.entity_destination_id
+            )
+            same_account = (
+                getattr(tx, 'account_source_id', None)
+                and getattr(tx, 'account_destination_id', None)
+                and tx.account_source_id == tx.account_destination_id
+            )
+            if same_entity or same_account:
+                continue
             cats = list(tx.categories.all())
             if cat_list:
                 cats = [c for c in cats if c.name in cat_list]
@@ -309,6 +369,19 @@ def analytics_data(request):
     inc: dict[int, Decimal] = {}
     exp: dict[int, Decimal] = {}
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, 'entity_source_id', None)
+            and getattr(tx, 'entity_destination_id', None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, 'account_source_id', None)
+            and getattr(tx, 'account_destination_id', None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
         if (tx.transaction_type_destination or '').lower() == 'income' and tx.entity_destination_id:
             val, cur = amt_in(tx)
             inc[tx.entity_destination_id] = inc.get(tx.entity_destination_id, Decimal('0')) + convert_to_base(val or Decimal('0'), cur, base_cur, user=request.user)

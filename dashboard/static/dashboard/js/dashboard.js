@@ -19,18 +19,19 @@ document.addEventListener('DOMContentLoaded', () => {
       data:{
         labels: [],
         datasets:[
-          {label:'Income', type:'bar', stack:'cash', backgroundColor:'#28a745', data:[]},
-          {label:'Expenses', type:'bar', stack:'cash', backgroundColor:'#dc3545', data:[]},
-          {label:'Liquid', type:'line', yAxisID:'y2', borderWidth:2, tension:0.3, borderColor:'#ffc107', data:[]},
-          {label:'Asset', type:'line', yAxisID:'y2', borderWidth:2, borderDash:[6,3], borderColor:'#17a2b8', data:[]}
+          {label:'Income', type:'bar', backgroundColor:'#28a745', data:[], barPercentage:0.45, categoryPercentage:0.6, maxBarThickness:24, order:1},
+          {label:'Expenses', type:'bar', backgroundColor:'#dc3545', data:[], barPercentage:0.45, categoryPercentage:0.6, maxBarThickness:24, order:1},
+          {label:'Liquid', type:'line', yAxisID:'y2', borderWidth:3, tension:0.3, borderColor:'#ffc107', pointRadius:2, spanGaps:true, order:2},
+          {label:'Asset', type:'line', yAxisID:'y2', borderWidth:3, borderDash:[6,3], borderColor:'#17a2b8', pointRadius:2, spanGaps:true, order:2}
         ]
       },
       options:{
         responsive:true,
         interaction:{mode:'index', intersect:false},
         scales:{
-          y:{ stacked:true, beginAtZero:true },
-          y2:{ position:'right', grid:{drawOnChartArea:false} }
+          x:{ offset:true },
+          y:{ beginAtZero:true, grace:'10%' },
+          y2:{ position:'right', grid:{drawOnChartArea:false}, grace:'10%' }
         },
         plugins:{
           tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label}: ${formatPeso(ctx.parsed.y)}` } }
@@ -205,7 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if(apiKey && payload.datasets && Array.isArray(payload.datasets[apiKey])){
         usedKeys.add(apiKey);
         const values = payload.datasets[apiKey].map(Number);
-        ds.data = ds.label === 'Expenses' ? values.map(v => -v) : values;
+        // Grouped/clustered bars: keep both Income and Expenses positive values
+        ds.data = values;
       } else {
         console.warn(`Missing data for dataset '${ds.label}'`);
         ds.data = Array(flowChart.data.labels.length).fill(0);

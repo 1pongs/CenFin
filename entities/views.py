@@ -160,10 +160,16 @@ class EntityListView(TemplateView):
             qs = qs.order_by("entity_name")
 
         disp_code = getattr(self.request, "display_currency", settings.BASE_CURRENCY)
-        totals = get_entity_aggregate_rows(self.request.user, disp_code) if disp_code else {}
+        from cenfin_proj.utils import get_entity_liquid_nonliquid_totals
+        totals = get_entity_liquid_nonliquid_totals(self.request.user, disp_code) if disp_code else {}
 
         for ent in qs:
-            ent.liquid_total_display = totals.get(ent.pk, Decimal("0"))
+            # Provide both raw and *_display attributes for templates
+            t = totals.get(ent.pk, {"liquid": Decimal("0"), "non_liquid": Decimal("0")})
+            ent.liquid_total = t["liquid"]
+            ent.non_liquid_total = t["non_liquid"]
+            ent.liquid_total_display = t["liquid"]
+            ent.non_liquid_total_display = t["non_liquid"]
 
         ctx["entities"] = qs
         ctx["search"] = search

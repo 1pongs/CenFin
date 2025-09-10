@@ -40,6 +40,12 @@
               {{ ent.liquid_total_display|floatformat:2|intcomma }} {{ display_currency }}
             </span>
           </p>
+          <p class="mb-1">
+            <span class="field-label">Non-liquid:</span>
+            <span class="field-value">
+              {{ ent.non_liquid_total_display|floatformat:2|intcomma }} {{ display_currency }}
+            </span>
+          </p>
         </div>
       {% empty %}
         <p class="text-center">No entities.</p>
@@ -88,4 +94,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 </script>
 {% endblock %}
-

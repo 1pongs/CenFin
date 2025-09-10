@@ -23,6 +23,8 @@ from core.utils.fx import convert
 from .models import Transaction, TransactionTemplate, CategoryTag
 from .forms import TransactionForm, TemplateForm
 from accounts.forms import AccountForm
+from accounts.utils import ensure_remittance_account
+from entities.utils import ensure_remittance_entity
 from entities.forms import EntityForm
 from accounts.models import Account
 from entities.models import Entity
@@ -190,12 +192,15 @@ class TransactionListView(ListView):
             qs = Transaction.objects.filter(user=request.user, id__in=selected_ids, is_reversal=False)
             warned = False
             for txn in qs:
+                # First create reversal entries and hide the original
+                _reverse_and_hide(txn, actor=request.user)
+                # Then, if this was a loan disbursement, remove the associated loan
+                # (after reversal to avoid FK errors on reversed_transaction)
                 if txn.transaction_type == "loan_disbursement":
                     loan = getattr(txn, "loan_disbursement", None)
                     if loan:
                         loan.delete()
                         warned = True
-                _reverse_and_hide(txn, actor=request.user)
             if warned:
                 messages.warning(
                     request,
@@ -214,12 +219,13 @@ def bulk_action(request):
             qs = Transaction.objects.filter(user=request.user, pk__in=selected_ids, is_reversal=False)
             warned = False
             for txn in qs:
+                # Reverse first to ensure original exists when creating reversal rows
+                _reverse_and_hide(txn, actor=request.user)
                 if txn.transaction_type == "loan_disbursement":
                     loan = getattr(txn, "loan_disbursement", None)
                     if loan:
                         loan.delete()
                         warned = True
-                _reverse_and_hide(txn, actor=request.user)
             if warned:
                 messages.warning(
                     request,
@@ -301,7 +307,11 @@ class TransactionCreateView(CreateView):
                 visible_tx.save()
                 form.save_categories(visible_tx)
 
-                # Record debit from the source account in its base currency
+                # Use Remittance entity/account to fully populate child legs
+                rem_ent = ensure_remittance_entity(self.request.user)
+                rem_acc = ensure_remittance_account(self.request.user)
+
+                # Debit: source -> remittance (source currency)
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -309,13 +319,15 @@ class TransactionCreateView(CreateView):
                     transaction_type="transfer",
                     amount=src_amount,
                     account_source=src_acc,
+                    account_destination=rem_acc,
                     entity_source=visible_tx.entity_source,
+                    entity_destination=rem_ent,
                     parent_transfer=visible_tx,
                     currency=src_acc.currency,
                     is_hidden=True,
                 )
 
-                # Record credit to the destination account in its base currency
+                # Credit: remittance -> destination (dest currency)
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -323,7 +335,9 @@ class TransactionCreateView(CreateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
+                    account_source=rem_acc,
                     account_destination=dest_acc,
+                    entity_source=rem_ent,
                     entity_destination=visible_tx.entity_destination,
                     parent_transfer=visible_tx,
                     currency=dest_acc.currency,
@@ -416,7 +430,10 @@ class TransactionUpdateView(UpdateView):
                 visible_tx.save()
                 form.save_categories(visible_tx)
 
-                # Source account debit
+                rem_ent = ensure_remittance_entity(self.request.user)
+                rem_acc = ensure_remittance_account(self.request.user)
+
+                # Source account debit to Remittance (source currency)
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -424,13 +441,15 @@ class TransactionUpdateView(UpdateView):
                     transaction_type="transfer",
                     amount=src_amount,
                     account_source=src_acc,
+                    account_destination=rem_acc,
                     entity_source=visible_tx.entity_source,
+                    entity_destination=rem_ent,
                     parent_transfer=visible_tx,
                     currency=src_acc.currency,
                     is_hidden=True,
                 )
 
-                # Destination account credit
+                # Remittance credit to destination account (dest currency)
                 Transaction.all_objects.create(
                     user=self.request.user,
                     date=visible_tx.date,
@@ -438,7 +457,9 @@ class TransactionUpdateView(UpdateView):
                     transaction_type="transfer",
                     amount=dest_amt,
                     destination_amount=dest_amt,
+                    account_source=rem_acc,
                     account_destination=dest_acc,
+                    entity_source=rem_ent,
                     entity_destination=visible_tx.entity_destination,
                     parent_transfer=visible_tx,
                     currency=dest_acc.currency,

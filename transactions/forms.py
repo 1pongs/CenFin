@@ -205,13 +205,32 @@ class TransactionForm(forms.ModelForm):
 
     def clean_transaction_type(self):
         value = self.cleaned_data.get('transaction_type')
-        disallowed = {'buy acquisition', 'sell acquisition', 'buy property', 'sell property'}
+        disallowed = {'sell acquisition', 'buy property', 'sell property'}
+        # Allow 'buy acquisition' when the destination account is Outside and either
+        # entities match or the selected type is Transfer (we will auto-convert later).
+        if value == 'buy acquisition':
+            try:
+                acc_dest_id = self.data.get('account_destination') or self.initial.get('account_destination')
+                ent_src_id = self.data.get('entity_source') or self.initial.get('entity_source')
+                ent_dst_id = self.data.get('entity_destination') or self.initial.get('entity_destination')
+                from accounts.models import Account
+                acc = Account.objects.filter(pk=acc_dest_id).first() if acc_dest_id else None
+                dest_is_outside = bool(acc and (acc.account_type == 'Outside' or acc.account_name == 'Outside'))
+                same_entity = ent_src_id and ent_dst_id and str(ent_src_id) == str(ent_dst_id)
+                # Permit this value when rule is satisfied
+                if dest_is_outside and (same_entity or (self.data.get('transaction_type') or '').lower() == 'transfer'):
+                    return value
+            except Exception:
+                pass
+            # Otherwise, deny creating buy acquisition directly from this form
+            raise forms.ValidationError(
+                "Buy Acquisition transactions must be created from the Acquisition page unless destination is Outside with same entity/transfer."
+            )
         if value in disallowed:
             if self.instance and self.instance.pk and self.instance.transaction_type == value:
                 return value
-        if value in {'buy acquisition', 'sell acquisition', 'buy property', 'sell property'}:
             raise forms.ValidationError(
-                "Buy/Sell Acquisition transactions must be created from the Acquisition page."
+                "This transaction type must be created from its dedicated page."
             )
         return value
     
@@ -271,6 +290,19 @@ class TransactionForm(forms.ModelForm):
                     "account_destination",
                     "Source and destination accounts must share the same currency.",
                 )
+
+        # Auto-convert to Buy Acquisition when destination is Outside and
+        # either entities are the same or the user selected Transfer.
+        try:
+            acc_dest = cleaned.get('account_destination')
+            ent_src = cleaned.get('entity_source')
+            ent_dst = cleaned.get('entity_destination')
+            dest_is_outside = bool(acc_dest and (acc_dest.account_type == 'Outside' or acc_dest.account_name == 'Outside'))
+            same_entity = bool(ent_src and ent_dst and ent_src.id == ent_dst.id)
+            if dest_is_outside and (same_entity or (tx_type or '').lower() == 'transfer'):
+                cleaned['transaction_type'] = 'buy acquisition'
+        except Exception:
+            pass
 
         return cleaned
 

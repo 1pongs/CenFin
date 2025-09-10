@@ -9,6 +9,7 @@ from django.utils import timezone
 from accounts.models import Account
 from entities.models import Entity
 from utils.currency import convert_to_base
+from utils.currency import convert_amount
 
 
 def get_account_balances():
@@ -50,6 +51,113 @@ def get_entity_balances():
         .annotate(balance=F("inflow") - F("outflow"))
         .order_by("entity_name")
     )
+
+
+def get_entity_liquid_nonliquid_totals(user, disp_code: str) -> dict[int, dict[str, Decimal]]:
+    """Return per-entity liquid and non‑liquid net totals converted to ``disp_code``.
+
+    Rules mirror entities.utils helpers:
+    - Liquid: ignore transfers to/from Outside; add dest when asset_type_destination == 'liquid';
+      subtract src when asset_type_source == 'liquid'.
+    - Non‑liquid: treat transfers to Outside as inflow (capital in); from Outside as outflow (capital out);
+      otherwise add dest when asset_type_destination == 'non_liquid'; subtract src when asset_type_source == 'non_liquid'.
+    - Exclude hidden child legs (parent_transfer__isnull=True).
+    - Skip internal movements where entity or account are identical (no net effect).
+    """
+    from collections import defaultdict
+    from transactions.models import Transaction
+
+    totals_liq: dict[int, Decimal] = defaultdict(Decimal)
+    totals_non: dict[int, Decimal] = defaultdict(Decimal)
+
+    txs = (
+        Transaction.objects.filter(user=user, parent_transfer__isnull=True)
+        .select_related("currency", "account_destination__currency", "account_source", "account_destination")
+    )
+
+    for tx in txs:
+        # Skip if internal to the same entity or same account
+        if (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        ):
+            continue
+        if (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        ):
+            continue
+
+        ttype = (getattr(tx, "transaction_type", "") or "").lower()
+        dest_outside = bool(
+            getattr(tx, "account_destination", None)
+            and (
+                getattr(tx.account_destination, "account_type", None) == "Outside"
+                or getattr(tx.account_destination, "account_name", None) == "Outside"
+            )
+        )
+        src_outside = bool(
+            getattr(tx, "account_source", None)
+            and (
+                getattr(tx.account_source, "account_type", None) == "Outside"
+                or getattr(tx.account_source, "account_name", None) == "Outside"
+            )
+        )
+
+        # Destination-side amount/currency
+        dest_amt = tx.destination_amount if tx.destination_amount is not None else tx.amount
+        dest_code = (
+            tx.account_destination.currency.code
+            if tx.destination_amount is not None
+            and tx.account_destination_id
+            and tx.account_destination
+            and tx.account_destination.currency
+            else (tx.currency.code if tx.currency else None)
+        )
+
+        # Liquid inflow to entity (skip transfers to Outside)
+        if (
+            tx.entity_destination_id
+            and not (ttype == "transfer" and dest_outside)
+            and (getattr(tx, "asset_type_destination", "") or "").lower() == "liquid"
+            and dest_amt is not None
+            and dest_code is not None
+        ):
+            totals_liq[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
+
+        # Liquid outflow from entity (skip transfers from Outside)
+        if (
+            tx.entity_source_id
+            and not (ttype == "transfer" and src_outside)
+            and (getattr(tx, "asset_type_source", "") or "").lower() == "liquid"
+            and tx.amount is not None
+            and tx.currency is not None
+        ):
+            totals_liq[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+
+        # Non‑liquid inflow/outflow
+        if tx.entity_destination_id and dest_amt is not None and dest_code is not None:
+            if ttype == "transfer" and dest_outside:
+                totals_non[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
+            elif (getattr(tx, "asset_type_destination", "") or "").lower() == "non_liquid":
+                totals_non[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
+
+        if tx.entity_source_id and tx.amount is not None and tx.currency is not None:
+            if ttype == "transfer" and src_outside:
+                totals_non[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+            elif (getattr(tx, "asset_type_source", "") or "").lower() == "non_liquid":
+                totals_non[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+
+    # Merge into a single dict per entity id
+    out: dict[int, dict[str, Decimal]] = {}
+    for ent_id in set(list(totals_liq.keys()) + list(totals_non.keys())):
+        out[ent_id] = {
+            "liquid": totals_liq.get(ent_id, Decimal("0")),
+            "non_liquid": totals_non.get(ent_id, Decimal("0")),
+        }
+    return out
 
 
 def get_entity_balance(entity_id, user=None):
@@ -184,26 +292,42 @@ def get_monthly_cash_flow(
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        # Apply side-aware initial balance contributions when filtering by entity
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
-        if ttype == "transfer" and dest_outside:
-            pass
-        elif (tx.asset_type_destination or "").lower() == "liquid":
-            liquid_bal += amt_in(tx)
-        elif ttype == "transfer" and src_outside:
-            pass
-        elif (tx.asset_type_source or "").lower() == "liquid":
-            liquid_bal -= amt
-        if ttype == "transfer" and dest_outside:
-            non_liquid_bal += amt_in(tx)
-        elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            non_liquid_bal += amt_in(tx)
-        elif ttype == "transfer" and src_outside:
-            non_liquid_bal -= amt
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
-            non_liquid_bal -= amt
+        if match_dest:
+            if not (ttype == "transfer" and dest_outside) and (tx.asset_type_destination or "").lower() == "liquid":
+                liquid_bal += amt_in(tx)
+        if match_src:
+            if not (ttype == "transfer" and src_outside) and (tx.asset_type_source or "").lower() == "liquid":
+                liquid_bal -= amt
+        if match_dest:
+            if ttype == "transfer" and dest_outside:
+                non_liquid_bal += amt_in(tx)
+            elif (tx.asset_type_destination or "").lower() == "non_liquid":
+                non_liquid_bal += amt_in(tx)
+        if match_src:
+            if ttype == "transfer" and src_outside:
+                non_liquid_bal -= amt
+            elif (tx.asset_type_source or "").lower() == "non_liquid":
+                non_liquid_bal -= amt
 
     month_map: dict[date, dict] = {}
     qs = (
@@ -212,6 +336,21 @@ def get_monthly_cash_flow(
         .order_by("date")
     )
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         d = date(tx.date.year, tx.date.month, 1)
         row = month_map.setdefault(
             d,
@@ -224,29 +363,27 @@ def get_monthly_cash_flow(
         )
         amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         amt_dest = amt_in(tx)
-        if (tx.transaction_type_destination or "").lower() == "income":
+        if match_dest and (tx.transaction_type_destination or "").lower() == "income":
             row["income"] += amt_dest
-        if (tx.transaction_type_source or "").lower() == "expense":
+        if match_src and (tx.transaction_type_source or "").lower() == "expense":
             row["expenses"] += amt_src
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
-        if ttype == "transfer" and dest_outside:
-            pass
-        elif (tx.asset_type_destination or "").lower() == "liquid":
-            row["liquid_delta"] += amt_dest
-        elif ttype == "transfer" and src_outside:
-            pass
-        elif (tx.asset_type_source or "").lower() == "liquid":
-            row["liquid_delta"] -= amt_src
-        if ttype == "transfer" and dest_outside:
-            row["non_liquid_delta"] += amt_dest
-        elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            row["non_liquid_delta"] += amt_dest
-        elif ttype == "transfer" and src_outside:
-            row["non_liquid_delta"] -= amt_src
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
-            row["non_liquid_delta"] -= amt_src
+        if match_dest:
+            if not (ttype == "transfer" and dest_outside) and (tx.asset_type_destination or "").lower() == "liquid":
+                row["liquid_delta"] += amt_dest
+            if ttype == "transfer" and dest_outside:
+                row["non_liquid_delta"] += amt_dest
+            elif (tx.asset_type_destination or "").lower() == "non_liquid":
+                row["non_liquid_delta"] += amt_dest
+        if match_src:
+            if not (ttype == "transfer" and src_outside) and (tx.asset_type_source or "").lower() == "liquid":
+                row["liquid_delta"] -= amt_src
+            if ttype == "transfer" and src_outside:
+                row["non_liquid_delta"] -= amt_src
+            elif (tx.asset_type_source or "").lower() == "non_liquid":
+                row["non_liquid_delta"] -= amt_src
 
     months_seq = []
     y = start_date.year
@@ -339,15 +476,30 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         amt_dest = _ms_amt_in(tx)
-        if (tx.asset_type_destination or "").lower() == "liquid":
+        if match_dest and (tx.asset_type_destination or "").lower() == "liquid":
             liquid_bal += amt_dest
-        elif (tx.asset_type_source or "").lower() == "liquid":
+        if match_src and (tx.asset_type_source or "").lower() == "liquid":
             liquid_bal -= amt_src
-        if (tx.asset_type_destination or "").lower() == "non_liquid":
+        if match_dest and (tx.asset_type_destination or "").lower() == "non_liquid":
             non_liquid_bal += amt_dest
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
+        if match_src and (tx.asset_type_source or "").lower() == "non_liquid":
             non_liquid_bal -= amt_src
 
     month_map: dict[date, dict] = {}
@@ -357,6 +509,21 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
         .order_by("date")
     )
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         d = date(tx.date.year, tx.date.month, 1)
         row = month_map.setdefault(
             d,
@@ -369,17 +536,17 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
         )
         amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         amt_dest = _ms_amt_in(tx)
-        if (tx.transaction_type_destination or "").lower() == "income":
+        if match_dest and (tx.transaction_type_destination or "").lower() == "income":
             row["income"] += amt_dest
-        if (tx.transaction_type_source or "").lower() == "expense":
+        if match_src and (tx.transaction_type_source or "").lower() == "expense":
             row["expenses"] += amt_src
-        if (tx.asset_type_destination or "").lower() == "liquid":
+        if match_dest and (tx.asset_type_destination or "").lower() == "liquid":
             row["liquid_delta"] += amt_dest
-        elif (tx.asset_type_source or "").lower() == "liquid":
+        if match_src and (tx.asset_type_source or "").lower() == "liquid":
             row["liquid_delta"] -= amt_src
-        if (tx.asset_type_destination or "").lower() == "non_liquid":
+        if match_dest and (tx.asset_type_destination or "").lower() == "non_liquid":
             row["non_liquid_delta"] += amt_dest
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
+        if match_src and (tx.asset_type_source or "").lower() == "non_liquid":
             row["non_liquid_delta"] -= amt_src
 
     months = []
@@ -488,26 +655,39 @@ def get_monthly_cash_flow_range(
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         amt = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
-        if ttype == "transfer" and dest_outside:
-            pass
-        elif (tx.asset_type_destination or "").lower() == "liquid":
-            liquid_bal += _range_amt_in(tx)
-        elif ttype == "transfer" and src_outside:
-            pass
-        elif (tx.asset_type_source or "").lower() == "liquid":
-            liquid_bal -= amt
-        if ttype == "transfer" and dest_outside:
-            non_liquid_bal += _range_amt_in(tx)
-        elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            non_liquid_bal += _range_amt_in(tx)
-        elif ttype == "transfer" and src_outside:
-            non_liquid_bal -= amt
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
-            non_liquid_bal -= amt
+        if match_dest:
+            if not (ttype == "transfer" and dest_outside) and (tx.asset_type_destination or "").lower() == "liquid":
+                liquid_bal += _range_amt_in(tx)
+            if ttype == "transfer" and dest_outside:
+                non_liquid_bal += _range_amt_in(tx)
+            elif (tx.asset_type_destination or "").lower() == "non_liquid":
+                non_liquid_bal += _range_amt_in(tx)
+        if match_src:
+            if not (ttype == "transfer" and src_outside) and (tx.asset_type_source or "").lower() == "liquid":
+                liquid_bal -= amt
+            if ttype == "transfer" and src_outside:
+                non_liquid_bal -= amt
+            elif (tx.asset_type_source or "").lower() == "non_liquid":
+                non_liquid_bal -= amt
 
     month_map: dict[date, dict] = {}
     qs = (
@@ -516,6 +696,21 @@ def get_monthly_cash_flow_range(
         .order_by("date")
     )
     for tx in qs:
+        # Skip internal movements where entity or account is identical
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        same_account = (
+            getattr(tx, "account_source_id", None)
+            and getattr(tx, "account_destination_id", None)
+            and tx.account_source_id == tx.account_destination_id
+        )
+        if same_entity or same_account:
+            continue
+        match_dest = entity_id is None or tx.entity_destination_id == entity_id
+        match_src = entity_id is None or tx.entity_source_id == entity_id
         d = date(tx.date.year, tx.date.month, 1)
         row = month_map.setdefault(
             d,
@@ -528,29 +723,27 @@ def get_monthly_cash_flow_range(
         )
         amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
         amt_dest = _range_amt_in(tx)
-        if (tx.transaction_type_destination or "").lower() == "income":
+        if match_dest and (tx.transaction_type_destination or "").lower() == "income":
             row["income"] += amt_dest
-        if (tx.transaction_type_source or "").lower() == "expense":
+        if match_src and (tx.transaction_type_source or "").lower() == "expense":
             row["expenses"] += amt_src
         ttype = (tx.transaction_type or "").lower()
         dest_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
         src_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
-        if ttype == "transfer" and dest_outside:
-            pass
-        elif (tx.asset_type_destination or "").lower() == "liquid":
-            row["liquid_delta"] += amt_dest
-        elif ttype == "transfer" and src_outside:
-            pass
-        elif (tx.asset_type_source or "").lower() == "liquid":
-            row["liquid_delta"] -= amt_src
-        if ttype == "transfer" and dest_outside:
-            row["non_liquid_delta"] += amt_dest
-        elif (tx.asset_type_destination or "").lower() == "non_liquid":
-            row["non_liquid_delta"] += amt_dest
-        elif ttype == "transfer" and src_outside:
-            row["non_liquid_delta"] -= amt_src
-        elif (tx.asset_type_source or "").lower() == "non_liquid":
-            row["non_liquid_delta"] -= amt_src
+        if match_dest:
+            if not (ttype == "transfer" and dest_outside) and (tx.asset_type_destination or "").lower() == "liquid":
+                row["liquid_delta"] += amt_dest
+            if ttype == "transfer" and dest_outside:
+                row["non_liquid_delta"] += amt_dest
+            elif (tx.asset_type_destination or "").lower() == "non_liquid":
+                row["non_liquid_delta"] += amt_dest
+        if match_src:
+            if not (ttype == "transfer" and src_outside) and (tx.asset_type_source or "").lower() == "liquid":
+                row["liquid_delta"] -= amt_src
+            if ttype == "transfer" and src_outside:
+                row["non_liquid_delta"] -= amt_src
+            elif (tx.asset_type_source or "").lower() == "non_liquid":
+                row["non_liquid_delta"] -= amt_src
 
     summary = []
     for d in months_seq:
