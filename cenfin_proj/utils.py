@@ -76,19 +76,22 @@ def get_entity_liquid_nonliquid_totals(user, disp_code: str) -> dict[int, dict[s
     )
 
     for tx in txs:
-        # Skip if internal to the same entity or same account
-        if (
+        # Skip only pure internal moves where asset class doesn't change
+        same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
             and tx.entity_source_id == tx.entity_destination_id
-        ):
-            continue
-        if (
+        )
+        same_account = (
             getattr(tx, "account_source_id", None)
             and getattr(tx, "account_destination_id", None)
             and tx.account_source_id == tx.account_destination_id
-        ):
-            continue
+        )
+        if same_entity or same_account:
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
 
         ttype = (getattr(tx, "transaction_type", "") or "").lower()
         dest_outside = bool(
@@ -292,7 +295,7 @@ def get_monthly_cash_flow(
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
-        # Skip internal movements where entity or account is identical
+        # Skip only pure internal moves where asset class doesn't change.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -304,7 +307,10 @@ def get_monthly_cash_flow(
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         # Apply side-aware initial balance contributions when filtering by entity
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id
@@ -336,7 +342,7 @@ def get_monthly_cash_flow(
         .order_by("date")
     )
     for tx in qs:
-        # Skip internal movements where entity or account is identical
+        # Skip only pure internal moves where asset class doesn't change.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -348,7 +354,10 @@ def get_monthly_cash_flow(
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id
         d = date(tx.date.year, tx.date.month, 1)
@@ -476,7 +485,7 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
         return convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
 
     for tx in qs_initial:
-        # Skip internal movements where entity or account is identical
+        # Skip only pure internal moves where asset class doesn't change.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -488,7 +497,10 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id
         amt_src = convert_to_base(tx.amount or Decimal("0"), tx.currency, currency, user=user)
@@ -509,7 +521,7 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
         .order_by("date")
     )
     for tx in qs:
-        # Skip internal movements where entity or account is identical
+        # Skip only pure internal moves where asset class doesn't change.
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -521,7 +533,10 @@ def get_monthly_summary(entity_id=None, user=None, currency=None):
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         match_dest = entity_id is None or tx.entity_destination_id == entity_id
         match_src = entity_id is None or tx.entity_source_id == entity_id
         d = date(tx.date.year, tx.date.month, 1)

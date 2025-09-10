@@ -70,11 +70,18 @@
     function updatePair() {
       const acc = accField && accField.value;
       const ent = entField && entField.value;
+      if (!accField || !entField) {
+        // Required fields not mounted yet
+        accWrapper.classList.add('d-none');
+        accBalanceField.textContent = '';
+        return;
+      }
       if (isOutside(accField) || isOutside(entField)) {
         accWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
       } else if (acc && ent) {
-        fetchPairBalance(acc, ent);
+        // Request converted amount with fallback to account balance when pair history is empty
+        fetchPairBalance(`${acc}`, `${ent}`);
       } else {
         accWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
@@ -82,8 +89,12 @@
       checkSaveState();
     }
 
+    // Move the balance summary under the Account Source field
     insertFields();
+    // Try immediately, and again after a short delay to catch late-rendered selects
     updatePair();
+    setTimeout(updatePair, 150);
+    setTimeout(updatePair, 400);
 
     if (accField) accField.addEventListener('change', updatePair);
     if (entField) entField.addEventListener('change', updatePair);

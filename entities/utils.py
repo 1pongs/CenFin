@@ -78,7 +78,7 @@ def get_entity_aggregate_rows(user, disp_code: str):
         .select_related("currency", "account_destination__currency")
     )
     for tx in txs:
-        # Skip when source and destination are the same entity or same account
+        # Skip only pure internal moves where asset class doesn't change
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -90,7 +90,10 @@ def get_entity_aggregate_rows(user, disp_code: str):
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         ttype = (getattr(tx, "transaction_type", "") or "").lower()
         dest_outside = bool(
             getattr(tx, "account_destination", None)
@@ -157,7 +160,7 @@ def get_entity_non_liquid_totals(user, disp_code: str):
         .select_related("currency", "account_destination__currency")
     )
     for tx in txs:
-        # Skip when source and destination are the same entity or same account
+        # Skip only pure internal moves where asset class doesn't change
         same_entity = (
             getattr(tx, "entity_source_id", None)
             and getattr(tx, "entity_destination_id", None)
@@ -169,7 +172,10 @@ def get_entity_non_liquid_totals(user, disp_code: str):
             and tx.account_source_id == tx.account_destination_id
         )
         if same_entity or same_account:
-            continue
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
         ttype = (getattr(tx, "transaction_type", "") or "").lower()
         dest_outside = bool(
             getattr(tx, "account_destination", None)

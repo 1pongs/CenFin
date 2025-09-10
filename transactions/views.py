@@ -2,6 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, V
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from decimal import Decimal
 
 from django.http import HttpResponseRedirect, JsonResponse, QueryDict
 from django.urls import reverse_lazy, reverse
@@ -608,7 +609,25 @@ def pair_balance(request):
         if active and active.code != base_code:
             balance = convert_amount(balance, base_code, active.code)
             cur_code = active.code
-    return JsonResponse({"balance": str(balance), "currency": cur_code})
+    # Optional fallback: if pair balance is zero or negative (no or net-outflow
+    # entity-specific ledger), show the account's current balance so the user
+    # sees currently available funds in the selected account.
+    try:
+        enable_fallback = request.GET.get("fallback", "1") != "0"
+    except Exception:
+        enable_fallback = True
+    pair_bal = Decimal(str(balance or 0))
+    if enable_fallback and pair_bal <= 0:
+        acct_bal = get_account_balance(account_id, user=request.user)
+        acct_code = base_code
+        if request.GET.get("convert"):
+            active = get_active_currency(request)
+            if active and active.code != base_code:
+                acct_bal = convert_amount(acct_bal, base_code, active.code)
+                acct_code = active.code
+        return JsonResponse({"balance": str(acct_bal), "currency": acct_code, "fallback": True})
+
+    return JsonResponse({"balance": str(balance), "currency": cur_code, "fallback": False})
 
 
 @require_GET

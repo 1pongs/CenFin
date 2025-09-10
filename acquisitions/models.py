@@ -30,6 +30,9 @@ class Acquisition(models.Model):
     ]
     
     name = models.CharField(max_length=255)
+    # Optional provider/source name for the acquisition (kept nullable for
+    # compatibility with existing databases that may require a value).
+    provider = models.CharField(max_length=255, blank=True, null=True, default=None)
     category = models.CharField(
         max_length=20, choices=CATEGORY_CHOICES, default=CATEGORY_PRODUCT
     )

@@ -116,10 +116,30 @@ class AcquisitionForm(forms.Form):
         if acc and acc.account_name != "Outside":
             if acc.current_balance() < amt:
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
-
+        # Entity-side balance check should not block when the specific
+        # account has sufficient funds but the historical ledger was not
+        # tagged to the entity (common when migrating or backfilling).
+        # Prefer the account+entity pair balance; fall back to allowing the
+        # operation when the account itself covers the amount.
         if ent and ent.entity_name != "Outside":
-            if ent.current_balance() < amt:
-                self.add_error("entity_source", f"Insufficient funds in {ent}.")
+            try:
+                from cenfin_proj.utils import get_account_entity_balance
+                pair_bal = Decimal("0")
+                if acc:
+                    pair_bal = get_account_entity_balance(acc.id, ent.id)
+                ent_liquid = ent.current_balance()
+                # If the pair or entity has enough funds, proceed. Otherwise,
+                # only raise when the account itself cannot cover the amount.
+                if pair_bal >= amt or ent_liquid >= amt:
+                    pass
+                else:
+                    if not acc or acc.current_balance() < amt:
+                        self.add_error("entity_source", f"Insufficient funds in {ent}.")
+            except Exception:
+                # On any error, preserve original behaviour but still allow when
+                # the account has enough to proceed.
+                if not acc or acc.current_balance() < amt:
+                    self.add_error("entity_source", f"Insufficient funds in {ent}.")
 
         if self.locked_entity is not None:
             cleaned["entity_destination"] = self.locked_entity

@@ -167,6 +167,7 @@ class AcquisitionCreateView(FormView):
             category=data["category"],
             purchase_tx=tx,
             status="active",
+            provider=data.get("name") or "",
             user=self.request.user,
         )
         return super().form_valid(form)
