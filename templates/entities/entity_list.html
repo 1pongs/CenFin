@@ -14,6 +14,20 @@
     <i class="bi bi-wallet2 me-1"></i>Accounts
   </a>
 </div>
+{% if undo_restore_url %}
+  <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
+    <div>
+      {% if undo_entity_name %}
+        Entity "{{ undo_entity_name }}" deleted.
+      {% else %}
+        Entity deleted.
+      {% endif %}
+    </div>
+    <div>
+      <a href="{{ undo_restore_url }}" class="btn btn-sm btn-success">Undo</a>
+    </div>
+  </div>
+{% endif %}
 <div class="row">
   <div class="col-lg-8 mb-4">
     <ul class="nav nav-tabs mb-3">
@@ -57,6 +71,9 @@
     <div class="p-3 sidebar rounded">
       <a href="{% url 'entities:create' %}" class="btn btn-success w-100 mb-3">
         <i class="bi bi-plus-lg me-1"></i>Add
+      </a>
+      <a href="{% url 'entities:archived' %}" class="btn btn-outline-secondary w-100 mb-3">
+        <i class="bi bi-archive me-1"></i>View Archived
       </a>
       <form id="filter-form" method="get">
         <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">

@@ -43,9 +43,10 @@ class AcquisitionListView(ListView):
     context_object_name = "acquisitions"
 
     def get_queryset(self):
+        show_archived = self.request.GET.get("archived") in {"1", "true", "True"}
         qs = (
             Acquisition.objects.select_related("purchase_tx", "sell_tx")
-            .filter(user=self.request.user, is_deleted=False)
+            .filter(user=self.request.user, is_deleted=show_archived)
         )
 
         cat = self.request.GET.get("category")
@@ -111,6 +112,18 @@ class AcquisitionListView(ListView):
             .exclude(entity_name="Outside")
             .order_by("entity_name")
         )
+        ctx["is_archived_view"] = self.request.GET.get("archived") in {"1", "true", "True"}
+        # Inline undo banner (after delete)
+        undo_acq_id = self.request.session.pop("undo_acq_id", None)
+        undo_acq_name = self.request.session.pop("undo_acq_name", None)
+        undo_restore_url = None
+        if undo_acq_id is not None:
+            try:
+                undo_restore_url = reverse("acquisitions:acquisition-restore", args=[undo_acq_id])
+            except Exception:
+                undo_restore_url = None
+        ctx["undo_acq_name"] = undo_acq_name
+        ctx["undo_restore_url"] = undo_restore_url
         return ctx
 
 
@@ -271,7 +284,9 @@ class AcquisitionDeleteView(DeleteView):
         obj = self.get_object()
         obj.delete()  # soft delete
         undo_url = reverse("acquisitions:acquisition-restore", args=[obj.pk])
-        messages.success(request, "Acquisition deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        messages.success(request, "Acquisition deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        request.session["undo_acq_id"] = obj.pk
+        request.session["undo_acq_name"] = obj.name
         return redirect(self.success_url)
 
 class AcquisitionRestoreView(TemplateView):

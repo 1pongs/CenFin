@@ -31,6 +31,10 @@ class AccountQuerySet(models.QuerySet):
         inflow_sq = (
             Transaction.all_objects.filter(
                 account_destination_id=OuterRef("pk"),
+                user_id=OuterRef("user_id"),
+                is_deleted=False,
+                is_hidden=False,
+                is_reversal=False,
                 child_transfers__isnull=True,
             )
             .annotate(
@@ -51,6 +55,10 @@ class AccountQuerySet(models.QuerySet):
         outflow_sq = (
             Transaction.all_objects.filter(
                 account_source_id=OuterRef("pk"),
+                user_id=OuterRef("user_id"),
+                is_deleted=False,
+                is_hidden=False,
+                is_reversal=False,
                 child_transfers__isnull=True,  # exclude parent transfers
             )
             .values("account_source_id")

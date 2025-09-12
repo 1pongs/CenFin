@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addInput = document.getElementById('new-category');
   const addBtn = document.getElementById('btn-add-category');
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+  const bannerHost = document.getElementById('inline-banner');
 
   // Use trailing slash to avoid 301 redirects that break PATCH/DELETE
   const TAGS_BASE = '/transactions/tags/';
@@ -92,6 +93,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function showUndoBanner(message, undoUrl){
+    if (!bannerHost) return;
+    bannerHost.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'alert alert-success d-flex justify-content-between align-items-center';
+    const text = document.createElement('div');
+    text.textContent = message;
+    const actions = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-sm btn-success';
+    btn.textContent = 'Undo';
+    btn.addEventListener('click', async () => {
+      const resp = await fetch(undoUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf } });
+      if (resp.ok) {
+        await loadTags();
+        bannerHost.innerHTML = '';
+      }
+    });
+    actions.appendChild(btn);
+    wrapper.appendChild(text);
+    wrapper.appendChild(actions);
+    bannerHost.appendChild(wrapper);
+  }
+
   if (tagify) tagify.on('focus', loadTags);
   txTypeSel && txTypeSel.addEventListener('change', () => {
     if (tagify) tagify.removeAllTags();
@@ -174,7 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = li.dataset.id;
       if (!confirm('Delete this category?')) return;
       const resp = await fetch(`${TAGS_BASE}${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': csrf} });
-      if (resp.ok) loadTags();
+      if (resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        await loadTags();
+        if (data.undo_url) {
+          showUndoBanner('Category deleted.', data.undo_url);
+        }
+      }
       return;
     }
     if (ev.target.classList.contains('edit-tag')) {
@@ -202,7 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {'X-CSRFToken': csrf}
       });
       if (resp.ok) {
+        const data = await resp.json().catch(() => ({}));
         await loadTags();
+        if (data.undo_url) {
+          showUndoBanner('Category deleted.', data.undo_url);
+        }
       }
     }
   });

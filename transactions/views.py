@@ -134,12 +134,22 @@ class TransactionListView(ListView):
     context_object_name = "transactions"
 
     def get_queryset(self):
-        qs = (
-            super()
-            .get_queryset()
-            .filter(user=self.request.user)
-            .select_related("currency")
-        )
+        params = self.request.GET
+        archived = params.get("archived") in {"1", "true", "True"}
+        if archived:
+            qs = (
+                Transaction.all_objects
+                .filter(user=self.request.user)
+                .select_related("currency")
+                .filter(is_hidden=True, parent_transfer__isnull=True)
+            )
+        else:
+            qs = (
+                super()
+                .get_queryset()
+                .filter(user=self.request.user)
+                .select_related("currency")
+            )
         # Do not display reversal entries in the list
         qs = qs.filter(is_reversal=False).exclude(description__istartswith="reversal of")
         params = self.request.GET
@@ -205,6 +215,7 @@ class TransactionListView(ListView):
         params = self.request.GET
         ctx["search"] = params.get("q", "")
         ctx["sort"] = params.get("sort", "-date")
+        ctx["is_archived_view"] = params.get("archived") in {"1", "true", "True"}
 
         # Back link to the entity accounts page when filtered by a specific
         # account/entity pair.
@@ -216,6 +227,17 @@ class TransactionListView(ListView):
                 ctx["back_url"] = reverse("entities:accounts", args=[ent_id])
             except Exception:
                 pass
+        # Inline undo banner after delete
+        undo_txn_id = self.request.session.pop("undo_txn_id", None)
+        undo_txn_desc = self.request.session.pop("undo_txn_desc", None)
+        undo_restore_url = None
+        if undo_txn_id is not None:
+            try:
+                undo_restore_url = reverse("transactions:transaction_undo_delete", args=[undo_txn_id])
+            except Exception:
+                undo_restore_url = None
+        ctx["undo_txn_desc"] = undo_txn_desc
+        ctx["undo_restore_url"] = undo_restore_url
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -241,6 +263,11 @@ class TransactionListView(ListView):
                     "Deleting a loan disbursement also removes the associated loan.",
                 )
             messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
+            # Persist inline undo for last processed txn (best-effort)
+            last_txn = qs.order_by("-id").first()
+            if last_txn:
+                request.session["undo_txn_id"] = last_txn.pk
+                request.session["undo_txn_desc"] = last_txn.description
 
         return redirect(reverse("transactions:transaction_list"))
         
@@ -266,6 +293,10 @@ def bulk_action(request):
                     "Deleting a loan disbursement also removes the associated loan.",
                 )
             messages.success(request, f"{len(selected_ids)} transaction(s) deleted.")
+            last_txn = qs.order_by("-id").first()
+            if last_txn:
+                request.session["undo_txn_id"] = last_txn.pk
+                request.session["undo_txn_desc"] = last_txn.description
         return redirect(reverse('transactions:transaction_list'))
             
     return redirect(reverse('transactions:transaction_list'))
@@ -540,7 +571,9 @@ def transaction_delete(request, pk):
             )
     _reverse_and_hide(txn, actor=request.user)
     undo_url = reverse('transactions:transaction_undo_delete', args=[txn.pk])
-    messages.success(request, "Transaction deleted. "+ f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+    messages.success(request, "Transaction deleted. "+ f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+    request.session["undo_txn_id"] = txn.pk
+    request.session["undo_txn_desc"] = txn.description
     return redirect(reverse('transactions:transaction_list'))
 
 # ------------- templates --------------------

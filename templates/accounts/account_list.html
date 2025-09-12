@@ -19,6 +19,9 @@
       <a href="{% url 'accounts:create' %}" class="btn btn-success w-100 mb-3">
         <i class="bi bi-plus-lg me-1"></i>Add
       </a>
+      <a href="{% url 'accounts:archived' %}" class="btn btn-outline-secondary w-100 mb-3">
+        <i class="bi bi-archive me-1"></i>View Archived
+      </a>
       <form method="get">
         <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">
         <select name="sort" class="form-select mb-2" onchange="this.form.submit()">
@@ -31,6 +34,20 @@
     </div>
   </aside>
   <div class="col-md-9">
+    {% if undo_restore_url %}
+      <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
+        <div>
+          {% if undo_account_name %}
+            Account "{{ undo_account_name }}" deleted.
+          {% else %}
+            Account deleted.
+          {% endif %}
+        </div>
+        <div>
+          <a href="{{ undo_restore_url }}" class="btn btn-sm btn-success">Undo</a>
+        </div>
+      </div>
+    {% endif %}
     {% display total_balance base_currency as disp_total %}
     <div class="text-end fw-bold mb-2">
       Total Balance:

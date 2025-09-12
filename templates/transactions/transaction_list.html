@@ -23,7 +23,31 @@
 {% if back_url %}
   {% include "includes/back_button.html" with url=back_url %}
 {% endif %}
-<h1 class="mb-4">Transactions</h1>
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="mb-0">Transactions</h1>
+  <div class="d-flex align-items-center gap-2">
+    {% if is_archived_view %}
+      <a href="{% url 'transactions:transaction_list' %}" class="btn btn-outline-secondary">Back to Active</a>
+    {% else %}
+      <a href="{% url 'transactions:transaction_list' %}?archived=1" class="btn btn-outline-secondary">View Archived</a>
+    {% endif %}
+  </div>
+  
+</div>
+{% if undo_restore_url %}
+  <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
+    <div>
+      {% if undo_txn_desc %}
+        Transaction "{{ undo_txn_desc }}" deleted.
+      {% else %}
+        Transaction deleted.
+      {% endif %}
+    </div>
+    <div>
+      <a href="{{ undo_restore_url }}" class="btn btn-sm btn-success">Undo</a>
+    </div>
+  </div>
+{% endif %}
 <div class="container-lg py-1">
   <!-- ================= TOP TOOLBAR ================= -->
   <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">

@@ -7,7 +7,30 @@
 {% endblock %}
 {% block content %}
 
-<h1 class="mb-4">Acquisitions</h1>
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="mb-0">Acquisitions</h1>
+  <div>
+    {% if is_archived_view %}
+      <a href="{% url 'acquisitions:acquisition-list' %}" class="btn btn-outline-secondary">Back to Active</a>
+    {% else %}
+      <a href="{% url 'acquisitions:acquisition-list' %}?archived=1{% if current_category %}&category={{ current_category }}{% endif %}" class="btn btn-outline-secondary">View Archived</a>
+    {% endif %}
+  </div>
+</div>
+{% if undo_restore_url %}
+  <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
+    <div>
+      {% if undo_acq_name %}
+        Acquisition "{{ undo_acq_name }}" deleted.
+      {% else %}
+        Acquisition deleted.
+      {% endif %}
+    </div>
+    <div>
+      <a href="{{ undo_restore_url }}" class="btn btn-sm btn-success">Undo</a>
+    </div>
+  </div>
+{% endif %}
 <div class="row">
   <div class="col-lg-8 mb-4">
     <ul class="nav nav-tabs mb-3">

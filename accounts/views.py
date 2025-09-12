@@ -53,12 +53,24 @@ def account_list(request):
 
         total_balance = qs.aggregate(total=Sum("net_total"))["total"] or Decimal("0.00")
 
+    # Inline undo banner context (after delete)
+    undo_account_id = request.session.pop("undo_account_id", None)
+    undo_account_name = request.session.pop("undo_account_name", None)
+    undo_restore_url = None
+    if undo_account_id is not None:
+        try:
+            undo_restore_url = reverse("accounts:restore", args=[undo_account_id])
+        except Exception:
+            undo_restore_url = None
+
     context = {
         "accounts_converted": converted,
         "search": search,
         "sort": sort,
         "total_balance": total_balance,
         "base_currency": base_cur,
+        "undo_account_name": undo_account_name,
+        "undo_restore_url": undo_restore_url,
     }
     return render(request, "accounts/account_list.html", context)
 
@@ -118,7 +130,11 @@ class AccountDeleteView(DeleteView):
         obj = self.get_object()
         obj.delete()
         restore_url = reverse("accounts:restore", args=[obj.pk])
-        messages.success(request, "Account deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        # Toast with Undo link (quick feedback)
+        messages.success(request, "Account deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        # Also set session to show a persistent inline banner on the list page
+        request.session["undo_account_id"] = obj.pk
+        request.session["undo_account_name"] = obj.account_name
         return redirect(self.success_url)
 
 

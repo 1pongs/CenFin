@@ -184,6 +184,18 @@ class EntityListView(TemplateView):
             if val != "outside"
         ]
         ctx["current_type"] = fund_type
+
+        # Inline undo banner after delete
+        undo_entity_id = self.request.session.pop("undo_entity_id", None)
+        undo_entity_name = self.request.session.pop("undo_entity_name", None)
+        undo_restore_url = None
+        if undo_entity_id is not None:
+            try:
+                undo_restore_url = reverse("entities:restore", args=[undo_entity_id])
+            except Exception:
+                undo_restore_url = None
+        ctx["undo_entity_name"] = undo_entity_name
+        ctx["undo_restore_url"] = undo_restore_url
         return ctx
 
 
@@ -322,7 +334,10 @@ class EntityDeleteView(DeleteView):
         obj = self.get_object()
         obj.delete()
         restore_url = reverse("entities:restore", args=[obj.pk])
-        messages.success(request, "Entity deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        messages.success(request, "Entity deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        # Persist inline banner on list
+        request.session["undo_entity_id"] = obj.pk
+        request.session["undo_entity_name"] = obj.entity_name
         return redirect(self.success_url)
 
 

@@ -30,6 +30,7 @@ class LiabilityListView(TemplateView):
 
     def get_queryset(self, tab):
         params = self.request.GET
+        archived = params.get("archived") in {"1", "true", "True"}
         search = params.get("q", "").strip()
         status = params.get("status", "")
         start = params.get("start", "")
@@ -39,7 +40,7 @@ class LiabilityListView(TemplateView):
         currency = params.get("currency")
 
         if tab == "loans":
-            qs = Loan.objects.filter(user=self.request.user, is_deleted=False)
+            qs = Loan.objects.filter(user=self.request.user, is_deleted=archived)
             if search:
                 qs = qs.filter(lender__name__icontains=search)
             if status == "active":
@@ -69,7 +70,7 @@ class LiabilityListView(TemplateView):
             else:
                 qs = qs.order_by("lender__name")
         else:
-            qs = CreditCard.objects.filter(user=self.request.user, is_deleted=False)
+            qs = CreditCard.objects.filter(user=self.request.user, is_deleted=archived)
             if search:
                 qs = qs.filter(card_name__icontains=search)
             if status == "active":
@@ -122,6 +123,23 @@ class LiabilityListView(TemplateView):
             "currency_code": self.request.GET.get("currency", ""),
             "entities": Lender.objects.all().order_by("name"),
         })
+        ctx["is_archived_view"] = self.request.GET.get("archived") in {"1", "true", "True"}
+        # Inline undo banner after delete (credit/loans)
+        undo_kind = self.request.session.pop("undo_liability_kind", None)  # 'credit' or 'loan'
+        undo_obj_name = self.request.session.pop("undo_liability_name", None)
+        undo_obj_id = self.request.session.pop("undo_liability_id", None)
+        undo_restore_url = None
+        if undo_obj_id is not None and undo_kind in {"credit", "loan"}:
+            try:
+                if undo_kind == "credit":
+                    undo_restore_url = reverse("liabilities:credit-restore", args=[undo_obj_id])
+                else:
+                    undo_restore_url = reverse("liabilities:loan-restore", args=[undo_obj_id])
+            except Exception:
+                undo_restore_url = None
+        ctx["undo_liability_kind"] = undo_kind
+        ctx["undo_restore_url"] = undo_restore_url
+        ctx["undo_liability_name"] = undo_obj_name
         for loan in ctx.get("loans", []):
             # Format numeric amounts with thousands separators and 2 decimals
             try:
@@ -253,7 +271,10 @@ class CreditCardDeleteView(DeleteView):
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         undo_url = reverse("liabilities:credit-restore", args=[obj.pk])
-        messages.success(request, "Credit card deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        messages.success(request, "Credit card deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        request.session["undo_liability_kind"] = "credit"
+        request.session["undo_liability_id"] = obj.pk
+        request.session["undo_liability_name"] = obj.card_name
         return redirect(self.success_url)
 
 class CreditCardRestoreView(View):
@@ -315,7 +336,10 @@ class LoanDeleteView(DeleteView):
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         undo_url = reverse("liabilities:loan-restore", args=[obj.pk])
-        messages.success(request, "Loan deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        messages.success(request, "Loan deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        request.session["undo_liability_kind"] = "loan"
+        request.session["undo_liability_id"] = obj.pk
+        request.session["undo_liability_name"] = getattr(obj.lender, "name", "Loan")
         return redirect(self.success_url)
 
 class LoanRestoreView(View):
