@@ -47,6 +47,8 @@ class Loan(models.Model):
     maturity_date = models.DateField(blank=True, null=True)
     monthly_payment = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     outstanding_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    # Tracks any amount paid beyond principal. Accumulates overpayments as interest.
+    interest_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
     disbursement_tx = models.OneToOneField(
         Transaction,
         on_delete=models.SET_NULL,
@@ -56,6 +58,7 @@ class Loan(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         new = self._state.adding
@@ -183,6 +186,7 @@ class CreditCard(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.card_name} ({self.issuer})"

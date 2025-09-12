@@ -1,4 +1,5 @@
 from django.db import models
+import re
 from django.utils import timezone
 from django.conf import settings
 from decimal import Decimal
@@ -26,6 +27,8 @@ class TransactionTemplate(models.Model):
 class CategoryTag(models.Model):
     """User-defined tag for categorizing transactions."""
     name = models.CharField(max_length=60)
+    # Normalized key for case/plural-insensitive uniqueness (lowercased, basic singular)
+    name_key = models.CharField(max_length=80, editable=False, db_index=True, default="")
     transaction_type = models.CharField(
         max_length=20, choices=TXN_TYPE_CHOICES, blank=True, null=True
     )
@@ -44,28 +47,56 @@ class CategoryTag(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "transaction_type", "name", "entity")
+        # Enforce uniqueness on normalized name within the user/type/entity scope
+        unique_together = ("user", "transaction_type", "name_key", "entity")
 
     def __str__(self):
         return self.name
 
+    @staticmethod
+    def _normalize_name(value: str) -> str:
+        """Normalize a tag name for uniqueness.
+
+        - Lowercase
+        - Trim spaces
+        - Collapse internal whitespace to single space
+        - Very light singularization: drop a single trailing 's' when length > 4
+        - Remove non-alphanumeric characters except space, then remove spaces
+
+        This intentionally keeps logic simple to cover cases like
+        "Capital" vs "capital" vs "Capitals" mapping to the same key.
+        """
+        if not value:
+            return ""
+        v = " ".join((value or "").strip().lower().split())
+        if len(v) > 4 and v.endswith("s") and not v.endswith("ss"):
+            v = v[:-1]
+        # keep alphanumerics only to avoid differences like hyphens/underscores
+        v = re.sub(r"[^a-z0-9]+", "", v)
+        return v
+
     def clean(self):
         super().clean()
-        if self.entity_id is None:
-            exists = (
-                self.__class__.objects.filter(
-                    user=self.user,
-                    transaction_type=self.transaction_type,
-                    name=self.name,
-                    entity__isnull=True,
-                )
-                .exclude(pk=self.pk)
-                .exists()
+        # Always compute the normalized key
+        self.name_key = self._normalize_name(self.name)
+        # Enforce uniqueness for both global and entity-scoped tags using the key
+        exists = (
+            self.__class__.objects.filter(
+                user=self.user,
+                transaction_type=self.transaction_type,
+                name_key=self.name_key,
+                entity_id=self.entity_id,
             )
-            if exists:
-                raise ValidationError(
-                    "Global category with this name already exists."
-                )
+            .exclude(pk=self.pk)
+            .exists()
+        )
+        if exists:
+            raise ValidationError("Category with an equivalent name already exists.")
+
+    def save(self, *args, **kwargs):
+        # Ensure name_key is set before saving
+        self.name_key = self._normalize_name(self.name)
+        return super().save(*args, **kwargs)
                 
 class TransactionQuerySet(models.QuerySet):
     def visible(self):

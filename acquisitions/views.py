@@ -45,7 +45,7 @@ class AcquisitionListView(ListView):
     def get_queryset(self):
         qs = (
             Acquisition.objects.select_related("purchase_tx", "sell_tx")
-            .filter(user=self.request.user)
+            .filter(user=self.request.user, is_deleted=False)
         )
 
         cat = self.request.GET.get("category")
@@ -268,8 +268,19 @@ class AcquisitionDeleteView(DeleteView):
         return super().get_queryset().filter(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, "Acquisition deleted.")
-        return super().delete(request, *args, **kwargs)
+        obj = self.get_object()
+        obj.delete()  # soft delete
+        undo_url = reverse("acquisitions:acquisition-restore", args=[obj.pk])
+        messages.success(request, "Acquisition deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        return redirect(self.success_url)
+
+class AcquisitionRestoreView(TemplateView):
+    def get(self, request, pk):
+        obj = get_object_or_404(Acquisition, pk=pk, user=request.user, is_deleted=True)
+        obj.is_deleted = False
+        obj.save(update_fields=["is_deleted"])
+        messages.success(request, "Acquisition restored.")
+        return redirect(reverse("acquisitions:acquisition-list"))
 
 
 def sell_acquisition(request, pk):

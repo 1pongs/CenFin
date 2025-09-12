@@ -100,18 +100,11 @@
                     <label class="form-label small mb-1">Entities</label>
                     <div class="dropdown w-100">
                       <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="entitiesDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                        Select entities
+                        Select entity
                       </button>
                       <div class="dropdown-menu w-100 p-2" aria-labelledby="entitiesDropdownBtn" style="max-height:260px; overflow:auto;">
-                        <div class="d-flex gap-2 mb-2">
-                          <button type="button" class="btn btn-light btn-sm" id="selectAllEntities">All</button>
-                          <button type="button" class="btn btn-light btn-sm" id="clearEntities">None</button>
-                        </div>
                         {% for e in entities %}
-                          <div class="form-check">
-                            <input class="form-check-input entity-option" type="checkbox" value="{{ e.id }}" id="ent-{{ e.id }}"{% if e.id in selected_entities %} checked{% endif %}>
-                            <label class="form-check-label" for="ent-{{ e.id }}">{{ e.entity_name }}</label>
-                          </div>
+                          <button type="button" class="dropdown-item entity-option" data-id="{{ e.id }}">{{ e.entity_name }}</button>
                         {% endfor %}
                       </div>
                     </div>
@@ -119,20 +112,11 @@
                   <div class="col-sm-6">
                     <label class="form-label small mb-1">Categories</label>
                     <div class="dropdown w-100">
-                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="categoriesDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                        Select categories (optional)
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="categoriesDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+                        Select entities first
                       </button>
                       <div class="dropdown-menu w-100 p-2" aria-labelledby="categoriesDropdownBtn" style="max-height:260px; overflow:auto;">
-                        <div class="d-flex gap-2 mb-2">
-                          <button type="button" class="btn btn-light btn-sm" id="selectAllCategories">All</button>
-                          <button type="button" class="btn btn-light btn-sm" id="clearCategories">None</button>
-                        </div>
-                        {% for name in categories %}
-                          <div class="form-check">
-                            <input class="form-check-input category-option" type="checkbox" value="{{ name }}" id="cat-{{ forloop.counter }}">
-                            <label class="form-check-label" for="cat-{{ forloop.counter }}">{{ name }}</label>
-                          </div>
-                        {% endfor %}
+                        <div id="categoriesOptions" class="d-flex flex-column gap-1"></div>
                       </div>
                     </div>
                   </div>
@@ -161,5 +145,5 @@
   <script src="{% static 'dashboard/js/chart.min.js' %}"></script>
   {{ monthly_summary|json_script:"initial-flow" }}
   {{ top10_big_tickets|json_script:"top-big-data" }}
-  <script src="{% static 'dashboard/js/dashboard.js' %}?v=2"></script>
+  <script src="{% static 'dashboard/js/dashboard.js' %}?v=3"></script>
 {% endblock %}

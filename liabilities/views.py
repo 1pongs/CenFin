@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
+from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, View
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
@@ -39,7 +39,7 @@ class LiabilityListView(TemplateView):
         currency = params.get("currency")
 
         if tab == "loans":
-            qs = Loan.objects.filter(user=self.request.user)
+            qs = Loan.objects.filter(user=self.request.user, is_deleted=False)
             if search:
                 qs = qs.filter(lender__name__icontains=search)
             if status == "active":
@@ -69,7 +69,7 @@ class LiabilityListView(TemplateView):
             else:
                 qs = qs.order_by("lender__name")
         else:
-            qs = CreditCard.objects.filter(user=self.request.user)
+            qs = CreditCard.objects.filter(user=self.request.user, is_deleted=False)
             if search:
                 qs = qs.filter(card_name__icontains=search)
             if status == "active":
@@ -123,16 +123,43 @@ class LiabilityListView(TemplateView):
             "entities": Lender.objects.all().order_by("name"),
         })
         for loan in ctx.get("loans", []):
+            # Format numeric amounts with thousands separators and 2 decimals
+            try:
+                bal = f"{(loan.outstanding_balance or 0):,.2f}"
+            except Exception:
+                bal = loan.outstanding_balance
+            try:
+                int_paid_val = getattr(loan, "interest_paid", 0) or 0
+                int_paid = f"{int_paid_val:,.2f}"
+            except Exception:
+                int_paid = getattr(loan, "interest_paid", 0)
             loan.field_tags = [
+                ("Balance", bal),
+                ("Interest Paid", int_paid),
                 ("Rate", f"{loan.interest_rate}%"),
                 ("Maturity", loan.maturity_date.strftime("%b %d, %Y") if loan.maturity_date else "-"),
                 ("Currency", loan.currency),
             ]
         for card in ctx.get("credit_cards", []):
+            # Format numeric amounts with thousands separators and 2 decimals
+            try:
+                limit_disp = f"{(card.credit_limit or 0):,.2f}"
+            except Exception:
+                limit_disp = card.credit_limit
+            try:
+                out_disp = f"{(card.outstanding_amount or 0):,.2f}"
+            except Exception:
+                out_disp = card.outstanding_amount
+            # Compute available on the fly to avoid any stale stored value
+            try:
+                avail_calc = (card.credit_limit or 0) - (card.outstanding_amount or 0)
+                avail_disp = f"{avail_calc:,.2f}"
+            except Exception:
+                avail_disp = (card.available_credit or 0)
             card.field_tags = [
-                ("Limit", card.credit_limit),
-                ("Outstanding", card.outstanding_amount),
-                ("Available", card.available_credit),
+                ("Limit", limit_disp),
+                ("Outstanding", out_disp),
+                ("Available", avail_disp),
                 ("Rate", f"{card.interest_rate}%"),
             ]
         return ctx
@@ -218,8 +245,27 @@ class CreditCardDeleteView(DeleteView):
         return super().get_queryset().filter(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, "Credit card deleted.")
-        return super().delete(request, *args, **kwargs)
+        obj = self.get_object()
+        # Soft delete: deactivate the linked account and mark as deleted
+        if obj.account_id:
+            obj.account.is_active = False
+            obj.account.save(update_fields=["is_active"])
+        obj.is_deleted = True
+        obj.save(update_fields=["is_deleted"])
+        undo_url = reverse("liabilities:credit-restore", args=[obj.pk])
+        messages.success(request, "Credit card deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        return redirect(self.success_url)
+
+class CreditCardRestoreView(View):
+    def get(self, request, pk):
+        obj = get_object_or_404(CreditCard, pk=pk, user=request.user)
+        obj.is_deleted = False
+        obj.save(update_fields=["is_deleted"])
+        if obj.account_id:
+            obj.account.is_active = True
+            obj.account.save(update_fields=["is_active"])
+        messages.success(request, "Credit card restored.")
+        return redirect(reverse("liabilities:list"))
 
 
 class LoanUpdateView(UpdateView):
@@ -264,8 +310,21 @@ class LoanDeleteView(DeleteView):
         return super().get_queryset().filter(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, "Loan deleted.")
-        return super().delete(request, *args, **kwargs)
+        obj = self.get_object()
+        # Soft delete only from the UI to allow Undo without losing transactions
+        obj.is_deleted = True
+        obj.save(update_fields=["is_deleted"])
+        undo_url = reverse("liabilities:loan-restore", args=[obj.pk])
+        messages.success(request, "Loan deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
+        return redirect(self.success_url)
+
+class LoanRestoreView(View):
+    def get(self, request, pk):
+        obj = get_object_or_404(Loan, pk=pk, user=request.user)
+        obj.is_deleted = False
+        obj.save(update_fields=["is_deleted"])
+        messages.success(request, "Loan restored.")
+        return redirect(reverse("liabilities:list") + "?tab=loans")
 
     def get_success_url(self):
         return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"

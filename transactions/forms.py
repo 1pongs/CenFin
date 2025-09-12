@@ -314,19 +314,30 @@ class TransactionForm(forms.ModelForm):
         ]
         tags = []
         tx_type = transaction.transaction_type
+        # Attach categories by entity and type. For transfer, use destination entity.
         entity = (
             transaction.entity_destination
-            if tx_type == "income"
+            if tx_type in ("income", "transfer")
             else transaction.entity_source
         )
         
         for name in names:
-            tag, _ = CategoryTag.objects.get_or_create(
-                user=self.user,
-                transaction_type=tx_type,
-                name=name,
-                entity=entity,
+            key = CategoryTag._normalize_name(name)
+            tag = (
+                CategoryTag.objects.filter(
+                    user=self.user,
+                    transaction_type=tx_type,
+                    name_key=key,
+                    entity=entity,
+                ).first()
             )
+            if not tag:
+                tag = CategoryTag.objects.create(
+                    user=self.user,
+                    transaction_type=tx_type,
+                    name=name,
+                    entity=entity,
+                )
             tags.append(tag)
         transaction.categories.set(tags)
 

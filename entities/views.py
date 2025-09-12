@@ -321,7 +321,8 @@ class EntityDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
         obj.delete()
-        messages.success(request, "Entity deleted.")
+        restore_url = reverse("entities:restore", args=[obj.pk])
+        messages.success(request, "Entity deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
         return redirect(self.success_url)
 
 
@@ -335,12 +336,18 @@ class EntityArchivedListView(TemplateView):
 
 
 class EntityRestoreView(View):
-    def post(self, request, pk):
+    def _restore(self, request, pk):
         ent = get_object_or_404(Entity, pk=pk, user=request.user, is_active=False)
         ent.is_active = True
         ent.save()
         messages.success(request, "Entity restored.")
         return redirect(reverse("entities:archived"))
+    
+    def post(self, request, pk):
+        return self._restore(request, pk)
+
+    def get(self, request, pk):
+        return self._restore(request, pk)
 
 class EntityAccountsView(TemplateView):
     """Display accounts associated with an entity."""
@@ -606,7 +613,7 @@ def entity_kpis(request, pk):
 def entity_category_summary_api(request, pk):
     entity = get_object_or_404(Entity, pk=pk, user=request.user)
     start, end = _parse_dates(request)
-    mode = request.GET.get("type", "expense")
+    mode = (request.GET.get("type") or "expense").lower()
     q = Transaction.objects.filter(user=request.user, parent_transfer__isnull=True).prefetch_related("categories").select_related("currency")
     if start:
         q = q.filter(date__gte=start)
@@ -618,6 +625,17 @@ def entity_category_summary_api(request, pk):
             entity_destination=entity,
             asset_type_destination__iexact="liquid",
             transaction_type_destination__iexact="Income",
+        )
+        def get_amount_and_currency(tx):
+            if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
+                return tx.destination_amount, tx.account_destination.currency
+            return tx.amount, tx.currency
+    elif mode == "transfer":
+        # Transfers treated as capital inflows to destination entity
+        q = q.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type__iexact="transfer",
         )
         def get_amount_and_currency(tx):
             if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
@@ -658,12 +676,36 @@ def entity_category_timeseries_api(request, pk):
         q = q.filter(date__gte=start)
     if end:
         q = q.filter(date__lte=end)
-    # Expenses by default (true expenses only)
-    q = q.filter(
-        entity_source=entity,
-        asset_type_source__iexact="liquid",
-        transaction_type_source__iexact="Expense",
-    )
+    mode = (request.GET.get("type") or "expense").lower()
+    if mode == "income":
+        q = q.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type_destination__iexact="Income",
+        )
+        def get_amount_and_currency(tx):
+            if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
+                return tx.destination_amount, tx.account_destination.currency
+            return tx.amount, tx.currency
+    elif mode == "transfer":
+        q = q.filter(
+            entity_destination=entity,
+            asset_type_destination__iexact="liquid",
+            transaction_type__iexact="transfer",
+        )
+        def get_amount_and_currency(tx):
+            if tx.destination_amount is not None and tx.account_destination and getattr(tx.account_destination, "currency", None):
+                return tx.destination_amount, tx.account_destination.currency
+            return tx.amount, tx.currency
+    else:
+        # Expenses by default (true expenses only)
+        q = q.filter(
+            entity_source=entity,
+            asset_type_source__iexact="liquid",
+            transaction_type_source__iexact="Expense",
+        )
+        def get_amount_and_currency(tx):
+            return tx.amount, tx.currency
 
     # Filter by category name or id
     if category:
@@ -677,7 +719,8 @@ def entity_category_timeseries_api(request, pk):
     buckets = {}
     for tx in q:
         key = tx.date.replace(day=1)
-        amt = convert_to_base(tx.amount or 0, tx.currency, request=request, user=request.user)
+        val, cur = get_amount_and_currency(tx)
+        amt = convert_to_base(val or 0, cur, request=request, user=request.user)
         buckets[key] = buckets.get(key, Decimal("0")) + amt
 
     rows = sorted(({"period": d.strftime("%Y-%m-01"), "total": str(v)} for d, v in buckets.items()), key=lambda r: r["period"]) 

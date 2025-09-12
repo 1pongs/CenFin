@@ -88,6 +88,39 @@ def _reverse_and_hide(txn, actor=None):
 
     Transaction.all_objects.filter(Q(pk=txn.pk) | Q(parent_transfer=txn)).update(is_hidden=True)
 
+
+@login_required
+def transaction_undo_delete(request, pk):
+    """Undo a prior delete by un-hiding the original and removing reversals.
+
+    We only allow undo for the given transaction id that was previously
+    reversed-and-hidden by our delete flow.
+    """
+    original = get_object_or_404(
+        Transaction.all_objects, pk=pk, user=request.user
+    )
+    # Identify the original and any hidden child legs
+    related = [original] + list(Transaction.all_objects.filter(parent_transfer=original))
+    # Ensure these were actually reversed/hidden
+    if not all(getattr(t, "is_hidden", False) for t in related):
+        messages.info(request, "Nothing to undo.")
+        return redirect(reverse("transactions:transaction_list"))
+
+    # Delete reversal rows for each related original
+    Transaction.all_objects.filter(reversed_transaction__in=[t.pk for t in related]).delete()
+
+    # Unhide originals and clear reversed flags
+    for t in related:
+        t.is_hidden = False
+        t.is_reversed = False
+        t.reversed_at = None
+        t.reversed_by = None
+        t.ledger_status = "posted"
+        t.save(update_fields=["is_hidden", "is_reversed", "reversed_at", "reversed_by", "ledger_status"])
+
+    messages.success(request, "Transaction restore complete.")
+    return redirect(reverse("transactions:transaction_list"))
+
 class TemplateDropdownMixin:
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -282,9 +315,6 @@ class TransactionCreateView(CreateView):
         loan = None
         if loan_id:
             loan = get_object_or_404(Loan, pk=loan_id, user=self.request.user)
-            if form.cleaned_data.get('amount') > loan.outstanding_balance:
-                form.add_error('amount', "Payment amount cannot exceed current balance")
-                return self.form_invalid(form)
 
         form.instance.user = self.request.user
         visible_tx = form.save(commit=False)
@@ -347,15 +377,29 @@ class TransactionCreateView(CreateView):
             self.object = visible_tx
             messages.success(self.request, "Transaction saved successfully!")
             if loan:
-                loan.outstanding_balance -= visible_tx.amount
-                loan.save(update_fields=["outstanding_balance"])
+                paid = Decimal(str(visible_tx.amount or 0))
+                principal_applied = min(paid, loan.outstanding_balance)
+                excess = paid - principal_applied
+                loan.outstanding_balance -= principal_applied
+                if excess > 0:
+                    loan.interest_paid = (loan.interest_paid or Decimal("0")) + excess
+                    loan.save(update_fields=["outstanding_balance", "interest_paid"])
+                else:
+                    loan.save(update_fields=["outstanding_balance"])
             return HttpResponseRedirect(self.get_success_url())
         else:
             self.object = form.save()
             messages.success(self.request, "Transaction saved successfully!")
             if loan:
-                loan.outstanding_balance -= visible_tx.amount
-                loan.save(update_fields=["outstanding_balance"])
+                paid = Decimal(str(visible_tx.amount or 0))
+                principal_applied = min(paid, loan.outstanding_balance)
+                excess = paid - principal_applied
+                loan.outstanding_balance -= principal_applied
+                if excess > 0:
+                    loan.interest_paid = (loan.interest_paid or Decimal("0")) + excess
+                    loan.save(update_fields=["outstanding_balance", "interest_paid"])
+                else:
+                    loan.save(update_fields=["outstanding_balance"])
             return HttpResponseRedirect(self.get_success_url())
                     
 
@@ -495,7 +539,8 @@ def transaction_delete(request, pk):
                 "Deleting a loan disbursement also removes the associated loan.",
             )
     _reverse_and_hide(txn, actor=request.user)
-    messages.success(request, "Transaction deleted.")
+    undo_url = reverse('transactions:transaction_undo_delete', args=[txn.pk])
+    messages.success(request, "Transaction deleted. "+ f"<a href=\"{undo_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
     return redirect(reverse('transactions:transaction_list'))
 
 # ------------- templates --------------------
@@ -674,13 +719,19 @@ def tag_list(request):
     tx_type = request.GET.get("transaction_type")
     ent = request.GET.get("entity")
     tags = CategoryTag.objects.filter(user=request.user)
-    if tx_type:
+    # If a specific type is provided, filter by it. When omitted, return all types.
+    if tx_type and tx_type.lower() != "all":
         tags = tags.filter(transaction_type=tx_type)
     if ent:
         tags = tags.filter(Q(entity_id=ent) | Q(entity__isnull=True))
     else:
         tags = tags.filter(entity__isnull=True)
-    data = [{"id": t.pk, "name": t.name} for t in tags.order_by("name")]
+    # Include transaction_type so the manager can display badges and allow an
+    # overview across all types when desired.
+    data = [
+        {"id": t.pk, "name": t.name, "transaction_type": t.transaction_type or ""}
+        for t in tags.order_by("name")
+    ]
     return JsonResponse(data, safe=False)
 
 
@@ -691,12 +742,22 @@ def tag_create(request):
     ent = request.POST.get("entity") or None
     if not name:
         return JsonResponse({"error": "name"}, status=400)
-    tag, _ = CategoryTag.objects.get_or_create(
-        user=request.user,
-        transaction_type=tx_type,
-        name=name,
-        entity_id=ent,
+    key = CategoryTag._normalize_name(name)
+    tag = (
+        CategoryTag.objects.filter(
+            user=request.user,
+            transaction_type=tx_type,
+            name_key=key,
+            entity_id=ent,
+        ).first()
     )
+    if not tag:
+        tag = CategoryTag.objects.create(
+            user=request.user,
+            transaction_type=tx_type,
+            name=name,
+            entity_id=ent,
+        )
     return JsonResponse({"id": tag.pk, "name": tag.name})
 
 
@@ -706,16 +767,55 @@ def tag_update(request, pk):
     data = QueryDict(request.body)
     name = data.get("name", "").strip()
     if name:
+        # If another tag with the same normalized key exists in the same scope,
+        # merge into it instead of violating the unique constraint.
+        key = CategoryTag._normalize_name(name)
+        existing = CategoryTag.objects.filter(
+            user=request.user,
+            transaction_type=tag.transaction_type,
+            name_key=key,
+            entity_id=tag.entity_id,
+        ).exclude(pk=tag.pk).first()
+        if existing:
+            # Move transactions from current tag to existing one, then delete current tag
+            for tx in tag.transactions.all():
+                existing.transactions.add(tx)
+            tag.delete()
+            return JsonResponse({"id": existing.pk, "name": existing.name})
+        # Otherwise, just rename
         tag.name = name
-        tag.save(update_fields=["name"])
+        tag.save(update_fields=["name", "name_key"])  # name_key set in save()
     return JsonResponse({"id": tag.pk, "name": tag.name})
 
 
 @require_http_methods(["DELETE"])
 def tag_delete(request, pk):
     tag = get_object_or_404(CategoryTag, pk=pk, user=request.user)
+    # Save last-deleted tag in session for quick undo
+    request.session["last_deleted_tag"] = {
+        "name": tag.name,
+        "transaction_type": tag.transaction_type,
+        "entity_id": tag.entity_id,
+    }
     tag.delete()
-    return JsonResponse({"status": "deleted"})
+    return JsonResponse({
+        "status": "deleted",
+        "undo_url": reverse("transactions:tag_undo_delete"),
+    })
+
+
+@require_POST
+def tag_undo_delete(request):
+    data = request.session.pop("last_deleted_tag", None)
+    if not data:
+        return JsonResponse({"error": "nothing to undo"}, status=400)
+    tag = CategoryTag.objects.create(
+        user=request.user,
+        name=data.get("name", ""),
+        transaction_type=data.get("transaction_type"),
+        entity_id=data.get("entity_id"),
+    )
+    return JsonResponse({"id": tag.pk, "name": tag.name})
 
 
 @require_http_methods(["GET", "POST"])

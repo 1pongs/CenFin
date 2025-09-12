@@ -184,13 +184,10 @@ class LoanPaymentTransactionTest(TestCase):
         }
         return self.client.post(reverse("transactions:transaction_create"), data)
 
-    def test_overpayment_rejected_and_balance_updated(self):
+    def test_overpayment_allowed_and_excess_tracked_as_interest(self):
+        # Pay more than principal: excess should be tracked as interest
         resp = self._post(400)
-        self.assertEqual(resp.status_code, 200)
-        form = resp.context["form"]
-        self.assertIn("amount", form.errors)
-
-        resp = self._post(100)
         self.assertEqual(resp.status_code, 302)
         self.loan.refresh_from_db()
-        self.assertEqual(self.loan.outstanding_balance, Decimal("200"))
+        self.assertEqual(self.loan.outstanding_balance, Decimal("0"))
+        self.assertEqual(self.loan.interest_paid, Decimal("100"))

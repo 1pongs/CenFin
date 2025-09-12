@@ -16,6 +16,9 @@ def _drop_old_entity_column(apps, schema_editor):
     CategoryTag = apps.get_model('transactions', 'CategoryTag')
     table = CategoryTag._meta.db_table
     connection = schema_editor.connection
+    # Only relevant for MySQL/MariaDB; skip on SQLite and others used in tests.
+    if getattr(connection, "vendor", None) != "mysql":
+        return
     with connection.cursor() as cursor:
         # Check if the legacy column exists
         columns = [col.name for col in connection.introspection.get_table_description(cursor, table)]
@@ -51,6 +54,9 @@ def _drop_conflicting_unique_indexes(apps, schema_editor):
     CategoryTag = apps.get_model('transactions', 'CategoryTag')
     table = CategoryTag._meta.db_table
     connection = schema_editor.connection
+    # Only relevant for MySQL/MariaDB; skip on SQLite and others used in tests.
+    if getattr(connection, "vendor", None) != "mysql":
+        return
     with connection.cursor() as cursor:
         cursor.execute(
             """

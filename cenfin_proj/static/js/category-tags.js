@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const addBtn = document.getElementById('btn-add-category');
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
+  // Use trailing slash to avoid 301 redirects that break PATCH/DELETE
+  const TAGS_BASE = '/transactions/tags/';
   let tagify = null;
   if (input && !listEl) { // Only init Tagify on non-manager pages
     tagify = new Tagify(input, {
@@ -20,22 +22,28 @@ document.addEventListener('DOMContentLoaded', () => {
   function currentEntity() {
     if (entSel) return entSel.value;
     const type = txTypeSel.value;
-    if (type === 'income') return entDestSel.value;
-    if (type === 'expense' || type === 'transfer') return entSrcSel.value;
+    if (type === 'income' || type === 'transfer') return entDestSel.value;
+    if (type === 'expense') return entSrcSel.value;
     return '';
   }
 
   function updateAddState(){
-    const ready = Boolean((entSel && entSel.value) && (txTypeSel && txTypeSel.value));
+    const t = txTypeSel ? txTypeSel.value : '';
+    // Disable add when no entity, no type, or viewing "All Types"
+    const ready = Boolean((entSel && entSel.value) && t && t !== 'all');
     if (addInput) addInput.disabled = !ready;
     if (addBtn) addBtn.disabled = !ready;
   }
 
   async function loadTags() {
-    const type = txTypeSel.value;
-    if (!type) return;
+    const type = txTypeSel ? txTypeSel.value : '';
+    // On forms (Tagify present), require specific type. On manager page (list view), allow 'all'.
+    if (tagify && !type) return;
     const ent = currentEntity();
-    const url = `/tags?transaction_type=${encodeURIComponent(type)}${ent ? `&entity=${ent}` : ''}`;
+    const params = new URLSearchParams();
+    if (type && type !== 'all') params.append('transaction_type', type);
+    if (ent) params.append('entity', ent);
+    const url = `${TAGS_BASE}${params.toString() ? `?${params.toString()}` : ''}`;
     const resp = await fetch(url);
     if (!resp.ok) return;
     const data = await resp.json();
@@ -43,6 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
       tagify.settings.whitelist = data.map(t => ({ value: t.name, id: t.id }));
     }
     if (listEl) renderList(data);
+  }
+
+  function titleCaseType(s){
+    const str = (s || '').toString().replace(/_/g, ' ');
+    return str ? str.replace(/\b\w/g, c => c.toUpperCase()) : '—';
   }
 
   function renderList(items){
@@ -61,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
       li.dataset.id = it.id;
       li.dataset.value = it.name;
       const span = document.createElement('span');
-      span.textContent = it.name;
+      span.innerHTML = `${it.name} <span class="badge bg-secondary ms-2">${titleCaseType(it.transaction_type)}</span>`;
       const actions = document.createElement('div');
       const btnE = document.createElement('button');
       btnE.type = 'button';
@@ -98,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const ent = currentEntity();
       if (ent) fd.append('entity', ent);
       fd.append('csrfmiddlewaretoken', csrf);
-      const resp = await fetch('/tags', { method: 'POST', body: fd });
+      const resp = await fetch(TAGS_BASE, { method: 'POST', body: fd });
       if (resp.ok) {
         const data = await resp.json();
         tagify.replaceTag(e.detail.tag, { value: data.name, id: data.id });
@@ -118,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ent = currentEntity();
     if (ent) fd.append('entity', ent);
     fd.append('csrfmiddlewaretoken', csrf);
-    const resp = await fetch('/tags', { method: 'POST', body: fd });
+    const resp = await fetch(TAGS_BASE, { method: 'POST', body: fd });
     if (resp.ok) {
       if (addInput) addInput.value = '';
       await loadTags();
@@ -129,15 +142,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') { e.preventDefault(); addCategoryByName(addInput.value); }
   });
 
-  tagify.settings.templates.dropdownItem = function(tagData){
-    return `<div ${this.getAttributes(tagData)} class="tagify__dropdown__item d-flex justify-content-between align-items-center">
-      <span>${tagData.value}</span>
-      <span class="ms-2">
-        <span class="edit-tag" style="cursor:pointer;">✏️</span>
-        <span class="ms-1 delete-tag" style="cursor:pointer;">🗑</span>
-      </span>
-    </div>`;
-  };
+  if (tagify) {
+    tagify.settings.templates.dropdownItem = function(tagData){
+      return `<div ${this.getAttributes(tagData)} class="tagify__dropdown__item d-flex justify-content-between align-items-center">
+        <span>${tagData.value}</span>
+        <span class="ms-2">
+          <span class="edit-tag" style="cursor:pointer;">✏️</span>
+          <span class="ms-1 delete-tag" style="cursor:pointer;">🗑</span>
+        </span>
+      </div>`;
+    };
+  }
 
   document.addEventListener('click', async ev => {
     if (listEl && ev.target.classList.contains('edit-cat')){
@@ -146,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const oldName = li.dataset.value;
       const name = prompt('Rename category', oldName);
       if (!name || name === oldName) return;
-      const resp = await fetch(`/tags/${id}`, {
+      const resp = await fetch(`${TAGS_BASE}${id}/`, {
         method: 'PATCH',
         headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
         body: `name=${encodeURIComponent(name)}`
@@ -158,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const li = ev.target.closest('li[data-id]');
       const id = li.dataset.id;
       if (!confirm('Delete this category?')) return;
-      const resp = await fetch(`/tags/${id}`, { method: 'DELETE', headers: {'X-CSRFToken': csrf} });
+      const resp = await fetch(`${TAGS_BASE}${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': csrf} });
       if (resp.ok) loadTags();
       return;
     }
@@ -169,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const oldName = item.dataset.value;
       const name = prompt('Rename tag', oldName);
       if (!name || name === oldName) return;
-      const resp = await fetch(`/tags/${id}`, {
+      const resp = await fetch(`${TAGS_BASE}${id}/`, {
         method: 'PATCH',
         headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'},
         body: `name=${encodeURIComponent(name)}`
@@ -182,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = ev.target.closest('[data-id]');
       const id = item.dataset.id;
       if (!confirm('Delete this tag?')) return;
-      const resp = await fetch(`/tags/${id}`, {
+      const resp = await fetch(`${TAGS_BASE}${id}/`, {
         method: 'DELETE',
         headers: {'X-CSRFToken': csrf}
       });
@@ -192,8 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initial load if both entity and type are selected
-  if (entSel && entSel.value && txTypeSel && txTypeSel.value){
+  // Initial load: on manager page, load even if type is 'all'
+  if (entSel && entSel.value && txTypeSel){
     loadTags();
   }
   updateAddState();

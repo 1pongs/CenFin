@@ -24,7 +24,7 @@
     <div class="mb-3">
       <label for="id_transaction_type" class="form-label">Type</label>
       <select id="id_transaction_type" class="form-select">
-        <option value="">-- select type --</option>
+        <option value="all" {% if request.GET.type == 'all' or not request.GET.type %}selected{% endif %}>All Types</option>
         <option value="income" {% if request.GET.type == 'income' %}selected{% endif %}>Income</option>
         <option value="expense" {% if request.GET.type == 'expense' %}selected{% endif %}>Expense</option>
         <option value="transfer" {% if request.GET.type == 'transfer' %}selected{% endif %}>Transfer</option>

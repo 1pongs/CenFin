@@ -65,20 +65,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const analyticsCanvas = document.getElementById('analyticsChart');
   const analyticsUrl = (analyticsCanvas && analyticsCanvas.dataset) ? analyticsCanvas.dataset.apiUrl : '';
   const noDataTop = document.getElementById('topNoDataMsg');
-  const entCheckboxes = () => Array.from(document.querySelectorAll('.entity-option'));
+  // Single-select entities via dropdown items
+  const entItems = () => Array.from(document.querySelectorAll('.entity-option'));
+  const catContainer = document.getElementById('categoriesOptions');
   const catCheckboxes = () => Array.from(document.querySelectorAll('.category-option'));
-  const getSelectedEntities = () => entCheckboxes().filter(cb=>cb.checked).map(cb=>cb.value);
+  let selectedEntityId = null;
+  let selectedEntityName = '';
+  const getSelectedEntities = () => selectedEntityId ? [selectedEntityId] : [];
   const getSelectedCategories = () => catCheckboxes().filter(cb=>cb.checked).map(cb=>cb.value);
   function updateDropdownLabels(){
     const entBtn = document.getElementById('entitiesDropdownBtn');
     const catBtn = document.getElementById('categoriesDropdownBtn');
-    const entSel = getSelectedEntities();
     const catSel = getSelectedCategories();
     if(entBtn){
-      entBtn.textContent = entSel.length ? `${entSel.length} selected` : 'All entities';
+      entBtn.textContent = selectedEntityId ? (selectedEntityName || '1 selected') : 'Select entity';
     }
     if(catBtn){
-      catBtn.textContent = catSel.length ? `${catSel.length} selected` : 'All categories';
+      if(!selectedEntityId){
+        catBtn.textContent = 'Select entities first';
+        catBtn.disabled = true;
+      } else {
+        catBtn.disabled = false;
+        catBtn.textContent = catSel.length ? `${catSel.length} selected` : 'Select categories';
+      }
     }
   }
   const labelPlugin = {
@@ -135,6 +144,50 @@ document.addEventListener('DOMContentLoaded', () => {
         plugins:{ tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label}: ${formatPeso(ctx.parsed.y)}` } } }
       }
     });
+  }
+
+  // ---- Dynamic categories based on selected entities ----
+  function unique(arr){ return Array.from(new Set(arr)); }
+  function renderCategoryOptions(names){
+    if(!catContainer) return;
+    catContainer.innerHTML = '';
+    names.forEach((name, idx) => {
+      const id = `cat-${idx+1}`;
+      const wrap = document.createElement('div');
+      wrap.className = 'form-check';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.className = 'form-check-input category-option';
+      input.value = name;
+      input.id = id;
+      const label = document.createElement('label');
+      label.className = 'form-check-label';
+      label.htmlFor = id;
+      label.textContent = name;
+      wrap.appendChild(input);
+      wrap.appendChild(label);
+      catContainer.appendChild(wrap);
+    });
+    // Rebind change listeners for new checkboxes
+    catCheckboxes().forEach(cb=>cb.addEventListener('change', ()=>{ updateDropdownLabels(); updateQuery(); loadAnalytics(); }));
+    updateDropdownLabels();
+  }
+
+  async function fetchCategoriesForEntities(entityIds){
+    if(!Array.isArray(entityIds) || entityIds.length === 0){
+      renderCategoryOptions([]);
+      return;
+    }
+    const names = new Set();
+    for(const id of entityIds){
+      try{
+        const resp = await fetch(`/transactions/tags/?entity=${encodeURIComponent(id)}`, {credentials:'same-origin'});
+        if(!resp.ok) continue;
+        const rows = await resp.json();
+        rows.forEach(r => { if(r && r.name) names.add(r.name); });
+      }catch(e){ /* ignore */ }
+    }
+    renderCategoryOptions(Array.from(names).sort((a,b)=>a.localeCompare(b)));
   }
 
   const entitySel = document.getElementById('entitySelect');
@@ -282,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadAnalytics(){
     const payload = await (async () => {
       if(analyticsUrl){
-        const ids = getSelectedEntities().join(',');
+        const ids = selectedEntityId ? String(selectedEntityId) : '';
         const cats = getSelectedCategories().join(',');
         const dim = cats ? 'categories' : 'entities';
         const params = new URLSearchParams();
@@ -315,8 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyInitialFilters(){
     const entParam = urlParams.get('entities');
     if(entParam){
-      const ids = new Set(entParam.split(','));
-      entCheckboxes().forEach(cb=>{ cb.checked = ids.has(cb.value); });
+      const first = entParam.split(',')[0];
+      const item = entItems().find(it => (it.dataset.id || '') === first);
+      if(item){ selectedEntityId = item.dataset.id; selectedEntityName = item.textContent.trim(); }
     }
     const catsParam = urlParams.get('categories');
     if(catsParam){
@@ -336,8 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateQuery(){
-    const ids = getSelectedEntities().join(',');
-    if(ids) urlParams.set('entities', ids); else urlParams.delete('entities');
+    const id = selectedEntityId || '';
+    if(id) urlParams.set('entities', id); else urlParams.delete('entities');
     const cats = getSelectedCategories().join(',');
     if(cats) urlParams.set('categories', cats); else urlParams.delete('categories');
     if(cashStart.value) urlParams.set('start', cashStart.value);
@@ -345,8 +399,16 @@ document.addEventListener('DOMContentLoaded', () => {
     history.replaceState(null, '', `${location.pathname}?${urlParams.toString()}`);
   }
 
-  entCheckboxes().forEach(cb=>cb.addEventListener('change', ()=>{ updateDropdownLabels(); updateQuery(); loadAnalytics(); }));
-  catCheckboxes().forEach(cb=>cb.addEventListener('change', ()=>{ updateDropdownLabels(); updateQuery(); loadAnalytics(); }));
+  // Clicking an entity item selects it and reloads
+  entItems().forEach(item => item.addEventListener('click', () => {
+    selectedEntityId = item.dataset.id || null;
+    selectedEntityName = item.textContent.trim();
+    updateDropdownLabels();
+    updateQuery();
+    fetchCategoriesForEntities(selectedEntityId ? [selectedEntityId] : []);
+    loadAnalytics();
+  }));
+  // Category listeners are rebound after rendering options
   topStart?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
   topEnd?.addEventListener('change', ()=>{ updateQuery(); loadAnalytics(); });
 
@@ -364,12 +426,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearTopBtn = document.getElementById('clearTopFilter');
   if(clearTopBtn){
     clearTopBtn.addEventListener('click', () => {
-      entCheckboxes().forEach(cb=>cb.checked=false);
+      selectedEntityId = null; selectedEntityName = '';
       catCheckboxes().forEach(cb=>cb.checked=false);
       updateDropdownLabels();
       topStart.value = topStart.dataset.default || '';
       topEnd.value = topEnd.dataset.default || '';
       updateQuery();
+      fetchCategoriesForEntities([]);
       loadAnalytics();
     });
   }
@@ -378,19 +441,13 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAuditLink();
 
   // Select all/none helpers for multi-selects
-  const btnSelAllEnt = document.getElementById('selectAllEntities');
-  const btnClrEnt = document.getElementById('clearEntities');
-  const btnSelAllCat = document.getElementById('selectAllCategories');
-  const btnClrCat = document.getElementById('clearCategories');
-  btnSelAllEnt?.addEventListener('click', ()=>{ entCheckboxes().forEach(cb=>cb.checked=true); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
-  btnClrEnt?.addEventListener('click', ()=>{ entCheckboxes().forEach(cb=>cb.checked=false); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
-  btnSelAllCat?.addEventListener('click', ()=>{ catCheckboxes().forEach(cb=>cb.checked=true); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
-  btnClrCat?.addEventListener('click', ()=>{ catCheckboxes().forEach(cb=>cb.checked=false); updateDropdownLabels(); updateQuery(); loadAnalytics(); });
+  // Removed select-all/none controls by request
 
   // Try to render immediately with server data; if not available, fetch.
   if(!bootstrapFromServer()){
     loadData();
   }
   updateDropdownLabels();
+  fetchCategoriesForEntities(selectedEntityId ? [selectedEntityId] : []);
   loadAnalytics();
 });

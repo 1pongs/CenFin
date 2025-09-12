@@ -76,6 +76,8 @@ class Acquisition(models.Model):
     model_year = models.PositiveIntegerField(null=True, blank=True)
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
+    # Soft delete flag to allow undo/restore
+    is_deleted = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(
@@ -91,6 +93,13 @@ class Acquisition(models.Model):
     def __str__(self) -> str:
         cat = self.get_category_display()
         return f"{self.name} ({cat})" if cat else self.name
+
+    def delete(self, *args, **kwargs):
+        # Soft-delete to support undo without losing linked transactions
+        if not self.is_deleted:
+            self.is_deleted = True
+            return super().save(update_fields=["is_deleted"])
+        return super().delete(*args, **kwargs)
 
     @property
     def capital_cost(self):

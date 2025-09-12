@@ -117,7 +117,8 @@ class AccountDeleteView(DeleteView):
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
         obj.delete()
-        messages.success(request, "Account deleted.")
+        restore_url = reverse("accounts:restore", args=[obj.pk])
+        messages.success(request, "Account deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2\">Undo</a>", extra_tags="safe")
         return redirect(self.success_url)
 
 
@@ -133,12 +134,18 @@ class AccountArchivedListView(TemplateView):
 
 
 class AccountRestoreView(View):
-    def post(self, request, pk):
+    def _restore(self, request, pk):
         acc = get_object_or_404(Account, pk=pk, user=request.user, is_active=False)
         acc.is_active = True
         acc.save()
         messages.success(request, "Account restored.")
         return redirect(reverse("accounts:archived"))
+    
+    def post(self, request, pk):
+        return self._restore(request, pk)
+
+    def get(self, request, pk):
+        return self._restore(request, pk)
 
 
 @require_POST
