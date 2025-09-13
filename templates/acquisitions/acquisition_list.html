@@ -7,16 +7,7 @@
 {% endblock %}
 {% block content %}
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h1 class="mb-0">Acquisitions</h1>
-  <div>
-    {% if is_archived_view %}
-      <a href="{% url 'acquisitions:acquisition-list' %}" class="btn btn-outline-secondary">Back to Active</a>
-    {% else %}
-      <a href="{% url 'acquisitions:acquisition-list' %}?archived=1{% if current_category %}&category={{ current_category }}{% endif %}" class="btn btn-outline-secondary">View Archived</a>
-    {% endif %}
-  </div>
-</div>
+<h1 class="mb-3">Acquisitions</h1>
 {% if undo_restore_url %}
   <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
     <div>
@@ -68,6 +59,10 @@
       <button type="button" class="btn btn-success w-100 mb-3" data-bs-toggle="modal" data-bs-target="#addAcqModal">
         <i class="bi bi-plus-lg me-1"></i>Add
       </button>
+      <a href="{% url 'acquisitions:acquisition-archived' %}"
+         class="btn btn-outline-secondary w-100 mb-3">
+        <i class="bi bi-archive me-1"></i>View Archived
+      </a>
       <form id="filter-form" method="get">
         <input type="search" name="q" value="{{ q }}" placeholder="Search" class="form-control form-control-sm mb-2">
         <select name="status" class="form-select mb-2">

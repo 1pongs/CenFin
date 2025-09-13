@@ -23,16 +23,8 @@
 {% if back_url %}
   {% include "includes/back_button.html" with url=back_url %}
 {% endif %}
-<div class="d-flex align-items-center justify-content-between mb-3">
+<div class="mb-3">
   <h1 class="mb-0">Transactions</h1>
-  <div class="d-flex align-items-center gap-2">
-    {% if is_archived_view %}
-      <a href="{% url 'transactions:transaction_list' %}" class="btn btn-outline-secondary">Back to Active</a>
-    {% else %}
-      <a href="{% url 'transactions:transaction_list' %}?archived=1" class="btn btn-outline-secondary">View Archived</a>
-    {% endif %}
-  </div>
-  
 </div>
 {% if undo_restore_url %}
   <div class="alert alert-success d-flex justify-content-between align-items-center" role="alert">
@@ -76,9 +68,23 @@
     </div>
     <!-- END   : left‑side primary controls -->
 
-    <!-- Template button pushed far right -->
-    <a href="{% url 'transactions:template_list' %}" class="btn btn-warning text-dark fw-semibold">Template</a>
+    <!-- Right‑side utilities: Archived toggle + Template -->
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      {% if is_archived_view %}
+        <a href="{% url 'transactions:transaction_list' %}" class="btn btn-outline-secondary">Back to Active</a>
+      {% else %}
+        <a href="{% url 'transactions:transaction_list' %}?archived=1" class="btn btn-outline-secondary">View Archived</a>
+      {% endif %}
+      <a href="{% url 'transactions:template_list' %}" class="btn btn-warning text-dark fw-semibold">Template</a>
+    </div>
   </div>
+
+  {% if is_archived_view %}
+    <div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="alert">
+      <i class="bi bi-archive"></i>
+      <div><strong>Archived view:</strong> Showing archived transactions only.</div>
+    </div>
+  {% endif %}
 
   <!-- ================= DATE RANGE + BULK ACTION ROW ================= -->
   <form id="bulk-action-form" method="post" action="{% url 'transactions:bulk_action' %}" class="border rounded-2 px-3 py-2 d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">

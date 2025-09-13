@@ -1,8 +1,18 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Archived Accounts · CENFIN{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
 {% block content %}
-<h1 class="mb-4">Archived Accounts</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Archived Accounts</h1>
+  <a href="{% url 'accounts:list' %}" class="btn btn-outline-secondary">Back to Active</a>
+  </div>
+<div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="alert">
+  <i class="bi bi-archive"></i>
+  <div><strong>Archived view:</strong> Showing archived accounts only.</div>
+  </div>
 {% for a in accounts %}
   <div class="card shadow-sm rounded-lg mb-3 p-3">
     <div class="d-flex align-items-center">

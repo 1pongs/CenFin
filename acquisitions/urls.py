@@ -5,6 +5,7 @@ app_name = 'acquisitions'
 
 urlpatterns = [
     path('', views.AcquisitionListView.as_view(), name='acquisition-list'),
+    path('archived/', views.AcquisitionArchivedListView.as_view(), name='acquisition-archived'),
     path('new/', views.AcquisitionCreateView.as_view(), name='acquisition-create'),
     path('<int:pk>/', views.AcquisitionDetailView.as_view(), name='acquisition-detail'),
     path('<int:pk>/edit/', views.AcquisitionUpdateView.as_view(), name='acquisition-update'),

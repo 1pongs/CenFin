@@ -78,11 +78,15 @@ class TransactionForm(forms.ModelForm):
         account_qs = entity_qs = None
         if user is not None:
             allowed_types = ["Cash", "Banks", "E-Wallet", "Credit"]
-            account_qs = Account.objects.filter(
-                Q(user=user) | Q(user__isnull=True),
-                is_active=True,
-                system_hidden=False,
-            ).filter(Q(account_type__in=allowed_types) | Q(account_type="Outside"))
+            account_qs = (
+                Account.objects.filter(
+                    Q(user=user) | Q(user__isnull=True),
+                    is_active=True,
+                    system_hidden=False,
+                )
+                .filter(Q(account_type__in=allowed_types) | Q(account_type="Outside"))
+                .exclude(account_name__istartswith="Remittance")
+            )
             entity_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True, system_hidden=False
             )
@@ -167,12 +171,15 @@ class TransactionForm(forms.ModelForm):
                 Column("transaction_type", css_class="col-md-6"),
                 css_class="g-3",
             ),
+            # Require entity/account first, then category and amount
             Row(
-                Column("category_names", css_class="col-md-6"),
+                Column("entity_source",       css_class="col-md-6"),
+                Column("entity_destination",  css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
-                Column("amount",   css_class="col-md-6"),
+                Column("account_source",      css_class="col-md-6"),
+                Column("account_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -182,13 +189,11 @@ class TransactionForm(forms.ModelForm):
             ),
             HTML('<div id="currency_warning" class="alert alert-info d-none">The selected accounts use different currencies. Please enter both source and destination amounts.</div>'),
             Row(
-                Column("entity_source",       css_class="col-md-6"),
-                Column("entity_destination",  css_class="col-md-6"),
+                Column("category_names", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
-                Column("account_source",      css_class="col-md-6"),
-                Column("account_destination", css_class="col-md-6"),
+                Column("amount",   css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",
@@ -268,8 +273,27 @@ class TransactionForm(forms.ModelForm):
                 self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if is_new and ent and ent.entity_name != "Outside":
-            if not getattr(ent, "is_account_entity", False) and ent.current_balance() < amt:
-                self.add_error("entity_source", f"Insufficient funds in {ent}.")
+            if not getattr(ent, "is_account_entity", False):
+                try:
+                    from cenfin_proj.utils import get_account_entity_balance
+                    pair_bal = Decimal("0")
+                    if acc:
+                        pair_bal = get_account_entity_balance(acc.id, ent.id)
+                    ent_liquid = ent.current_balance() or Decimal("0")
+                    # If either the account+entity pair or the entity's liquid
+                    # total can cover the amount, allow the transaction. Only
+                    # block when neither can cover it AND the account itself is
+                    # also insufficient.
+                    if pair_bal >= amt or ent_liquid >= amt:
+                        pass
+                    else:
+                        if not acc or acc.get_current_balance() < amt:
+                            self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                except Exception:
+                    # On any error, fall back to entity-level check but still
+                    # allow if the selected account can cover the amount.
+                    if ent.current_balance() < amt and (not acc or acc.get_current_balance() < amt):
+                        self.add_error("entity_source", f"Insufficient funds in {ent}.")
 
         if tx_type == "cc_payment":
             dest_acc = cleaned.get("account_destination")
@@ -484,8 +508,10 @@ class TemplateForm(forms.ModelForm):
                 Column("transaction_type", css_class="col-md-6"),
                 css_class="g-3",
             ),
+            # Ask for entities/accounts before amount so templates guide authors
             Row(
-                Column("amount", css_class="col-md-6"),
+                Column("entity_source", css_class="col-md-6"),
+                Column("entity_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -494,8 +520,7 @@ class TemplateForm(forms.ModelForm):
                 css_class="g-3",
             ),
             Row(
-                Column("entity_source", css_class="col-md-6"),
-                Column("entity_destination", css_class="col-md-6"),
+                Column("amount", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",

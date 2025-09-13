@@ -209,7 +209,7 @@ class TransactionListView(ListView):
         disp_code = active.code if active else settings.BASE_CURRENCY
                 
         ctx["display_currency"] = disp_code
-        ctx["accounts"] = Account.objects.active().filter(user=self.request.user)
+        ctx["accounts"] = Account.objects.active().filter(user=self.request.user, system_hidden=False).exclude(account_name__istartswith="Remittance")
         ctx["entities"] = Entity.objects.active().filter(user=self.request.user)
         ctx["txn_type_choices"] = TXN_TYPE_CHOICES
         params = self.request.GET

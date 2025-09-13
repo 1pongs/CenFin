@@ -43,10 +43,9 @@ class AcquisitionListView(ListView):
     context_object_name = "acquisitions"
 
     def get_queryset(self):
-        show_archived = self.request.GET.get("archived") in {"1", "true", "True"}
         qs = (
             Acquisition.objects.select_related("purchase_tx", "sell_tx")
-            .filter(user=self.request.user, is_deleted=show_archived)
+            .filter(user=self.request.user, is_deleted=False)
         )
 
         cat = self.request.GET.get("category")
@@ -112,7 +111,6 @@ class AcquisitionListView(ListView):
             .exclude(entity_name="Outside")
             .order_by("entity_name")
         )
-        ctx["is_archived_view"] = self.request.GET.get("archived") in {"1", "true", "True"}
         # Inline undo banner (after delete)
         undo_acq_id = self.request.session.pop("undo_acq_id", None)
         undo_acq_name = self.request.session.pop("undo_acq_name", None)
@@ -124,6 +122,19 @@ class AcquisitionListView(ListView):
                 undo_restore_url = None
         ctx["undo_acq_name"] = undo_acq_name
         ctx["undo_restore_url"] = undo_restore_url
+        return ctx
+
+
+class AcquisitionArchivedListView(TemplateView):
+    template_name = "acquisitions/acquisition_archived_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["acquisitions"] = (
+            Acquisition.objects.select_related("purchase_tx")
+            .filter(user=self.request.user, is_deleted=True)
+            .order_by("name")
+        )
         return ctx
 
 
@@ -186,10 +197,7 @@ class AcquisitionCreateView(FormView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        ent_id = self.request.GET.get("entity")
-        if ent_id:
-            get_object_or_404(Entity, pk=ent_id, user=self.request.user)
-            return reverse("entities:detail", args=[ent_id])
+        # Always return to the Acquisitions list after create
         return super().get_success_url()
 
     def form_invalid(self, form):

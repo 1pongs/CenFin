@@ -128,6 +128,10 @@
 
   const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
   const accSrc = document.getElementById('id_account_source');
+  const accDest = document.getElementById('id_account_destination');
+  const entSrc = document.getElementById('id_entity_source');
+  const entDest = document.getElementById('id_entity_destination');
+  const catInput = document.getElementById('id_category');
   const amountLabel = document.querySelector('label[for="id_amount"]');
 
   function acctCurrency(select){
@@ -143,5 +147,21 @@
 
   if(accSrc) accSrc.addEventListener('change', updateAmountLabel);
   document.addEventListener('DOMContentLoaded', updateAmountLabel);
+
+  // Require entity/account before enabling Category (amount stays editable)
+  function prereqsReady(){
+    const selects = [accSrc, accDest, entSrc, entDest];
+    for (const sel of selects){
+      if (!sel) continue;
+      if (sel.disabled) continue;
+      if (!sel.value) return false;
+    }
+    return true;
+  }
+  function updatePrereqState(){
+    if (catInput) catInput.disabled = !prereqsReady();
+  }
+  [accSrc, accDest, entSrc, entDest].forEach(el => el && el.addEventListener('change', updatePrereqState));
+  document.addEventListener('DOMContentLoaded', updatePrereqState);
 </script>
 {% endblock %}

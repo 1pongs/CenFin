@@ -43,8 +43,13 @@ class AcquisitionForm(forms.Form):
         css = self.fields["amount"].widget.attrs.get("class", "")
         self.fields["amount"].widget.attrs["class"] = f"{css} amount-input".strip()
         if user is not None:
-            acct_qs = Account.objects.filter(
-                Q(user=user) | Q(user__isnull=True), is_active=True
+            acct_qs = (
+                Account.objects.filter(
+                    Q(user=user) | Q(user__isnull=True),
+                    is_active=True,
+                    system_hidden=False,
+                )
+                .exclude(account_name__istartswith="Remittance")
             )
             ent_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
@@ -74,14 +79,10 @@ class AcquisitionForm(forms.Form):
         self.helper.label_class = "fw-semibold"
         self.helper.field_class = "mb-2"
         self.helper.layout = Layout(
+            # Ask for entities/accounts before category/amount
             Row(
                 Column("name", css_class="col-md-6"),
-                Column("category", css_class="col-md-6"),
-                css_class="g-3",
-            ),
-            Row(
                 Column("date", css_class="col-md-6"),
-                Column("amount", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -92,6 +93,14 @@ class AcquisitionForm(forms.Form):
             Row(
                 Column("account_source", css_class="col-md-6"),
                 Column("account_destination", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("category", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("amount", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",
@@ -195,9 +204,14 @@ class SellAcquisitionForm(forms.Form):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(
+            # Entities/accounts first, then amount
             Row(
                 Column("date", css_class="col-md-6"),
-                Column("sale_price", css_class="col-md-6"),
+                css_class="g-3",
+            ),
+            Row(
+                Column("entity_source", css_class="col-md-6"),
+                Column("entity_destination", css_class="col-md-6"),
                 css_class="g-3",
             ),
             Row(
@@ -206,8 +220,7 @@ class SellAcquisitionForm(forms.Form):
                 css_class="g-3",
             ),
             Row(
-                Column("entity_source", css_class="col-md-6"),
-                Column("entity_destination", css_class="col-md-6"),
+                Column("sale_price", css_class="col-md-6"),
                 css_class="g-3",
             ),
             "remarks",

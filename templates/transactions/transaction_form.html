@@ -183,6 +183,8 @@
   const destLabel = document.querySelector('label[for="id_destination_amount"]');
   const currencyWarning = document.getElementById('currency_warning');
   const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
+  const amountInput = document.getElementById('id_amount');
+  const categoryInput = document.getElementById('id_category_names');
 
   function outsideOption(select) {
     return Array.from(select.options).find(o => o.text.trim() === 'Outside');
@@ -274,6 +276,33 @@
 
   [txTypeSel, accSrc, accDest].forEach(el => el.addEventListener('change', toggleCurrencyInputs));
   document.addEventListener('DOMContentLoaded', toggleCurrencyInputs);
+
+  // ===== Require entity/account before category and amount =====
+  function prereqsReady(){
+    const selects = [accSrc, accDest, entSrc, entDest];
+    // Only require fields that are currently enabled (not disabled)
+    for (const sel of selects){
+      if (!sel) continue;
+      if (sel.disabled) continue;
+      if (!sel.value) return false;
+    }
+    return true;
+  }
+
+  function updatePrereqState(){
+    const ready = prereqsReady();
+    if (categoryInput) categoryInput.disabled = !ready;
+    // Only evaluate cross-currency once accounts are present
+    if (ready) toggleCurrencyInputs();
+    else {
+      destWrapper.classList.add('d-none');
+      currencyWarning.classList.add('d-none');
+      if(destInput) destInput.value = '';
+    }
+  }
+
+  [txTypeSel, accSrc, accDest, entSrc, entDest].forEach(el => el && el.addEventListener('change', updatePrereqState));
+  document.addEventListener('DOMContentLoaded', updatePrereqState);
 
 function toggleBalanceSummary() {
     const hide = txTypeSel.value === 'income' || txTypeSel.value.startsWith('sell');

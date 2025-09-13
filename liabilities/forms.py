@@ -66,7 +66,10 @@ class LoanForm(forms.ModelForm):
             self.fields['lender_id'].initial = self.instance.lender_id
             self.fields['lender_text'].initial = self.instance.lender.name
         if user is not None:
-            account_qs = Account.objects.filter(user=user)
+            account_qs = (
+                Account.objects.filter(user=user, is_active=True, system_hidden=False)
+                .exclude(account_name__istartswith="Remittance")
+            )
             self.fields['account_destination'].queryset = account_qs
             outside_acc = ensure_outside_account()
             outside_ent, account_ent = ensure_fixed_entities(user)

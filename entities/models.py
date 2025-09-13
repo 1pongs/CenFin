@@ -59,37 +59,47 @@ class Entity(models.Model):
         return self.entity_name
 
     def current_balance(self):
-        """Return current balance for this entity."""
+        """Return current liquid balance for this entity (visible rows only).
+
+        Uses the visible transaction manager to exclude archived/hidden and
+        reversal rows so validation matches what users see in the UI.
+        """
         from django.db.models import Sum, Case, When, F, DecimalField
         from decimal import Decimal
         from transactions.models import Transaction
 
-        inflow = (
-            Transaction.all_objects.filter(
+        base_qs_in = (
+            Transaction.objects.filter(
                 entity_destination=self,
                 asset_type_destination__iexact="liquid",
                 child_transfers__isnull=True,
+                is_reversal=False,
             )
-            .aggregate(
+            .exclude(description__istartswith="reversal of")
+        )
+        inflow = (
+            base_qs_in.aggregate(
                 total=Sum(
                     Case(
                         When(destination_amount__isnull=False, then=F("destination_amount")),
-                            default=F("amount"),
+                        default=F("amount"),
                         output_field=DecimalField(),
                     )
                 )
-            )
-            .get("total")
+            ).get("total")
             or Decimal("0")
         )
-        outflow = (
-            Transaction.all_objects.filter(
+
+        base_qs_out = (
+            Transaction.objects.filter(
                 entity_source=self,
                 asset_type_source__iexact="liquid",
                 child_transfers__isnull=True,
+                is_reversal=False,
             )
-            .aggregate(total=Sum("amount"))
-            .get("total")
-            or Decimal("0")
+            .exclude(description__istartswith="reversal of")
+        )
+        outflow = (
+            base_qs_out.aggregate(total=Sum("amount")).get("total") or Decimal("0")
         )
         return inflow - outflow

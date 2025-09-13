@@ -73,28 +73,16 @@
         <a href="{% url 'liabilities:loan-create' %}" class="btn btn-success w-100 mb-3">
           <i class="bi bi-plus-lg me-1"></i>Add
         </a>
-        {% if is_archived_view %}
-          <a href="{% url 'liabilities:list' %}?tab=loans" class="btn btn-outline-secondary w-100 mb-3">
-            <i class="bi bi-archive me-1"></i>Back to Active
-          </a>
-        {% else %}
-          <a href="{% url 'liabilities:list' %}?tab=loans&archived=1" class="btn btn-outline-secondary w-100 mb-3">
-            <i class="bi bi-archive me-1"></i>View Archived
-          </a>
-        {% endif %}
+        <a href="{% url 'liabilities:loan-archived' %}" class="btn btn-outline-secondary w-100 mb-3">
+          <i class="bi bi-archive me-1"></i>View Archived
+        </a>
       {% else %}
         <a href="{% url 'liabilities:credit-create' %}" class="btn btn-success w-100 mb-3">
           <i class="bi bi-plus-lg me-1"></i>Add
         </a>
-        {% if is_archived_view %}
-          <a href="{% url 'liabilities:list' %}?tab=credit" class="btn btn-outline-secondary w-100 mb-3">
-            <i class="bi bi-archive me-1"></i>Back to Active
-          </a>
-        {% else %}
-          <a href="{% url 'liabilities:list' %}?tab=credit&archived=1" class="btn btn-outline-secondary w-100 mb-3">
-            <i class="bi bi-archive me-1"></i>View Archived
-          </a>
-        {% endif %}
+        <a href="{% url 'liabilities:credit-archived' %}" class="btn btn-outline-secondary w-100 mb-3">
+          <i class="bi bi-archive me-1"></i>View Archived
+        </a>
       {% endif %}
       {% include 'liabilities/_toolbar.html' %}
     </div>

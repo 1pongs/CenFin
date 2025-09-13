@@ -30,7 +30,6 @@ class LiabilityListView(TemplateView):
 
     def get_queryset(self, tab):
         params = self.request.GET
-        archived = params.get("archived") in {"1", "true", "True"}
         search = params.get("q", "").strip()
         status = params.get("status", "")
         start = params.get("start", "")
@@ -40,7 +39,7 @@ class LiabilityListView(TemplateView):
         currency = params.get("currency")
 
         if tab == "loans":
-            qs = Loan.objects.filter(user=self.request.user, is_deleted=archived)
+            qs = Loan.objects.filter(user=self.request.user, is_deleted=False)
             if search:
                 qs = qs.filter(lender__name__icontains=search)
             if status == "active":
@@ -70,7 +69,7 @@ class LiabilityListView(TemplateView):
             else:
                 qs = qs.order_by("lender__name")
         else:
-            qs = CreditCard.objects.filter(user=self.request.user, is_deleted=archived)
+            qs = CreditCard.objects.filter(user=self.request.user, is_deleted=False)
             if search:
                 qs = qs.filter(card_name__icontains=search)
             if status == "active":
@@ -123,7 +122,6 @@ class LiabilityListView(TemplateView):
             "currency_code": self.request.GET.get("currency", ""),
             "entities": Lender.objects.all().order_by("name"),
         })
-        ctx["is_archived_view"] = self.request.GET.get("archived") in {"1", "true", "True"}
         # Inline undo banner after delete (credit/loans)
         undo_kind = self.request.session.pop("undo_liability_kind", None)  # 'credit' or 'loan'
         undo_obj_name = self.request.session.pop("undo_liability_name", None)
@@ -180,6 +178,24 @@ class LiabilityListView(TemplateView):
                 ("Available", avail_disp),
                 ("Rate", f"{card.interest_rate}%"),
             ]
+        return ctx
+
+
+class CreditArchivedListView(TemplateView):
+    template_name = "liabilities/credit_archived_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["cards"] = CreditCard.objects.filter(user=self.request.user, is_deleted=True).order_by("card_name")
+        return ctx
+
+
+class LoanArchivedListView(TemplateView):
+    template_name = "liabilities/loan_archived_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["loans"] = Loan.objects.filter(user=self.request.user, is_deleted=True).order_by("lender__name")
         return ctx
     
 class CreditCardCreateView(CreateView):

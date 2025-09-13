@@ -9,12 +9,16 @@ from .views import (
     LoanUpdateView,
     LoanDeleteView,
     LoanRestoreView,
+    CreditArchivedListView,
+    LoanArchivedListView,
 )
 
 app_name = 'liabilities'
 
 urlpatterns = [
     path('', LiabilityListView.as_view(), name='list'),
+    path('credit/archived/', CreditArchivedListView.as_view(), name='credit-archived'),
+    path('loans/archived/', LoanArchivedListView.as_view(), name='loan-archived'),
     path('credit/new/', CreditCardCreateView.as_view(), name='credit-create'),
     path('credit/<int:pk>/edit/', CreditCardUpdateView.as_view(), name='credit-edit'),
     path('credit/<int:pk>/delete/', CreditCardDeleteView.as_view(), name='credit-delete'),
