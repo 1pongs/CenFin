@@ -25,7 +25,9 @@ class LoanDisbursementDeleteViewTests(TestCase):
         self.user = User.objects.create_user(username="loan", password="p")
         self.client.force_login(self.user)
         lender = Lender.objects.create(name="Bank")
-        self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.dest = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
         self.loan = Loan.objects.create(
@@ -68,7 +70,9 @@ class LoanDisbursementSignalTests(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="sig", password="p")
         lender = Lender.objects.create(name="SigBank")
-        self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.dest = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
         self.loan = Loan.objects.create(

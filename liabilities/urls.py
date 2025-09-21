@@ -9,22 +9,24 @@ from .views import (
     LoanUpdateView,
     LoanDeleteView,
     LoanRestoreView,
-    CreditArchivedListView,
-    LoanArchivedListView,
 )
 
-app_name = 'liabilities'
+app_name = "liabilities"
 
 urlpatterns = [
-    path('', LiabilityListView.as_view(), name='list'),
-    path('credit/archived/', CreditArchivedListView.as_view(), name='credit-archived'),
-    path('loans/archived/', LoanArchivedListView.as_view(), name='loan-archived'),
-    path('credit/new/', CreditCardCreateView.as_view(), name='credit-create'),
-    path('credit/<int:pk>/edit/', CreditCardUpdateView.as_view(), name='credit-edit'),
-    path('credit/<int:pk>/delete/', CreditCardDeleteView.as_view(), name='credit-delete'),
-    path('credit/<int:pk>/restore/', CreditCardRestoreView.as_view(), name='credit-restore'),
-    path('loans/new/', LoanCreateView.as_view(), name='loan-create'),
-    path('loans/<int:pk>/edit/', LoanUpdateView.as_view(), name='loan-edit'),
-    path('loans/<int:pk>/delete/', LoanDeleteView.as_view(), name='loan-delete'),
-    path('loans/<int:pk>/restore/', LoanRestoreView.as_view(), name='loan-restore'),
+    path("", LiabilityListView.as_view(), name="list"),
+    path("credit/new/", CreditCardCreateView.as_view(), name="credit-create"),
+    path("credit/<int:pk>/edit/", CreditCardUpdateView.as_view(), name="credit-edit"),
+    path(
+        "credit/<int:pk>/delete/", CreditCardDeleteView.as_view(), name="credit-delete"
+    ),
+    path(
+        "credit/<int:pk>/restore/",
+        CreditCardRestoreView.as_view(),
+        name="credit-restore",
+    ),
+    path("loans/new/", LoanCreateView.as_view(), name="loan-create"),
+    path("loans/<int:pk>/edit/", LoanUpdateView.as_view(), name="loan-edit"),
+    path("loans/<int:pk>/delete/", LoanDeleteView.as_view(), name="loan-delete"),
+    path("loans/<int:pk>/restore/", LoanRestoreView.as_view(), name="loan-restore"),
 ]

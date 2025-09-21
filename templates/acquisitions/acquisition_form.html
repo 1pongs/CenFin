@@ -21,17 +21,31 @@
             <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
           </div>
         </div>
-        <div class="card-body">
-          <form method="post" novalidate>
-            {% csrf_token %}
-            {% crispy form %}
-          </form>
-          {% if object %}
-          <div class="d-flex justify-content-end mt-3">
-            <a href="{% url 'acquisitions:acquisition-delete' object.pk %}" class="btn btn-danger">Delete</a>
+          <div class="card-body">
+            {% if object and object.sell_tx %}
+              <div class="alert alert-warning">
+                This acquisition has already been sold. You cannot edit the acquisition record directly.
+                To modify the sale details, please edit the related transactions: the profit transaction and the capital return transfer.
+              </div>
+              <div class="mb-3">
+                <a href="{% url 'transactions:transaction_update' object.sell_tx.pk %}" class="btn btn-primary btn-sm">Edit Profit Transaction</a>
+                <a href="{% url 'transactions:transaction_list' %}?q={{ object.name|urlencode }}" class="btn btn-secondary btn-sm">Find Capital Return Transaction</a>
+              </div>
+              <div class="d-flex justify-content-end mt-3">
+                <a href="{% url 'acquisitions:acquisition-list' %}" class="btn btn-outline-secondary">Back to list</a>
+              </div>
+            {% else %}
+              <form method="post" novalidate>
+                {% csrf_token %}
+                {% crispy form %}
+              </form>
+              {% if object %}
+              <div class="d-flex justify-content-end mt-3">
+                <a href="{% url 'acquisitions:acquisition-delete' object.pk %}" class="btn btn-danger">Delete</a>
+              </div>
+              {% endif %}
+            {% endif %}
           </div>
-          {% endif %}
-        </div>
       </div>
     </div>
   </div>
@@ -163,5 +177,41 @@
   }
   [accSrc, accDest, entSrc, entDest].forEach(el => el && el.addEventListener('change', updatePrereqState));
   document.addEventListener('DOMContentLoaded', updatePrereqState);
+</script>
+<script>
+  // Ensure required-field stars are consistent for acquisition form fields
+  (function ensureAcqRequiredStars(){
+    const ids = ['id_entity_source','id_entity_destination','id_account_source','id_account_destination','id_amount','id_category','id_name','id_date'];
+    function cleanAndAdd(lbl){
+      if (!lbl) return;
+      // remove stray literal '*' text nodes and existing small star nodes
+      Array.from(lbl.childNodes).forEach(n => {
+        if (n.nodeType === 3 && n.textContent && n.textContent.trim() === '*') n.remove();
+        if (n.nodeType === 1 && n.classList && n.classList.contains('req-star')) n.remove();
+      });
+      // append a single red star
+      const star = document.createElement('span');
+      star.className = 'req-star';
+      star.textContent = '*';
+      star.style.color = '#dc3545';
+      star.style.fontWeight = '600';
+      star.style.marginLeft = '0.25rem';
+      lbl.appendChild(star);
+    }
+
+    function run(root=document){
+      ids.forEach(id => {
+        try{
+          const lbl = root.querySelector(`label[for="${id}"]`) || (root.getElementById && root.getElementById(id) && root.getElementById(id).closest('label'));
+          if (lbl) cleanAndAdd(lbl);
+        } catch(e) {}
+      });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => run()); else run();
+
+    const mo = new MutationObserver(muts => { muts.forEach(m => { m.addedNodes && Array.from(m.addedNodes).forEach(n => { if (n.nodeType === 1) run(n); }); }); });
+    mo.observe(document.body, { childList: true, subtree: true });
+  })();
 </script>
 {% endblock %}

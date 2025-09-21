@@ -11,57 +11,231 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('accounts', '0001_initial'),
-        ('entities', '0001_initial'),
+        ("accounts", "0001_initial"),
+        ("entities", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CategoryTag',
+            name="CategoryTag",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=60)),
-                ('transaction_type', models.CharField(blank=True, choices=[('', '---------'), ('income', 'Income'), ('expense', 'Expense'), ('premium_payment', 'Premium Payment'), ('transfer', 'Transfer'), ('buy_acquisition', 'Buy Acquisition'), ('sell_acquisition', 'Sell Acquisition')], max_length=20, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='category_tags', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=60)),
+                (
+                    "transaction_type",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("", "---------"),
+                            ("income", "Income"),
+                            ("expense", "Expense"),
+                            ("premium_payment", "Premium Payment"),
+                            ("transfer", "Transfer"),
+                            ("buy_acquisition", "Buy Acquisition"),
+                            ("sell_acquisition", "Sell Acquisition"),
+                        ],
+                        max_length=20,
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="category_tags",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('name', 'transaction_type', 'user')},
+                "unique_together": {("name", "transaction_type", "user")},
             },
         ),
         migrations.CreateModel(
-            name='TransactionTemplate',
+            name="TransactionTemplate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=60, unique=True)),
-                ('autopop_map', models.JSONField(blank=True, default=dict, null=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='transaction_templates', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=60, unique=True)),
+                ("autopop_map", models.JSONField(blank=True, default=dict, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="transaction_templates",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Transaction',
+            name="Transaction",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField(blank=True, default=django.utils.timezone.now, null=True)),
-                ('description', models.CharField(blank=True, max_length=255, null=True)),
-                ('transaction_type', models.CharField(blank=True, choices=[('income', 'Income'), ('expense', 'Expense'), ('premium_payment', 'Premium Payment'), ('buy acquisition', 'Buy Acquisition'), ('sell acquisition', 'Sell Acquisition'), ('transfer', 'Transfer')], max_length=20, null=True)),
-                ('transaction_type_source', models.CharField(blank=True, editable=False, max_length=20, null=True)),
-                ('transaction_type_destination', models.CharField(blank=True, editable=False, max_length=20, null=True)),
-                ('asset_type_source', models.CharField(blank=True, editable=False, max_length=20, null=True)),
-                ('asset_type_destination', models.CharField(blank=True, editable=False, max_length=20, null=True)),
-                ('amount', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
-                ('remarks', models.TextField(blank=True, null=True)),
-                ('account_destination', models.ForeignKey(blank=True, limit_choices_to={'is_active': True}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='transaction_as_destination', to='accounts.account')),
-                ('account_source', models.ForeignKey(blank=True, limit_choices_to={'is_active': True}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='transaction_as_source', to='accounts.account')),
-                ('categories', models.ManyToManyField(blank=True, related_name='transactions', to='transactions.categorytag')),
-                ('entity_destination', models.ForeignKey(blank=True, limit_choices_to={'is_active': True}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='transaction_entity_destination', to='entities.entity')),
-                ('entity_source', models.ForeignKey(blank=True, limit_choices_to={'is_active': True}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='transaction_entity_source', to='entities.entity')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='transactions', to=settings.AUTH_USER_MODEL)),
-                ('template', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='transactions.transactiontemplate')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "date",
+                    models.DateField(
+                        blank=True, default=django.utils.timezone.now, null=True
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "transaction_type",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("income", "Income"),
+                            ("expense", "Expense"),
+                            ("premium_payment", "Premium Payment"),
+                            ("buy acquisition", "Buy Acquisition"),
+                            ("sell acquisition", "Sell Acquisition"),
+                            ("transfer", "Transfer"),
+                        ],
+                        max_length=20,
+                        null=True,
+                    ),
+                ),
+                (
+                    "transaction_type_source",
+                    models.CharField(
+                        blank=True, editable=False, max_length=20, null=True
+                    ),
+                ),
+                (
+                    "transaction_type_destination",
+                    models.CharField(
+                        blank=True, editable=False, max_length=20, null=True
+                    ),
+                ),
+                (
+                    "asset_type_source",
+                    models.CharField(
+                        blank=True, editable=False, max_length=20, null=True
+                    ),
+                ),
+                (
+                    "asset_type_destination",
+                    models.CharField(
+                        blank=True, editable=False, max_length=20, null=True
+                    ),
+                ),
+                (
+                    "amount",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=12, null=True
+                    ),
+                ),
+                ("remarks", models.TextField(blank=True, null=True)),
+                (
+                    "account_destination",
+                    models.ForeignKey(
+                        blank=True,
+                        limit_choices_to={"is_active": True},
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="transaction_as_destination",
+                        to="accounts.account",
+                    ),
+                ),
+                (
+                    "account_source",
+                    models.ForeignKey(
+                        blank=True,
+                        limit_choices_to={"is_active": True},
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="transaction_as_source",
+                        to="accounts.account",
+                    ),
+                ),
+                (
+                    "categories",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="transactions",
+                        to="transactions.categorytag",
+                    ),
+                ),
+                (
+                    "entity_destination",
+                    models.ForeignKey(
+                        blank=True,
+                        limit_choices_to={"is_active": True},
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="transaction_entity_destination",
+                        to="entities.entity",
+                    ),
+                ),
+                (
+                    "entity_source",
+                    models.ForeignKey(
+                        blank=True,
+                        limit_choices_to={"is_active": True},
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="transaction_entity_source",
+                        to="entities.entity",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="transactions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "template",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="transactions.transactiontemplate",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['account_source'], name='transaction_account_3916db_idx'), models.Index(fields=['account_destination'], name='transaction_account_0a490c_idx')],
+                "indexes": [
+                    models.Index(
+                        fields=["account_source"], name="transaction_account_3916db_idx"
+                    ),
+                    models.Index(
+                        fields=["account_destination"],
+                        name="transaction_account_0a490c_idx",
+                    ),
+                ],
             },
         ),
     ]

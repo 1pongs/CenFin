@@ -1,31 +1,6 @@
+{# Deprecated page; archived feature removed. Keep minimal stub to avoid 404s in stale caches. #}
 {% extends "base.html" %}
-{% block title %}Archived Entities · CENFIN{% endblock %}
-{% block extra_css %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-{% endblock %}
+{% block title %}Entities · CENFIN{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="mb-0">Archived Entities</h1>
-  <a href="{% url 'entities:list' %}" class="btn btn-outline-secondary">Back to Active</a>
-  </div>
-<div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="alert">
-  <i class="bi bi-archive"></i>
-  <div><strong>Archived view:</strong> Showing archived entities only.</div>
-  </div>
-{% for e in entities %}
-  <div class="card shadow-sm rounded-lg mb-3 p-3">
-    <div class="d-flex align-items-center">
-      <div class="flex-grow-1">
-        <div class="fw-semibold">{{ e.entity_name }}</div>
-        <small class="text-muted">{{ e.entity_type }}</small>
-      </div>
-      <form method="post" action="{% url 'entities:restore' e.pk %}">
-        {% csrf_token %}
-        <button class="btn btn-sm btn-primary">Restore</button>
-      </form>
-    </div>
-  </div>
-{% empty %}
-  <p>No archived entities.</p>
-{% endfor %}
+<div class="alert alert-info">Archived view was removed. <a href="{% url 'entities:list' %}">Go to Entities</a>.</div>
 {% endblock %}

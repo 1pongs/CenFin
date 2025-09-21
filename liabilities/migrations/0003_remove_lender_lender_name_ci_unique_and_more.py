@@ -8,21 +8,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('liabilities', '0002_lender_lender_name_ci_unique'),
+        ("liabilities", "0002_lender_lender_name_ci_unique"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='lender',
-            name='lender_name_ci_unique',
+            model_name="lender",
+            name="lender_name_ci_unique",
         ),
         migrations.AlterField(
-            model_name='creditcard',
-            name='issuer',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='credit_cards', to='liabilities.lender'),
+            model_name="creditcard",
+            name="issuer",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="credit_cards",
+                to="liabilities.lender",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='lender',
-            constraint=models.UniqueConstraint(django.db.models.functions.text.Lower('name'), name='uq_issuer_name_ci'),
+            model_name="lender",
+            constraint=models.UniqueConstraint(
+                django.db.models.functions.text.Lower("name"), name="uq_issuer_name_ci"
+            ),
         ),
     ]

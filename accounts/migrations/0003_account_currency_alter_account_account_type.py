@@ -7,19 +7,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0002_alter_account_account_type'),
-        ('currencies', '0001_initial'),
+        ("accounts", "0002_alter_account_account_type"),
+        ("currencies", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='account',
-            name='currency',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='accounts', to='currencies.currency'),
+            model_name="account",
+            name="currency",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="accounts",
+                to="currencies.currency",
+            ),
         ),
         migrations.AlterField(
-            model_name='account',
-            name='account_type',
-            field=models.CharField(choices=[('Banks', 'Banks'), ('E-Wallet', 'E-Wallet'), ('Cash', 'Cash'), ('Crypto Wallet', 'Crypto Wallet'), ('Entity', 'Entity'), ('Credit', 'Credit'), ('Outside', 'Outside')], max_length=50),
+            model_name="account",
+            name="account_type",
+            field=models.CharField(
+                choices=[
+                    ("Banks", "Banks"),
+                    ("E-Wallet", "E-Wallet"),
+                    ("Cash", "Cash"),
+                    ("Crypto Wallet", "Crypto Wallet"),
+                    ("Entity", "Entity"),
+                    ("Credit", "Credit"),
+                    ("Outside", "Outside"),
+                ],
+                max_length=50,
+            ),
         ),
     ]

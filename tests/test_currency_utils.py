@@ -6,7 +6,9 @@ from utils.currency import convert_amount
 from unittest.mock import patch
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class ConvertAmountMissingCurrencyTests(TestCase):
     def test_missing_currency_returns_amount(self):
         Currency.objects.create(code="USD", name="US Dollar")
@@ -19,12 +21,14 @@ class ConvertAmountMissingCurrencyTests(TestCase):
         self.assertEqual(result, amount)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class ConvertAmountFetchTests(TestCase):
     def setUp(self):
         self.cur_usd = Currency.objects.create(code="USD", name="US Dollar")
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
-        
+
     @patch("utils.currency.requests.get")
     def test_fetch_from_frankfurter(self, mock_get):
         mock_get.return_value.status_code = 200
@@ -40,7 +44,9 @@ class ConvertAmountFetchTests(TestCase):
         self.assertEqual(rate.rate, Decimal("55.0"))
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class FrankfurterServiceTests(TestCase):
     @patch("currencies.services.requests.get")
     def test_returns_all_remote_codes(self, mock_get):

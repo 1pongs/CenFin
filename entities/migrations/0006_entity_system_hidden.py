@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('entities', '0005_entity_is_system_default'),
+        ("entities", "0005_entity_is_system_default"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='entity',
-            name='system_hidden',
+            model_name="entity",
+            name="system_hidden",
             field=models.BooleanField(default=False),
         ),
     ]

@@ -13,7 +13,7 @@ def _drop_old_entity_column(apps, schema_editor):
     referenced by a foreign key, so we first drop any FK constraints for `entity_id`
     on the `transactions_categorytag` table, then drop the column if present.
     """
-    CategoryTag = apps.get_model('transactions', 'CategoryTag')
+    CategoryTag = apps.get_model("transactions", "CategoryTag")
     table = CategoryTag._meta.db_table
     connection = schema_editor.connection
     # Only relevant for MySQL/MariaDB; skip on SQLite and others used in tests.
@@ -21,8 +21,11 @@ def _drop_old_entity_column(apps, schema_editor):
         return
     with connection.cursor() as cursor:
         # Check if the legacy column exists
-        columns = [col.name for col in connection.introspection.get_table_description(cursor, table)]
-        if 'entity_id' not in columns:
+        columns = [
+            col.name
+            for col in connection.introspection.get_table_description(cursor, table)
+        ]
+        if "entity_id" not in columns:
             return
 
         # Drop any foreign key constraints on entity_id (names can vary between DBs)
@@ -42,7 +45,7 @@ def _drop_old_entity_column(apps, schema_editor):
             cursor.execute(f"ALTER TABLE {table} DROP FOREIGN KEY `{fk}`")
 
         # Now it is safe to drop the column
-        cursor.execute(f'ALTER TABLE {table} DROP COLUMN entity_id')
+        cursor.execute(f"ALTER TABLE {table} DROP COLUMN entity_id")
 
 
 def _drop_conflicting_unique_indexes(apps, schema_editor):
@@ -51,7 +54,7 @@ def _drop_conflicting_unique_indexes(apps, schema_editor):
     This avoids duplicate unique indexes when Django creates its own for
     (user_id, transaction_type, name, entity_id).
     """
-    CategoryTag = apps.get_model('transactions', 'CategoryTag')
+    CategoryTag = apps.get_model("transactions", "CategoryTag")
     table = CategoryTag._meta.db_table
     connection = schema_editor.connection
     # Only relevant for MySQL/MariaDB; skip on SQLite and others used in tests.
@@ -79,11 +82,12 @@ def _drop_conflicting_unique_indexes(apps, schema_editor):
         for idx in idx_names:
             cursor.execute(f"ALTER TABLE {table} DROP INDEX `{idx}`")
 
+
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('entities', '0006_entity_system_hidden'),
-        ('transactions', '0007_alter_categorytag_unique_together_and_more'),
+        ("entities", "0006_entity_system_hidden"),
+        ("transactions", "0007_alter_categorytag_unique_together_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -97,7 +101,7 @@ class Migration(migrations.Migration):
             ],
             state_operations=[
                 migrations.AlterUniqueTogether(
-                    name='categorytag',
+                    name="categorytag",
                     unique_together=set(),
                 ),
             ],
@@ -107,23 +111,23 @@ class Migration(migrations.Migration):
             reverse_code=migrations.RunPython.noop,
         ),
         migrations.RenameField(
-            model_name='categorytag',
-            old_name='account',
-            new_name='entity',
+            model_name="categorytag",
+            old_name="account",
+            new_name="entity",
         ),
         migrations.AlterField(
-            model_name='categorytag',
-            name='entity',
+            model_name="categorytag",
+            name="entity",
             field=models.ForeignKey(
                 blank=True,
                 null=True,
                 on_delete=django.db.models.deletion.CASCADE,
-                related_name='category_tags',
-                to='entities.entity',
+                related_name="category_tags",
+                to="entities.entity",
             ),
         ),
         migrations.AlterUniqueTogether(
-            name='categorytag',
-            unique_together={('user', 'transaction_type', 'name', 'entity')},
+            name="categorytag",
+            unique_together={("user", "transaction_type", "name", "entity")},
         ),
     ]

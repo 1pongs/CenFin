@@ -10,12 +10,16 @@
   document.addEventListener('DOMContentLoaded', () => {
     const accField = document.getElementById('id_account_source');
     const entField = document.getElementById('id_entity_source');
+    const txTypeField = document.getElementById('id_transaction_type');
     const accWrapper = document.getElementById('account-balance-wrapper');
     const accBalanceField = document.getElementById('account-balance-field');
     const accSpinner = document.getElementById('account-balance-spinner');
     const errorDiv = document.getElementById('balance-error');
     const form = document.querySelector('#form-container form');
     const saveBtn = form ? form.querySelector('button[type="submit"],input[type="submit"]') : null;
+
+    const showTypes = new Set(['expense', 'transfer']);
+  let lastReqId = 0;
 
     function parseAmt(txt) {
       const num = parseFloat(String(txt).replace(/[^0-9.-]/g, ''));
@@ -35,34 +39,73 @@
       }
     }
 
+    function getTxType() {
+      if (!txTypeField) return '';
+      const val = (txTypeField.value || '').toString().trim().toLowerCase();
+      return val;
+    }
+
+    function shouldShowForType() {
+      const t = getTxType();
+      return showTypes.has(t);
+    }
+
     function insertFields() {
       if (accField) accField.insertAdjacentElement('afterend', accWrapper);
     }
     async function fetchPairBalance(acc, ent) {
+      const reqId = ++lastReqId;
+      // Make the wrapper visible while loading so users always see the label
+      accWrapper.classList.remove('d-none');
       accSpinner.classList.remove('d-none');
       accBalanceField.textContent = '';
+      errorDiv.classList.add('d-none');
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        const url = `/transactions/pair-balance/?account=${acc}&entity=${ent}`;
+  // Request the true pair balance only (no fallback to account balance)
+  const url = `/transactions/pair-balance/?account=${acc}&entity=${ent}&fallback=0`;
         const resp = await fetch(url, { signal: controller.signal });
         clearTimeout(timeout);
+        if (reqId !== lastReqId) return; // stale response; ignore
         if (resp.ok) {
           const data = await resp.json();
+          if (reqId !== lastReqId) return; // stale after parse; ignore
           const amt = parseFloat(data.balance);
           if (!isNaN(amt)) {
             accBalanceField.textContent = `${data.currency} ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             accWrapper.classList.remove('d-none');
+            errorDiv.classList.add('d-none');
           } else {
             accWrapper.classList.add('d-none');
+            errorDiv.textContent = 'Could not parse balance.';
+            errorDiv.classList.remove('d-none');
           }
         } else {
+          // Attempt to read server-provided JSON error
+          let errText = 'Failed to load balance.';
+          try {
+            const data = await resp.json();
+            if (data && data.error) errText = data.error;
+            console.error('pair-balance error', data);
+          } catch (e) {
+            try {
+              const txt = await resp.text();
+              if (txt) console.error('pair-balance non-JSON error', txt);
+            } catch (_) {}
+          }
           accWrapper.classList.add('d-none');
+          errorDiv.textContent = errText;
+          errorDiv.classList.remove('d-none');
         }
       } catch (err) {
         accWrapper.classList.add('d-none');
+        errorDiv.textContent = 'Error fetching balance.';
+        errorDiv.classList.remove('d-none');
       } finally {
-        accSpinner.classList.add('d-none');
+        if (reqId === lastReqId) {
+          accSpinner.classList.add('d-none');
+        }
         checkSaveState();
       }
     }
@@ -76,12 +119,15 @@
         accBalanceField.textContent = '';
         return;
       }
-      if (isOutside(accField) || isOutside(entField)) {
-        accWrapper.classList.add('d-none');
-        accBalanceField.textContent = '';
-      } else if (acc && ent) {
-        // Request converted amount with fallback to account balance when pair history is empty
-        fetchPairBalance(`${acc}`, `${ent}`);
+      if (acc && ent) {
+        // Only show for configured transaction types (expense/transfer)
+        if (shouldShowForType()) {
+          // Request the true pair balance only (no fallback to account balance)
+          fetchPairBalance(`${acc}`, `${ent}`);
+        } else {
+          accWrapper.classList.add('d-none');
+          accBalanceField.textContent = '';
+        }
       } else {
         accWrapper.classList.add('d-none');
         accBalanceField.textContent = '';
@@ -98,5 +144,6 @@
 
     if (accField) accField.addEventListener('change', updatePair);
     if (entField) entField.addEventListener('change', updatePair);
+    if (txTypeField) txTypeField.addEventListener('change', updatePair);
   });
   </script>

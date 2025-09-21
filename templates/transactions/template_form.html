@@ -1,177 +1,172 @@
 {# transactions/template_form.html #}
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load static %}
 
-{# ───────────────────────── page title ───────────────────────── #}
 {% block title %}
   {% if form.instance.pk %}Edit{% else %}New{% endif %} Template · CENFIN
 {% endblock %}
 
-{# ───────────────────────── content ─────────────────────────── #}
+{% block extra_css %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
 {% block content %}
-<div class="container py-4" style="max-width: 920px;">
+<div id="form-container" class="container py-4">
   <a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
-      <i class="bi bi-arrow-left"></i> Back
-    </a>
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-      <h1 class="h3 fw-semibold mb-2 mb-md-0">
-        {% if form.instance.pk %}Edit{% else %}New{% endif %} Template
-      </h1>
-      <div class="d-flex gap-2">
-        <button type="button" class="btn btn-success btn-sm" id="quick-account-btn">+ Account</button>
-        <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
-      </div>
-    </div>
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
 
-    {# card wrapper ---------------------------------------------------- #}
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-4">
-        <form method="post" novalidate>
-          {% csrf_token %}
-
-          {# 2-column responsive grid via Bootstrap -------------------- #}
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.description|as_crispy_field }}</div>
- </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.transaction_type|as_crispy_field }}</div>
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between">
+          <h2 class="fs-4 mb-0">{% if form.instance.pk %}Edit{% else %}New{% endif %} Template</h2>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm" id="quick-account-btn">+ Account</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-category-btn">+ Category</button>
           </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.amount|as_crispy_field }}</div>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.account_source|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.account_destination|as_crispy_field }}</div>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.entity_source|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.entity_destination|as_crispy_field }}</div>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-12">{{ form.remarks|as_crispy_field }}</div>
-            {{ form.autopop_map }}
-          </div>
-
-          {# buttons --------------------------------------------------- #}
-          <div class="d-flex justify-content-end gap-2 mt-4">
-            <button type="submit" class="btn btn-primary px-4">Save</button>
-            <a href="{% url 'transactions:template_list' %}" class="btn btn-outline-secondary">Cancel</a>
-          </div>
-        </form>              
-
-        {% if form.instance.pk %}
-          <form method="post"
-                action="{% url 'transactions:template_delete' form.instance.pk %}"
-                class="d-flex justify-content-end mt-2"
-                onsubmit="return confirm('Delete this template permanently?');">
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
             {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Delete</button>
+            {# Render the template form using crispy so layout mirrors transaction form #}
+            {% crispy form %}
+            {# Ensure autopop_map (JSON) is preserved if present #}
+            {{ form.autopop_map }}
           </form>
+
+          {% if form.instance.pk %}
+            <form method="post"
+                  action="{% url 'transactions:template_delete' form.instance.pk %}"
+                  class="d-flex justify-content-end mt-2"
+                  onsubmit="return confirm('Delete this template permanently?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
           {% endif %}
-      </div>
-    </div>
-
-    <!-- ===================== QUICK ADD MODALS ===================== -->
-    <div class="modal fade" id="modal-account" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">New Account</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="quick-account-form">
-              {% csrf_token %}
-              {{ quick_account_form|crispy }}
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary" form="quick-account-form">Save</button>
-          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="modal fade" id="modal-entity" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">New Entity</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="quick-entity-form">
-              {% csrf_token %}
-              {{ quick_entity_form|crispy }}
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary" form="quick-entity-form">Save</button>
+<!-- Quick-add modals (same as transaction form) -->
+<div class="modal fade" id="modal-account" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-account-form">
+          {% csrf_token %}
+          {{ quick_account_form|crispy }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-account-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-entity" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Entity</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-entity-form">
+          {% csrf_token %}
+          {{ quick_entity_form|crispy }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-entity-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+      <div class="modal fade" id="modal-category" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">New Category</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="quick-category-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="quick-category-name" class="form-label">Name</label>
+                  <input id="quick-category-name" name="name" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                  <label for="quick-category-transaction-type" class="form-label">Transaction type</label>
+                  <select id="quick-category-transaction-type" name="transaction_type" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="quick-category-entity" class="form-label">Entity</label>
+                  <select id="quick-category-entity" name="entity" class="form-select"></select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" form="quick-category-form">Save</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-  {% endblock %}
+{% endblock %}
 
 {% block extra_js %}
 <script>
-  /* keep current value so we can revert if user cancels navigation */
-  const sel  = document.getElementById('template-select');
-  const form = document.querySelector('form');          // ← grab the form
-  sel.dataset.current = sel.value;
+  // Unsaved-changes guard only if a template-select exists on page
+  (function(){
+    const sel = document.getElementById('template-select');
+    const form = document.querySelector('form');
+    if (!form) return;
 
-  /* track unsaved changes */
-  let isDirty = false;
-  document.querySelectorAll('form input, form textarea, form select')
-    .forEach(el => el.addEventListener('input', () => isDirty = true));
+    let isDirty = false;
+    form.querySelectorAll('input, textarea, select').forEach(el => el.addEventListener('input', () => isDirty = true));
 
-  /* ❶ clear the flag exactly when the user hits Save  */
-  form.addEventListener('submit', () => {
-      isDirty = false;                // no longer “dirty”
+    form.addEventListener('submit', () => {
+      isDirty = false;
       window.removeEventListener('beforeunload', handleBeforeUnload);
-  });
+    });
 
-  /* … show warning only if isDirty is still true … */
-  function handleBeforeUnload(e) {
-      if (isDirty) {
-          e.preventDefault();
-          e.returnValue = '';
-      }
-  }
-  window.addEventListener('beforeunload', handleBeforeUnload);
+    function handleBeforeUnload(e){ if(isDirty){ e.preventDefault(); e.returnValue = ''; } }
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
-  /* dropdown navigation with confirmation */
-  sel.addEventListener('change', function () {
-      if (!this.value) return;
-      if (isDirty && !confirm('You have unsaved changes. Discard them?')) {
-          this.value = this.dataset.current;
-          return;
-      }
-      window.location.href = `/transactions/templates/${this.value}/edit/`;
-  });
+    if (sel) {
+      sel.dataset.current = sel.value;
+      sel.addEventListener('change', function(){
+        if (!this.value) return;
+        if (isDirty && !confirm('You have unsaved changes. Discard them?')){ this.value = this.dataset.current; return; }
+        window.location.href = `/transactions/templates/${this.value}/edit/`;
+      });
+    }
+  })();
 
-    // ---------- Quick-add buttons ----------
+  // Quick-add buttons
   const accModal = new bootstrap.Modal(document.getElementById('modal-account'));
   const entModal = new bootstrap.Modal(document.getElementById('modal-entity'));
-
   document.getElementById('quick-account-btn').addEventListener('click', () => accModal.show());
   document.getElementById('quick-entity-btn').addEventListener('click', () => entModal.show());
 
   document.getElementById('quick-account-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const resp = await fetch('/api/create/account/', {
-      method: 'POST',
-      body: new FormData(e.target)
-    });
+    const resp = await fetch('/api/create/account/', { method: 'POST', body: new FormData(e.target) });
     if (resp.ok) {
       const data = await resp.json();
       ['id_account_source','id_account_destination'].forEach(id => {
@@ -183,12 +178,59 @@
     }
   });
 
+  // ---------- Quick-add category ----------
+  const catModal = new bootstrap.Modal(document.getElementById('modal-category'));
+  const quickCatBtn = document.getElementById('quick-category-btn');
+  if (quickCatBtn) quickCatBtn.addEventListener('click', () => {
+    // Populate modal selects immediately so users see current options
+    const txTypeSel = document.getElementById('id_transaction_type');
+    const entSel = document.getElementById('id_entity_source') || document.getElementById('id_entity_destination');
+    const modalTx = document.getElementById('quick-category-transaction-type');
+    const modalEnt = document.getElementById('quick-category-entity');
+    if (modalTx && txTypeSel && modalTx.options.length <= 1) {
+      Array.from(txTypeSel.options).forEach(o => { if (o.value !== '') modalTx.add(new Option(o.text, o.value)); });
+    }
+    if (modalEnt && entSel && modalEnt.options.length <= 1) {
+      Array.from(entSel.options).forEach(o => { if (o.value !== '') modalEnt.add(new Option(o.text, o.value)); });
+    }
+    // Pre-select current page values for convenience
+    try {
+      if (modalTx && txTypeSel) modalTx.value = txTypeSel.value || '';
+      if (modalEnt && entSel) modalEnt.value = entSel.value || '';
+    } catch (e) {}
+    catModal.show();
+  });
+
+  document.getElementById('quick-category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const txTypeSel = document.getElementById('id_transaction_type');
+    const entSel = document.getElementById('id_entity_source') || document.getElementById('id_entity_destination');
+    const modalTx = document.getElementById('quick-category-transaction-type');
+    const modalEnt = document.getElementById('quick-category-entity');
+    // copy options if empty (defensive - primary copy happens when modal opens)
+    if (modalTx && modalTx.options.length <= 1 && txTypeSel) {
+      Array.from(txTypeSel.options).forEach(o => modalTx.add(new Option(o.text, o.value)));
+    }
+    if (modalEnt && modalEnt.options.length <= 1 && entSel) {
+      Array.from(entSel.options).forEach(o => modalEnt.add(new Option(o.text, o.value)));
+    }
+
+    const resp = await fetch('/transactions/tags/', { method: 'POST', body: new FormData(e.target) });
+    if (resp.ok) {
+      const data = await resp.json();
+      const sel = document.getElementById('id_category');
+      if (sel) sel.add(new Option(data.name, data.id, true, true));
+      catModal.hide();
+      e.target.reset();
+    } else {
+      const text = await resp.text();
+      alert('Could not create category: ' + text);
+    }
+  });
+
   document.getElementById('quick-entity-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const resp = await fetch('/api/create/entity/', {
-      method: 'POST',
-      body: new FormData(e.target)
-    });
+    const resp = await fetch('/api/create/entity/', { method: 'POST', body: new FormData(e.target) });
     if (resp.ok) {
       const data = await resp.json();
       ['id_entity_source','id_entity_destination'].forEach(id => {
@@ -200,70 +242,54 @@
     }
   });
 
- // ---- auto-lock Outside fields ----
+  // Keep existing transaction-related helpers available when the template form
+  // contains the same fields (toggleOutside, etc.). Guard lookups to avoid
+  // errors when a particular element is missing.
   const txTypeSel = document.getElementById('id_transaction_type');
   const accSrc = document.getElementById('id_account_source');
   const accDest = document.getElementById('id_account_destination');
   const entSrc = document.getElementById('id_entity_source');
   const entDest = document.getElementById('id_entity_destination');
 
-  function outsideOption(select) {
-    return Array.from(select.options).find(o => o.text.trim() === 'Outside');
-  }
+  function outsideOption(select) { if (!select) return null; return Array.from(select.options).find(o => o.text.trim() === 'Outside'); }
+  function outsideValues(select) { const opt = outsideOption(select); return opt ? opt.value : ''; }
+  function firstInternalOption(select) { if (!select) return null; return Array.from(select.options).find(o => o.value && o !== outsideOption(select)); }
 
-  function outsideValues(select) {
-    const opt = outsideOption(select);
-    return opt ? opt.value : '';
-  }
-
-  function firstInternalOption(select) {
-    return Array.from(select.options).find(o => o.value && o !== outsideOption(select));
-  }
-
-  function toggleOutside() {
+  function toggleOutside(){
+    if (!txTypeSel) return;
     const type = txTypeSel.value;
-    const accVal = outsideValues(accSrc);
-    const entVal = outsideValues(entSrc);
-    const hideOutside = type === 'income';
+  // Determine Outside option values from available selects. Fall back to
+  // whichever select contains the Outside option so we don't set an empty
+  // selection when one side lacks the option.
+  const accOutsideVal = outsideValues(accSrc) || outsideValues(accDest);
+  const entOutsideVal = outsideValues(entSrc) || outsideValues(entDest);
+  const hideOutside = type === 'income';
     [accDest, entDest].forEach(sel => {
       if (!sel) return;
       const opt = outsideOption(sel);
       if (!opt) return;
-      if (hideOutside) {
-        opt.disabled = true;
-        opt.hidden = true;
-        if (sel.value === opt.value) {
-          const first = firstInternalOption(sel);
-          sel.value = first ? first.value : '';
-        }
-      } else {
-        opt.disabled = false;
-        opt.hidden = false;
-      }
+      if (hideOutside){ opt.disabled = true; opt.hidden = true; if (sel.value === opt.value){ const first = firstInternalOption(sel); sel.value = first ? first.value : ''; } }
+      else { opt.disabled = false; opt.hidden = false; }
     });
-    if (type === 'income') {
-      accSrc.value = accVal;
-      entSrc.value = entVal;
-      accSrc.disabled = true;
-      entSrc.disabled = true;
-      accDest.disabled = false;
-      entDest.disabled = false;
-    } else if (type === 'expense') {
-      accDest.value = accVal;
-      entDest.value = entVal;
-      accDest.disabled = true;
-      entDest.disabled = true;
-      accSrc.disabled = false;
-      entSrc.disabled = false;
+    if (type === 'income'){
+      if (accSrc) { if (accOutsideVal) accSrc.value = accOutsideVal; accSrc.disabled = true; }
+      if (entSrc) { if (entOutsideVal) entSrc.value = entOutsideVal; entSrc.disabled = true; }
+      if (accDest) accDest.disabled = false;
+      if (entDest) entDest.disabled = false;
+    } else if (type === 'expense'){
+      if (accDest) { if (accOutsideVal) accDest.value = accOutsideVal; accDest.disabled = true; }
+      if (entDest) { if (entOutsideVal) entDest.value = entOutsideVal; entDest.disabled = true; }
+      if (accSrc) accSrc.disabled = false;
+      if (entSrc) entSrc.disabled = false;
     } else {
-      accSrc.disabled = false;
-      entSrc.disabled = false;
-      accDest.disabled = false;
-      entDest.disabled = false;
+      if (accSrc) accSrc.disabled = false;
+      if (entSrc) entSrc.disabled = false;
+      if (accDest) accDest.disabled = false;
+      if (entDest) entDest.disabled = false;
     }
   }
 
-  txTypeSel.addEventListener('change', toggleOutside);
+  if (txTypeSel) txTypeSel.addEventListener('change', toggleOutside);
   document.addEventListener('DOMContentLoaded', toggleOutside);
 </script>
 

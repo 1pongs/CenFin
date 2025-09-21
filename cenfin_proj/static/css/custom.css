@@ -73,3 +73,6 @@ footer {
 .edit-entity-link:focus {
   text-decoration: underline;   /* subtle hover cue */
 }
+
+/* Required field star used when marking labels via JS */
+.req-star { color: #dc3545; /* bootstrap danger */ font-weight: 600; }

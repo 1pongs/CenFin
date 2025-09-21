@@ -15,14 +15,42 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Account',
+            name="Account",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('account_name', models.CharField(max_length=100)),
-                ('account_type', models.CharField(choices=[('Banks', 'Banks'), ('E-Wallet', 'E-Wallet'), ('Cash', 'Cash'), ('Outside', 'Outside'), ('Entity', 'Entity')], max_length=50)),
-                ('is_active', models.BooleanField(default=True)),
-                ('is_visible', models.BooleanField(default=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='accounts', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("account_name", models.CharField(max_length=100)),
+                (
+                    "account_type",
+                    models.CharField(
+                        choices=[
+                            ("Banks", "Banks"),
+                            ("E-Wallet", "E-Wallet"),
+                            ("Cash", "Cash"),
+                            ("Outside", "Outside"),
+                            ("Entity", "Entity"),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("is_visible", models.BooleanField(default=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="accounts",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

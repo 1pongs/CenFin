@@ -44,8 +44,9 @@ class Command(BaseCommand):
         )
 
         qs = (
-            Transaction.all_objects
-            .filter(parent_transfer__isnull=False, is_hidden=True)
+            Transaction.all_objects.filter(
+                parent_transfer__isnull=False, is_hidden=True
+            )
             .filter(q_missing)
             .select_related("user")
         )
@@ -84,7 +85,8 @@ class Command(BaseCommand):
                 # Roll back any side-effects if dry run
                 raise transaction.TransactionManagementError("Dry run - rollback")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Ensured Remittance for {created_users} users; backfilled {updated_txs} transactions."
-        ))
-
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Ensured Remittance for {created_users} users; backfilled {updated_txs} transactions."
+            )
+        )

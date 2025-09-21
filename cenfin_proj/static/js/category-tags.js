@@ -12,19 +12,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Use trailing slash to avoid 301 redirects that break PATCH/DELETE
   const TAGS_BASE = '/transactions/tags/';
+  // Support two modes: Tagify input (legacy) or a select input with id 'id_category'
   let tagify = null;
-  if (input && !listEl) { // Only init Tagify on non-manager pages
+  const categorySelect = document.getElementById('id_category');
+  // If the server rendered a selected category but the select hasn't been
+  // touched yet by client scripts, show a temporary option right away so
+  // users see the saved value even if AJAX runs later or is slow.
+  if (categorySelect) {
+    try {
+      const dataPrevId = categorySelect.getAttribute('data-selected-id') || '';
+      const dataPrevText = categorySelect.getAttribute('data-selected-text') || '';
+      if (dataPrevId && !Array.from(categorySelect.options).some(o => o.value === String(dataPrevId))) {
+        const tmp = document.createElement('option');
+        tmp.value = dataPrevId;
+        tmp.textContent = dataPrevText || 'Selected';
+        // Insert as first option after placeholder if present
+        const first = categorySelect.options[0] || null;
+        categorySelect.insertBefore(tmp, first ? first.nextSibling : null);
+        categorySelect.value = dataPrevId;
+      }
+    } catch (e) {
+      // non-fatal; allow normal flow
+    }
+  }
+  if (input && !listEl) { // legacy Tagify mode
     tagify = new Tagify(input, {
       originalInputValueFormat: values => values.map(v => v.value).join(','),
       dropdown: { maxItems: 20, classname: 'tags-look', closeOnSelect: false }
     });
+    try { window.categoryTagify = tagify; } catch (e) {}
   }
 
   function currentEntity() {
     if (entSel) return entSel.value;
     const type = txTypeSel.value;
-    if (type === 'income' || type === 'transfer') return entDestSel.value;
-    if (type === 'expense') return entSrcSel.value;
+    // If a global entity-side mapping is present (in templates we set
+    // `entitySideMap`), prefer it. Support lookup by both the raw value
+    // (which may be underscore_separated) and a space-separated variant
+    // so the mapping is resilient to key formatting.
+    try {
+      const map = window.entitySideMap || null;
+      if (map && type) {
+        // Prefer a normalized underscore key (e.g. 'sell_acquisition') but
+        // accept either form for backward compatibility.
+        const keyUnderscore = type.toString().replace(/ /g, '_');
+        const direct = map[type];
+        const underscored = map[keyUnderscore];
+        const primary = underscored || direct;
+        if (primary === 'destination') return entDestSel ? entDestSel.value : '';
+        if (primary === 'source') return entSrcSel ? entSrcSel.value : '';
+      }
+    } catch (e) {
+      // ignore and fall back to legacy behavior
+    }
+    if (type === 'income' || type === 'transfer') return entDestSel ? entDestSel.value : '';
+    if (type === 'expense') return entSrcSel ? entSrcSel.value : '';
     return '';
   }
 
@@ -37,12 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadTags() {
-    const type = txTypeSel ? txTypeSel.value : '';
+  const rawType = txTypeSel ? (txTypeSel.value || '') : '';
+  // Normalize transaction_type to lowercase underscore form to match
+  // server storage (e.g. 'Sell Acquisition' -> 'sell_acquisition').
+  const type = rawType ? rawType.toString().toLowerCase().replace(/ /g, '_') : '';
     // On forms (Tagify present), require specific type. On manager page (list view), allow 'all'.
     if (tagify && !type) return;
     const ent = currentEntity();
-    const params = new URLSearchParams();
-    if (type && type !== 'all') params.append('transaction_type', type);
+  const params = new URLSearchParams();
+  if (type && type !== 'all') params.append('transaction_type', type);
     if (ent) params.append('entity', ent);
     const url = `${TAGS_BASE}${params.toString() ? `?${params.toString()}` : ''}`;
     const resp = await fetch(url);
@@ -50,6 +95,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await resp.json();
     if (tagify) {
       tagify.settings.whitelist = data.map(t => ({ value: t.name, id: t.id }));
+    }
+    if (categorySelect) {
+      // preserve currently-selected value so we don't clobber a server-
+      // rendered selected option when loadTags runs after the page has
+      // already set an initial selection (common on Edit pages).
+  // Prefer explicit data attributes set by server-rendered widget for
+  // the previously-selected category (more reliable than relying on
+  // the DOM selection state which can be changed by later JS).
+  const dataPrevId = categorySelect.getAttribute('data-selected-id') || '';
+  const dataPrevText = categorySelect.getAttribute('data-selected-text') || '';
+  const prev = dataPrevId || categorySelect.value || '';
+  // preserve the currently-visible label text in case the server
+      // returns a different set that doesn't include the selected id.
+      // Prefer the option that matches the current value (may not be
+      // selectedIndex if browser defaulting differs), fall back to
+      // selectedIndex.
+  let prevText = dataPrevText || '';
+      if (prev) {
+        const prevOpt = Array.from(categorySelect.options).find(o => o.value === prev);
+        if (prevOpt) prevText = prevOpt.text || '';
+      }
+      if (!prevText) prevText = (categorySelect.options[categorySelect.selectedIndex] || {}).text || '';
+      // If there is a previous selection (from server-rendered initial
+      // state), preserve existing options and only append/update the
+      // tags returned by the API so we don't remove the selected option.
+      if (!prev) {
+        categorySelect.innerHTML = '<option value="">-----------</option>';
+        data.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          categorySelect.appendChild(opt);
+        });
+      } else {
+        // Build a map of existing options (value -> option element)
+        const existing = {};
+        Array.from(categorySelect.options).forEach(o => { existing[o.value] = o; });
+        // Ensure placeholder exists
+        if (!existing['']) {
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = '-----------';
+          categorySelect.insertBefore(ph, categorySelect.firstChild || null);
+        }
+        // Add or update options from API without removing existing ones
+        data.forEach(t => {
+          const key = String(t.id);
+          if (existing[key]) {
+            // update label if changed
+            existing[key].textContent = t.name;
+          } else {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            categorySelect.appendChild(opt);
+          }
+        });
+      }
+      try {
+        // (debug output removed)
+      } catch (e) {}
+      // Try to restore previous selection if it's still available
+      if (prev) {
+        const found = Array.from(categorySelect.options).some(o => o.value === prev);
+        if (found) {
+            categorySelect.value = prev;
+        }
+        else if (prevText) {
+          // create a temporary option so the UI still shows the selected
+          // text even if the API didn't return the tag (for example when
+          // tags were recently deleted or scoped differently).
+          const tmp = document.createElement('option');
+          tmp.value = prev;
+          tmp.textContent = prevText;
+          // Insert at top after placeholder
+          categorySelect.insertBefore(tmp, categorySelect.options[1] || null);
+          categorySelect.value = prev;
+        }
+        // Ensure the corresponding option element is explicitly marked selected
+        try {
+        const selOpt = Array.from(categorySelect.options).find(o => o.value === String(prev));
+        if (selOpt) selOpt.selected = true;
+        // notify listeners about the change (balance summary logic listens)
+        categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (e) {
+          // non-fatal
+        }
+      }
     }
     if (listEl) renderList(data);
   }
@@ -119,11 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (tagify) tagify.on('focus', loadTags);
-  txTypeSel && txTypeSel.addEventListener('change', () => {
-    if (tagify) tagify.removeAllTags();
-    loadTags();
-    updateAddState();
-  });
+  const refreshOnTypeChange = () => { if (tagify) tagify.removeAllTags(); loadTags(); updateAddState(); };
+  txTypeSel && txTypeSel.addEventListener('change', refreshOnTypeChange);
   entSrcSel && entSrcSel.addEventListener('change', loadTags);
   entDestSel && entDestSel.addEventListener('change', loadTags);
   entSel && entSel.addEventListener('change', () => { loadTags(); updateAddState(); });
@@ -133,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.detail.data.id) return;
       const fd = new FormData();
       fd.append('name', e.detail.data.value);
-      fd.append('transaction_type', txTypeSel.value);
+  fd.append('transaction_type', txTypeSel && txTypeSel.value ? txTypeSel.value.toString().toLowerCase().replace(/ /g, '_') : '');
       const ent = currentEntity();
       if (ent) fd.append('entity', ent);
       fd.append('csrfmiddlewaretoken', csrf);
@@ -150,10 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
   async function addCategoryByName(name){
     const trimmed = (name || '').trim();
     if (!trimmed) return;
-    if (!txTypeSel || !txTypeSel.value){ alert('Select a Type first.'); return; }
+  if (!txTypeSel || !txTypeSel.value){ alert('Select a Type first.'); return; }
     const fd = new FormData();
     fd.append('name', trimmed);
-    fd.append('transaction_type', txTypeSel.value);
+  fd.append('transaction_type', txTypeSel && txTypeSel.value ? txTypeSel.value.toString().toLowerCase().replace(/ /g, '_') : '');
     const ent = currentEntity();
     if (ent) fd.append('entity', ent);
     fd.append('csrfmiddlewaretoken', csrf);
@@ -243,9 +373,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initial load: on manager page, load even if type is 'all'
-  if (entSel && entSel.value && txTypeSel){
-    loadTags();
+  // Initial load: populate the category <select> on forms as well as the
+  // manager page. This ensures the client-side filter (transaction_type +
+  // entity) is applied and replaces any server-rendered options that may
+  // include unrelated/global tags.
+  // Defer initial load until the global `entitySideMap` has been injected by
+  // inline templates. Without this mapping, certain transaction types like
+  // 'sell_acquisition' fall back to legacy behavior and won't select the
+  // desired primary entity (destination). Retry a few times with short
+  // delays before giving up so pages without the mapping still work.
+  function scheduleInitialLoad(attempts = 0) {
+    const MAX = 10; // ~500ms max wait
+    if (window.entitySideMap || attempts > MAX) {
+      if (categorySelect && txTypeSel) {
+        // call irrespective of entSel presence; the server will handle missing
+        // entity params appropriately.
+        loadTags();
+      } else if (entSel && entSel.value && txTypeSel) {
+        // legacy manager page behavior (load even for 'all')
+        loadTags();
+      }
+    } else {
+      setTimeout(() => scheduleInitialLoad(attempts + 1), 50);
+    }
   }
+  scheduleInitialLoad();
+  // Defensive retries: some other page scripts may run after loadTags and
+  // re-populate or clear the select. Retry a few times to ensure the
+  // previously-selected category (provided by server in data attributes)
+  // is visible to the user.
+  function restorePrevOnce(){
+    if (!categorySelect) return;
+    const dataPrevId = categorySelect.getAttribute('data-selected-id') || '';
+    const dataPrevText = categorySelect.getAttribute('data-selected-text') || '';
+    const curVal = categorySelect.value || '';
+    if (dataPrevId && !curVal) {
+      // If select lacks a value, try to find the option or insert fallback
+      const found = Array.from(categorySelect.options).some(o => o.value === dataPrevId);
+      if (found) {
+        categorySelect.value = dataPrevId;
+        try { categorySelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+        return true;
+      }
+      if (dataPrevText) {
+        const tmp = document.createElement('option');
+        tmp.value = dataPrevId;
+        tmp.textContent = dataPrevText;
+        categorySelect.insertBefore(tmp, categorySelect.options[1] || null);
+        categorySelect.value = dataPrevId;
+        try { categorySelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+        return true;
+      }
+    }
+    return false;
+  }
+  // schedule several retries over the first second to handle races with
+  // other scripts that may clear or re-populate the select. We attempt a
+  // few retries and then give up; duplicate retries are unnecessary, so
+  // keep a single schedule here.
+  [100, 300, 700].forEach(delay => setTimeout(() => { try { restorePrevOnce(); } catch (e) {} }, delay));
   updateAddState();
 });

@@ -15,8 +15,8 @@
 </a>
 <div id="form-container" class="container py-4">
 
-  <div class="row justify-content-center">
-    <div class="col-lg-8 col-xl-6">
+  <div class="row g-4">
+    <div class="col-lg-8 col-xl-7">
       <div class="card shadow-sm border-0">
          <div class="card-header bg-white py-3">
           <h2 class="fs-4 mb-0">Edit Transaction</h2>
@@ -27,6 +27,7 @@
             {% crispy form %}
           </form>
 
+      {% if form.instance.transaction_type != 'buy acquisition' and form.instance.transaction_type != 'sell acquisition' and not form.instance.acquisition_purchase and not form.instance.acquisition_sale %}
           <form method="post"
                 action="{% url 'transactions:transaction_delete' form.instance.pk %}"
                 class="d-flex justify-content-end mt-2"
@@ -34,9 +35,33 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">Delete</button>
           </form>
+          {% else %}
+          <!-- Deletion disabled for acquisition package transactions; delete via Acquisition detail -->
+          {% endif %}
         </div>
       </div>
     </div>
+    {% if form.instance and not form.instance.is_reversal and not form.instance.is_hidden and not form.instance.acquisition_purchase and not form.instance.acquisition_sale %}
+    <div class="col-lg-4 col-xl-5">
+      <div class="alert alert-info shadow-sm position-sticky" style="top: 1rem;">
+        <div class="d-flex">
+          <div class="me-2 flex-shrink-0">
+            <i class="bi bi-shield-check fs-4"></i>
+          </div>
+          <div>
+            <h6 class="mb-1">Need to change amount, date, or accounts?</h6>
+            <p class="mb-2 small">
+              Use <strong>Correct</strong> to preserve history and prevent overdrafts. It will reverse this transaction and post a new corrected one. We’ll also validate future balances so your account never goes negative because of this change.
+            </p>
+            <a href="{% url 'transactions:transaction_correct' form.instance.pk %}"
+               class="btn btn-outline-primary btn-sm">
+              Correct this transaction
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% if show_balance_summary %}
@@ -51,6 +76,10 @@
 <script type="text/javascript">
   // Parse the JSON blob into a JS object at runtime.
   const templatesData = JSON.parse('{{ templates_json|escapejs }}');
+  // Mapping of transaction_type -> which entity side is primary ("source" or "destination").
+  // Injected from the server as `entity_side_map`.
+  const entitySideMap = JSON.parse('{{ entity_side_map|default:"{}"|escapejs }}');
+  window.entitySideMap = entitySideMap;
 
   const templateSelect = document.getElementById('id_template');
   templateSelect.addEventListener('change', function() {
@@ -114,44 +143,54 @@
 
   function toggleOutside() {
     const type = txTypeSel.value;
-    const accVal = outsideValues(accSrc);
-    const entVal = outsideValues(entSrc);
-    const hideOutside = type === 'income';
-    [accDest, entDest].forEach(sel => {
-      if (!sel) return;
-      const opt = outsideOption(sel);
-      if (!opt) return;
-      if (hideOutside) {
-        opt.disabled = true;
-        opt.hidden = true;
-        if (sel.value === opt.value) {
-          const first = firstInternalOption(sel);
-          sel.value = first ? first.value : '';
-        }
+    // Determine which entity side should be primary for this transaction type.
+    const primarySide = entitySideMap[type];
+    // Determine outside values from whichever selects contain the Outside option.
+    const accOutsideVal = outsideValues(accSrc) || outsideValues(accDest);
+    const entOutsideVal = outsideValues(entSrc) || outsideValues(entDest);
+
+    // If this is a transfer, both sides are active; or if no mapping, fall back.
+    if (type === 'transfer' || !primarySide) {
+      if (type === 'income') {
+        const accVal = outsideValues(accSrc);
+        const entVal = outsideValues(entSrc);
+        accSrc.value = accVal;
+        entSrc.value = entVal;
+        accSrc.disabled = true;
+        entSrc.disabled = true;
+        accDest.disabled = false;
+        entDest.disabled = false;
+      } else if (type === 'expense') {
+        const accVal = outsideValues(accSrc);
+        const entVal = outsideValues(entSrc);
+        accDest.value = accVal;
+        entDest.value = entVal;
+        accDest.disabled = true;
+        entDest.disabled = true;
+        accSrc.disabled = false;
+        entSrc.disabled = false;
       } else {
-        opt.disabled = false;
-        opt.hidden = false;
+        accSrc.disabled = false;
+        entSrc.disabled = false;
+        accDest.disabled = false;
+        entDest.disabled = false;
       }
-    });
-    if (type === 'income') {
-      accSrc.value = accVal;
-      entSrc.value = entVal;
-      accSrc.disabled = true;
-      entSrc.disabled = true;
-      accDest.disabled = false;
-      entDest.disabled = false;
-    } else if (type === 'expense') {
-      accDest.value = accVal;
-      entDest.value = entVal;
-      accDest.disabled = true;
-      entDest.disabled = true;
-      accSrc.disabled = false;
-      entSrc.disabled = false;
     } else {
-      accSrc.disabled = false;
-      entSrc.disabled = false;
-      accDest.disabled = false;
-      entDest.disabled = false;
+      const primaryAcc = primarySide === 'source' ? accSrc : accDest;
+      const primaryEnt = primarySide === 'source' ? entSrc : entDest;
+      const nonAcc = primarySide === 'source' ? accDest : accSrc;
+      const nonEnt = primarySide === 'source' ? entDest : entSrc;
+
+      if (nonAcc) {
+        nonAcc.value = accOutsideVal || '';
+        nonAcc.disabled = true;
+      }
+      if (nonEnt) {
+        nonEnt.value = entOutsideVal || '';
+        nonEnt.disabled = true;
+      }
+      if (primaryAcc) primaryAcc.disabled = false;
+      if (primaryEnt) primaryEnt.disabled = false;
     }
     toggleCurrencyInputs();
   }

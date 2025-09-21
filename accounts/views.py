@@ -4,8 +4,7 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.db.models.functions import Coalesce
-from django.db.models import Sum, F, Value, DecimalField
+from django.db.models import Sum, F
 from decimal import Decimal
 
 from accounts.models import Account
@@ -13,10 +12,9 @@ from utils.currency import get_active_currency
 from utils.conversion import convert_amount, MissingRateError
 from django.conf import settings
 from .forms import AccountForm
-from transactions.models import Transaction
 
 # Create your views here.
-    
+
 
 def account_list(request):
     qs = (
@@ -37,7 +35,7 @@ def account_list(request):
         qs = qs.order_by("account_type", "account_name")
     else:
         qs = qs.order_by("account_name")
-        
+
     active_cur = get_active_currency(request)
     base_cur = active_cur.code if active_cur else None
     converted = []
@@ -80,7 +78,9 @@ class AccountDetailView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        account = get_object_or_404(Account, pk=self.kwargs["pk"], user=self.request.user)
+        account = get_object_or_404(
+            Account, pk=self.kwargs["pk"], user=self.request.user, is_active=True
+        )
         disp_code = getattr(self.request, "display_currency", settings.BASE_CURRENCY)
         bal = account.get_current_balance()
         try:
@@ -131,7 +131,12 @@ class AccountDeleteView(DeleteView):
         obj.delete()
         restore_url = reverse("accounts:restore", args=[obj.pk])
         # Toast with Undo link (quick feedback)
-        messages.success(request, "Account deleted. " + f"<a href=\"{restore_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        messages.success(
+            request,
+            "Account deleted. "
+            + f'<a href="{restore_url}" class="ms-2 btn btn-sm btn-light">Undo</a>',
+            extra_tags="safe",
+        )
         # Also set session to show a persistent inline banner on the list page
         request.session["undo_account_id"] = obj.pk
         request.session["undo_account_name"] = obj.account_name
@@ -139,14 +144,11 @@ class AccountDeleteView(DeleteView):
 
 
 class AccountArchivedListView(TemplateView):
+    """Deprecated: archived view removed globally."""
     template_name = "accounts/account_archived_list.html"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["accounts"] = Account.objects.filter(
-            user=self.request.user, is_active=False
-        )
-        return ctx
+    def dispatch(self, request, *args, **kwargs):
+        return redirect(reverse("accounts:list"))
 
 
 class AccountRestoreView(View):
@@ -155,8 +157,8 @@ class AccountRestoreView(View):
         acc.is_active = True
         acc.save()
         messages.success(request, "Account restored.")
-        return redirect(reverse("accounts:archived"))
-    
+        return redirect(reverse("accounts:list"))
+
     def post(self, request, pk):
         return self._restore(request, pk)
 

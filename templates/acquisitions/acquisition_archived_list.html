@@ -1,28 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Archived Acquisitions · CENFIN{% endblock %}
-{% block extra_css %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-{% endblock %}
+{% block title %}Acquisitions · CENFIN{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="mb-0">Archived Acquisitions</h1>
-  <a href="{% url 'acquisitions:acquisition-list' %}" class="btn btn-outline-secondary">Back to Active</a>
-  </div>
-<div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="alert">
-  <i class="bi bi-archive"></i>
-  <div><strong>Archived view:</strong> Showing archived acquisitions only.</div>
-  </div>
-{% for a in acquisitions %}
-  <div class="card shadow-sm rounded-lg mb-3 p-3">
-    <div class="d-flex align-items-center">
-      <div class="flex-grow-1">
-        <div class="fw-semibold">{{ a.name }}</div>
-        <small class="text-muted">{{ a.get_category_display|default:a.category }}</small>
-      </div>
-      <a href="{% url 'acquisitions:acquisition-restore' a.pk %}" class="btn btn-sm btn-primary">Restore</a>
-    </div>
-  </div>
-{% empty %}
-  <p>No archived acquisitions.</p>
-{% endfor %}
+<div class="alert alert-info">Archived view was removed. <a href="{% url 'acquisitions:acquisition-list' %}">Go to Acquisitions</a>.</div>
 {% endblock %}

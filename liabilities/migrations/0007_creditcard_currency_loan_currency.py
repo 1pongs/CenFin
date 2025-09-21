@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('liabilities', '0006_creditcard_account'),
+        ("liabilities", "0006_creditcard_account"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='creditcard',
-            name='currency',
+            model_name="creditcard",
+            name="currency",
             field=models.CharField(blank=True, max_length=3),
         ),
         migrations.AddField(
-            model_name='loan',
-            name='currency',
+            model_name="loan",
+            name="currency",
             field=models.CharField(blank=True, max_length=3),
         ),
     ]

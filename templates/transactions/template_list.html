@@ -41,11 +41,20 @@
 
 {% block extra_js %}
 <script>
-  document.getElementById('template-select').addEventListener('change', function () {
-    if (this.value) {
-      window.location.href = `/transactions/templates/${this.value}/edit/`;
-    }
-  });
+  (function(){
+    const sel = document.getElementById('template-select');
+    if (!sel) return;
+    // Always reset to placeholder on load
+    function resetSelect(){ try { sel.selectedIndex = 0; } catch(e) {} }
+    resetSelect();
+    // Also reset when the page is restored from bfcache (back/forward)
+    window.addEventListener('pageshow', function(ev){ resetSelect(); });
+    sel.addEventListener('change', function () {
+      if (this.value) {
+        window.location.href = `/transactions/templates/${this.value}/edit/`;
+      }
+    });
+  })();
 </script>
 
 {% endblock %}

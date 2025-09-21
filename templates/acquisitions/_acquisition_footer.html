@@ -9,3 +9,6 @@
 {% endif %}
 
 <a href="{% url 'acquisitions:acquisition-detail' acq.pk %}" class="btn btn-sm btn-primary">View</a>
+
+{% if acq.sell_tx %}
+{% endif %}

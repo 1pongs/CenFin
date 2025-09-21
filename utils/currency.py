@@ -25,7 +25,7 @@ def get_currency_symbol(code: str) -> str:
     """Return the typical symbol for ``code`` or the code itself."""
 
     return CURRENCY_SYMBOLS.get(code.upper(), code)
-    
+
 
 def get_active_currency(request) -> Currency | None:
     """Return the display currency for the current request.
@@ -132,4 +132,3 @@ def amount_for_display(
     if not target:
         return amount
     return convert_amount(amount, orig_currency, target)
-    

@@ -6,20 +6,20 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('currencies', '0003_alter_exchangerate_source'),
+        ("currencies", "0003_alter_exchangerate_source"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='exchangerate',
-            unique_together={('currency_from', 'currency_to')},
+            name="exchangerate",
+            unique_together={("currency_from", "currency_to")},
         ),
         migrations.RemoveField(
-            model_name='exchangerate',
-            name='source',
+            model_name="exchangerate",
+            name="source",
         ),
         migrations.RemoveField(
-            model_name='exchangerate',
-            name='user',
+            model_name="exchangerate",
+            name="user",
         ),
     ]

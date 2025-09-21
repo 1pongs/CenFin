@@ -29,28 +29,35 @@ class AcquisitionForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"inputmode": "decimal"}),
     )
-    account_source = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
-    account_destination = forms.ModelChoiceField(queryset=Account.objects.all(), required=False)
-    entity_source = forms.ModelChoiceField(queryset=Entity.objects.all(), required=False)
-    entity_destination = forms.ModelChoiceField(queryset=Entity.objects.all(), required=False)
+    account_source = forms.ModelChoiceField(
+        queryset=Account.objects.all(), required=False
+    )
+    account_destination = forms.ModelChoiceField(
+        queryset=Account.objects.all(), required=False
+    )
+    entity_source = forms.ModelChoiceField(
+        queryset=Entity.objects.all(), required=False
+    )
+    entity_destination = forms.ModelChoiceField(
+        queryset=Entity.objects.all(), required=False
+    )
     remarks = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         self.locked_entity = kwargs.pop("locked_entity", None)
+        # support disabling amount edits when view wants immutable amounts
+        self._disable_amount = kwargs.pop("disable_amount", False)
         super().__init__(*args, **kwargs)
 
         css = self.fields["amount"].widget.attrs.get("class", "")
         self.fields["amount"].widget.attrs["class"] = f"{css} amount-input".strip()
         if user is not None:
-            acct_qs = (
-                Account.objects.filter(
-                    Q(user=user) | Q(user__isnull=True),
-                    is_active=True,
-                    system_hidden=False,
-                )
-                .exclude(account_name__istartswith="Remittance")
-            )
+            acct_qs = Account.objects.filter(
+                Q(user=user) | Q(user__isnull=True),
+                is_active=True,
+                system_hidden=False,
+            ).exclude(account_name__istartswith="Remittance")
             ent_qs = Entity.objects.filter(
                 Q(user=user) | Q(user__isnull=True), is_active=True
             )
@@ -73,6 +80,12 @@ class AcquisitionForm(forms.Form):
         if self.locked_entity is not None:
             self.fields["entity_destination"].initial = self.locked_entity
             self.fields["entity_destination"].disabled = True
+        # If amount edits are disabled (update flows), mark widget disabled
+        if getattr(self, "_disable_amount", False):
+            try:
+                self.fields["amount"].disabled = True
+            except Exception:
+                pass
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_method = "post"
@@ -133,6 +146,7 @@ class AcquisitionForm(forms.Form):
         if ent and ent.entity_name != "Outside":
             try:
                 from cenfin_proj.utils import get_account_entity_balance
+
                 pair_bal = Decimal("0")
                 if acc:
                     pair_bal = get_account_entity_balance(acc.id, ent.id)
@@ -201,6 +215,12 @@ class SellAcquisitionForm(forms.Form):
             self.fields["account_source"].required = False
         except Account.DoesNotExist:
             self.outside_account = None
+        # Disable sale_price editing when requested (update flows)
+        if getattr(self, "_disable_amount", False):
+            try:
+                self.fields["sale_price"].disabled = True
+            except Exception:
+                pass
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.layout = Layout(

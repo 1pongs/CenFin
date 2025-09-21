@@ -3,7 +3,6 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.contrib.auth.decorators import login_required
 import logging
 
 from . import services
@@ -28,9 +27,7 @@ def set_display_currency(request):
 @login_required
 def active_currencies(request):
     """Return JSON of active currencies for dropdowns."""
-    data = list(
-        Currency.objects.filter(is_active=True).values("id", "code", "name")
-    )
+    data = list(Currency.objects.filter(is_active=True).values("id", "code", "name"))
     return JsonResponse({"currencies": data})
 
 

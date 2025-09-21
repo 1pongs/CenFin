@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "devDependencies": {
     "jest": "^30.0.4",
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "@playwright/test": "^1.37.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "e2e": "playwright test"
   },
   "jest": {
     "testEnvironment": "jsdom"

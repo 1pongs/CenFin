@@ -6,13 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0001_initial'),
+        ("accounts", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='account',
-            name='account_type',
-            field=models.CharField(choices=[('Banks', 'Banks'), ('E-Wallet', 'E-Wallet'), ('Cash', 'Cash'), ('Outside', 'Outside'), ('Entity', 'Entity'), ('Credit', 'Credit')], max_length=50),
+            model_name="account",
+            name="account_type",
+            field=models.CharField(
+                choices=[
+                    ("Banks", "Banks"),
+                    ("E-Wallet", "E-Wallet"),
+                    ("Cash", "Cash"),
+                    ("Outside", "Outside"),
+                    ("Entity", "Entity"),
+                    ("Credit", "Credit"),
+                ],
+                max_length=50,
+            ),
         ),
     ]

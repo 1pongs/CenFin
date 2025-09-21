@@ -7,18 +7,24 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('transactions', '0003_transaction_currency'),
+        ("transactions", "0003_transaction_currency"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='transaction',
-            name='is_hidden',
+            model_name="transaction",
+            name="is_hidden",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='transaction',
-            name='parent_transfer',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='child_transfers', to='transactions.transaction'),
+            model_name="transaction",
+            name="parent_transfer",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="child_transfers",
+                to="transactions.transaction",
+            ),
         ),
     ]

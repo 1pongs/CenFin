@@ -7,14 +7,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('liabilities', '0004_remove_lender_uq_issuer_name_ci_and_more'),
-        ('transactions', '0002_alter_categorytag_transaction_type'),
+        ("liabilities", "0004_remove_lender_uq_issuer_name_ci_and_more"),
+        ("transactions", "0002_alter_categorytag_transaction_type"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='loan',
-            name='disbursement_tx',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='loan_disbursement', to='transactions.transaction'),
+            model_name="loan",
+            name="disbursement_tx",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="loan_disbursement",
+                to="transactions.transaction",
+            ),
         ),
     ]

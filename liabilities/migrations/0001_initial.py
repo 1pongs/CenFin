@@ -11,60 +11,155 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('transactions', '0002_alter_categorytag_transaction_type'),
+        ("transactions", "0002_alter_categorytag_transaction_type"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Lender',
+            name="Lender",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, unique=True)),
             ],
         ),
         migrations.CreateModel(
-            name='CreditCard',
+            name="CreditCard",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('card_name', models.CharField(max_length=100)),
-                ('credit_limit', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('interest_rate', models.DecimalField(decimal_places=2, max_digits=5)),
-                ('statement_day', models.PositiveIntegerField()),
-                ('payment_due_day', models.PositiveIntegerField()),
-                ('current_balance', models.DecimalField(decimal_places=2, default=Decimal('0'), max_digits=12)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='credit_cards', to=settings.AUTH_USER_MODEL)),
-                ('issuer', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='credit_cards', to='liabilities.lender')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("card_name", models.CharField(max_length=100)),
+                ("credit_limit", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("interest_rate", models.DecimalField(decimal_places=2, max_digits=5)),
+                ("statement_day", models.PositiveIntegerField()),
+                ("payment_due_day", models.PositiveIntegerField()),
+                (
+                    "current_balance",
+                    models.DecimalField(
+                        decimal_places=2, default=Decimal("0"), max_digits=12
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="credit_cards",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "issuer",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="credit_cards",
+                        to="liabilities.lender",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Loan',
+            name="Loan",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('principal_amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('interest_rate', models.DecimalField(decimal_places=2, max_digits=5)),
-                ('received_date', models.DateField()),
-                ('term_months', models.PositiveIntegerField()),
-                ('maturity_date', models.DateField(blank=True, null=True)),
-                ('monthly_payment', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
-                ('outstanding_balance', models.DecimalField(decimal_places=2, default=Decimal('0'), max_digits=12)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('lender', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='loans', to='liabilities.lender')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='loans', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "principal_amount",
+                    models.DecimalField(decimal_places=2, max_digits=12),
+                ),
+                ("interest_rate", models.DecimalField(decimal_places=2, max_digits=5)),
+                ("received_date", models.DateField()),
+                ("term_months", models.PositiveIntegerField()),
+                ("maturity_date", models.DateField(blank=True, null=True)),
+                (
+                    "monthly_payment",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=12, null=True
+                    ),
+                ),
+                (
+                    "outstanding_balance",
+                    models.DecimalField(
+                        decimal_places=2, default=Decimal("0"), max_digits=12
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "lender",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="loans",
+                        to="liabilities.lender",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="loans",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='LoanPayment',
+            name="LoanPayment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('due_date', models.DateField()),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('is_paid', models.BooleanField(default=False)),
-                ('loan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='liabilities.loan')),
-                ('transaction', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='transactions.transaction')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("due_date", models.DateField()),
+                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("is_paid", models.BooleanField(default=False)),
+                (
+                    "loan",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="payments",
+                        to="liabilities.loan",
+                    ),
+                ),
+                (
+                    "transaction",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="transactions.transaction",
+                    ),
+                ),
             ],
         ),
     ]

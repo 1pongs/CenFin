@@ -1,5 +1,5 @@
 from decimal import Decimal
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef
 import requests
 
 from currencies.models import Currency, ExchangeRate
@@ -33,7 +33,9 @@ def frankfurter_rate(code_from: str, code_to: str) -> Decimal:
     data = resp.json()
     rate_val = Decimal(str(data["rates"][code_to]))
 
-    cur_from, _ = Currency.objects.get_or_create(code=code_from, defaults={"name": code_from})
+    cur_from, _ = Currency.objects.get_or_create(
+        code=code_from, defaults={"name": code_from}
+    )
     cur_to, _ = Currency.objects.get_or_create(code=code_to, defaults={"name": code_to})
     ExchangeRate.objects.update_or_create(
         currency_from=cur_from, currency_to=cur_to, defaults={"rate": rate_val}

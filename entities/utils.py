@@ -1,3 +1,9 @@
+from decimal import Decimal
+from collections import defaultdict
+
+from transactions.models import Transaction
+from utils.currency import convert_amount
+
 from .models import Entity
 
 
@@ -11,10 +17,14 @@ def ensure_fixed_entities(user=None):
     """
 
     if user is None:
-        outside = Entity.objects.filter(entity_name="Outside", user__isnull=True).first()
-        account = Entity.objects.filter(entity_name="Account", user__isnull=True).first()
+        outside = Entity.objects.filter(
+            entity_name="Outside", user__isnull=True
+        ).first()
+        account = Entity.objects.filter(
+            entity_name="Account", user__isnull=True
+        ).first()
         return outside, account
-    
+
     outside, _ = Entity.objects.get_or_create(
         entity_name="Outside",
         user=user,
@@ -45,21 +55,20 @@ def ensure_fixed_entities(user=None):
             account.save(update_fields=update_fields)
     return outside, account
 
+
 def ensure_remittance_entity(user):
     """Ensure a hidden Remittance entity exists for the user."""
     ent, _ = Entity.objects.get_or_create(
         entity_name="Remittance",
         user=user,
-        defaults={"entity_type": "personal fund", "is_visible": False, "system_hidden": True},
+        defaults={
+            "entity_type": "personal fund",
+            "is_visible": False,
+            "system_hidden": True,
+        },
     )
     return ent
 
-
-from decimal import Decimal
-from collections import defaultdict
-
-from transactions.models import Transaction
-from utils.currency import convert_amount
 
 
 def get_entity_aggregate_rows(user, disp_code: str):
@@ -73,24 +82,10 @@ def get_entity_aggregate_rows(user, disp_code: str):
     """
 
     totals: dict[int, Decimal] = defaultdict(Decimal)
-    txs = (
-        Transaction.objects.filter(user=user, parent_transfer__isnull=True)
-        .select_related("currency", "account_destination__currency")
-    )
+    txs = Transaction.objects.filter(
+        user=user, parent_transfer__isnull=True
+    ).select_related("currency", "account_destination__currency")
     for tx in txs:
-        # Skip only pure internal moves where the entity doesn't change and
-        # the asset class remains the same. Using the same account should NOT
-        # suppress entity-level effects when entities differ.
-        same_entity = (
-            getattr(tx, "entity_source_id", None)
-            and getattr(tx, "entity_destination_id", None)
-            and tx.entity_source_id == tx.entity_destination_id
-        )
-        if same_entity:
-            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
-            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
-            if src_t == dst_t:
-                continue
         ttype = (getattr(tx, "transaction_type", "") or "").lower()
         dest_outside = bool(
             getattr(tx, "account_destination", None)
@@ -107,13 +102,30 @@ def get_entity_aggregate_rows(user, disp_code: str):
             )
         )
 
-        # Liquid inflow to entity (skip transfers to Outside)
+        # Skip pure internal same-asset moves EXCEPT same-entity transfers
+        # involving Outside (treat as liquid<->non-liquid conversion).
+        same_entity = (
+            getattr(tx, "entity_source_id", None)
+            and getattr(tx, "entity_destination_id", None)
+            and tx.entity_source_id == tx.entity_destination_id
+        )
+        if same_entity and not (ttype == "transfer" and (dest_outside or src_outside)):
+            src_t = (getattr(tx, "asset_type_source", "") or "").lower()
+            dst_t = (getattr(tx, "asset_type_destination", "") or "").lower()
+            if src_t == dst_t:
+                continue
+
+        # Liquid inflow to entity (still skip transfer-to-Outside on dest side)
         if (
             tx.entity_destination_id
             and not (ttype == "transfer" and dest_outside)
             and (getattr(tx, "asset_type_destination", "") or "").lower() == "liquid"
         ):
-            dest_amt = tx.destination_amount if tx.destination_amount is not None else tx.amount
+            dest_amt = (
+                tx.destination_amount
+                if tx.destination_amount is not None
+                else tx.amount
+            )
             if dest_amt is not None:
                 dest_code = (
                     tx.account_destination.currency.code
@@ -124,17 +136,24 @@ def get_entity_aggregate_rows(user, disp_code: str):
                     else (tx.currency.code if tx.currency else None)
                 )
                 if dest_code:
-                    totals[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
+                    totals[tx.entity_destination_id] += convert_amount(
+                        dest_amt, dest_code, disp_code
+                    )
 
-        # Liquid outflow from entity (skip transfers from Outside)
+        # Liquid outflow from entity
         if (
             tx.entity_source_id
-            and not (ttype == "transfer" and src_outside)
+            and (
+                not (ttype == "transfer" and src_outside)
+                or (ttype == "transfer" and same_entity and dest_outside)
+            )
             and (getattr(tx, "asset_type_source", "") or "").lower() == "liquid"
             and tx.amount is not None
             and tx.currency is not None
         ):
-            totals[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+            totals[tx.entity_source_id] -= convert_amount(
+                tx.amount, tx.currency.code, disp_code
+            )
 
     return totals
 
@@ -152,10 +171,9 @@ def get_entity_non_liquid_totals(user, disp_code: str):
     from collections import defaultdict
 
     totals: dict[int, Decimal] = defaultdict(Decimal)
-    txs = (
-        Transaction.objects.filter(user=user, parent_transfer__isnull=True)
-        .select_related("currency", "account_destination__currency")
-    )
+    txs = Transaction.objects.filter(
+        user=user, parent_transfer__isnull=True
+    ).select_related("currency", "account_destination__currency")
     for tx in txs:
         # Skip only pure internal moves where the entity doesn't change and
         # the asset class remains the same.
@@ -186,7 +204,9 @@ def get_entity_non_liquid_totals(user, disp_code: str):
         )
 
         # Compute destination-side amount/currency once
-        dest_amt = tx.destination_amount if tx.destination_amount is not None else tx.amount
+        dest_amt = (
+            tx.destination_amount if tx.destination_amount is not None else tx.amount
+        )
         dest_code = (
             tx.account_destination.currency.code
             if tx.destination_amount is not None
@@ -199,15 +219,25 @@ def get_entity_non_liquid_totals(user, disp_code: str):
         # Inflow to non-liquid holdings or capital in (transfer to Outside)
         if tx.entity_destination_id and dest_amt is not None and dest_code is not None:
             if ttype == "transfer" and dest_outside:
-                totals[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
-            elif (getattr(tx, "asset_type_destination", "") or "").lower() == "non_liquid":
-                totals[tx.entity_destination_id] += convert_amount(dest_amt, dest_code, disp_code)
+                totals[tx.entity_destination_id] += convert_amount(
+                    dest_amt, dest_code, disp_code
+                )
+            elif (
+                getattr(tx, "asset_type_destination", "") or ""
+            ).lower() == "non_liquid":
+                totals[tx.entity_destination_id] += convert_amount(
+                    dest_amt, dest_code, disp_code
+                )
 
         # Outflow from non-liquid holdings or capital out (transfer from Outside)
         if tx.entity_source_id and tx.amount is not None and tx.currency is not None:
             if ttype == "transfer" and src_outside:
-                totals[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+                totals[tx.entity_source_id] -= convert_amount(
+                    tx.amount, tx.currency.code, disp_code
+                )
             elif (getattr(tx, "asset_type_source", "") or "").lower() == "non_liquid":
-                totals[tx.entity_source_id] -= convert_amount(tx.amount, tx.currency.code, disp_code)
+                totals[tx.entity_source_id] -= convert_amount(
+                    tx.amount, tx.currency.code, disp_code
+                )
 
     return totals

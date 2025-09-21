@@ -13,7 +13,7 @@ def lender_search(request):
     qs = Lender.objects.all()
     if term:
         qs = qs.filter(name__icontains=term)
-    results = [{"id": l.id, "text": l.name} for l in qs.order_by("name")[:10]]
+    results = [{"id": lend.id, "text": lend.name} for lend in qs.order_by("name")[:10]]
     return JsonResponse({"results": results})
 
 
@@ -26,6 +26,7 @@ def lender_create(request):
     lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={"name": name})
     return JsonResponse({"id": lender.id, "text": lender.name})
 
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def lender_search_or_create(request):
@@ -34,9 +35,7 @@ def lender_search_or_create(request):
         qs = Lender.objects.all()
         if term:
             qs = qs.filter(name__icontains=term)
-        results = [
-            {"id": l.id, "name": l.name} for l in qs.order_by("name")[:10]
-        ]
+        results = [{"id": lend.id, "name": lend.name} for lend in qs.order_by("name")[:10]]
         return JsonResponse({"results": results})
 
     name = request.POST.get("name", "").strip()
@@ -49,10 +48,12 @@ def lender_search_or_create(request):
         return JsonResponse({"id": match.id, "name": match.name})
 
     if not force:
-        for l in Lender.objects.all():
-            ratio = SequenceMatcher(None, name.lower(), l.name.lower()).ratio()
+        for lend in Lender.objects.all():
+            ratio = SequenceMatcher(None, name.lower(), lend.name.lower()).ratio()
             if ratio >= 0.8:
-                return JsonResponse({"similar": {"id": l.id, "name": l.name}}, status=409)
+                return JsonResponse(
+                    {"similar": {"id": lend.id, "name": lend.name}}, status=409
+                )
     try:
         lender = Lender.objects.create(name=name)
     except IntegrityError:

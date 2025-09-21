@@ -11,14 +11,18 @@ from liabilities.models import Lender, Loan
 from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LoanAutocompleteTests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
         self.lender = Lender.objects.create(name="Welcome Bank")
-        self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.dest = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
 
@@ -46,19 +50,27 @@ class LoanAutocompleteTests(TestCase):
             received_date=date(2025, 1, 1),
             term_months=6,
         )
-        resp = self.client.post(reverse("liabilities:loan-create"), self._form_data(lender_id=self.lender.pk))
+        resp = self.client.post(
+            reverse("liabilities:loan-create"),
+            self._form_data(lender_id=self.lender.pk),
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Loan.objects.filter(lender=self.lender).count(), 2)
 
     def test_create_redirects_to_loans_tab(self):
-        resp = self.client.post(reverse("liabilities:loan-create"), self._form_data(lender_id=self.lender.pk))
+        resp = self.client.post(
+            reverse("liabilities:loan-create"),
+            self._form_data(lender_id=self.lender.pk),
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertIn("?tab=loans", resp["Location"])
 
     def test_autocomplete_search_json(self):
         resp = self.client.get(reverse("ajax_lender_search"), {"q": "Wel"})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {"results": [{"id": self.lender.pk, "text": "Welcome Bank"}]})
+        self.assertEqual(
+            resp.json(), {"results": [{"id": self.lender.pk, "text": "Welcome Bank"}]}
+        )
 
     def test_new_lender_created_via_ajax(self):
         resp = self.client.post(reverse("ajax_lender_create"), {"name": "Zigzag Bank"})
@@ -66,14 +78,18 @@ class LoanAutocompleteTests(TestCase):
         self.assertTrue(Lender.objects.filter(name="Zigzag Bank").exists())
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LoanUpdateTransactionTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="up", password="p")
         self.client.force_login(self.user)
         self.lender = Lender.objects.create(name="UpdateBank")
-        self.dest = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.dest = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
         self.loan = Loan.objects.create(
@@ -88,6 +104,7 @@ class LoanUpdateTransactionTest(TestCase):
 
     def test_update_changes_transaction(self):
         from django.urls import reverse
+
         resp = self.client.post(
             reverse("liabilities:loan-edit", args=[self.loan.pk]),
             {
@@ -110,13 +127,17 @@ class LoanUpdateTransactionTest(TestCase):
         self.assertEqual(self.tx.date, date(2025, 2, 1))
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LoanDeleteCascadeTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="del", password="p")
         self.lender = Lender.objects.create(name="DelBank")
-        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.acc = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
 

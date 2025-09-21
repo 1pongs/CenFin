@@ -6,7 +6,9 @@ from django.conf import settings
 from currencies.models import Currency
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class SetDisplayCurrencyViewTests(TestCase):
     def setUp(self):
         self.cur = Currency.objects.create(code="USD", name="US Dollar")
@@ -24,7 +26,9 @@ class SetDisplayCurrencyViewTests(TestCase):
     def test_post_next_field_used_when_present(self):
         self.client.force_login(self.user)
         url = reverse("set_display_currency")
-        resp = self.client.post(url, {"code": self.cur.code}, HTTP_REFERER="/some/prev/")
+        resp = self.client.post(
+            url, {"code": self.cur.code}, HTTP_REFERER="/some/prev/"
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], "/some/prev/")
         self.assertEqual(self.client.session["display_currency"], self.cur.code)

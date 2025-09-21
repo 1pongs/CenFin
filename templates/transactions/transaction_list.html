@@ -41,8 +41,9 @@
   </div>
 {% endif %}
 <div class="container-lg py-1">
+  {# Summary moved inline to the top ribbon for a more compact layout #}
   <!-- ================= TOP TOOLBAR ================= -->
-  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-2 gap-2">
     <!-- START : left‑side primary controls -->
     <div class="d-flex flex-wrap align-items-center gap-2">
        <a href="{% url 'transactions:transaction_create' %}" class="btn btn-primary">
@@ -64,27 +65,25 @@
         <button id="filter-btn" type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
           <i class="bi bi-funnel"></i><span class="d-none d-sm-inline">Filters</span>
         </button>
+        {% if request.GET.urlencode %}
+          <a href="{{ request.path }}" class="btn btn-link btn-sm text-decoration-none">Reset</a>
+        {% endif %}
       </form>
     </div>
     <!-- END   : left‑side primary controls -->
 
-    <!-- Right‑side utilities: Archived toggle + Template -->
-    <div class="d-flex align-items-center gap-2 ms-auto">
-      {% if is_archived_view %}
-        <a href="{% url 'transactions:transaction_list' %}" class="btn btn-outline-secondary">Back to Active</a>
-      {% else %}
-        <a href="{% url 'transactions:transaction_list' %}?archived=1" class="btn btn-outline-secondary">View Archived</a>
+  <!-- Right‑side utilities: inline compact summary + Template -->
+    <div class="d-flex align-items-center gap-2 ms-auto small text-muted">
+      {% if txn_count is not None %}
+        <span>Transactions: <strong class="text-dark">{{ txn_count }}</strong></span>
+        {% if filters_applied and summary_total is not None %}
+          <span class="ms-2">Total: <strong class="text-dark">{{ summary_total|floatformat:2|intcomma }} {{ display_currency }}</strong></span>
+        {% endif %}
       {% endif %}
-      <a href="{% url 'transactions:template_list' %}" class="btn btn-warning text-dark fw-semibold">Template</a>
+      <a href="{% url 'transactions:template_list' %}" class="btn btn-warning text-dark fw-semibold ms-2">Template</a>
     </div>
   </div>
 
-  {% if is_archived_view %}
-    <div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="alert">
-      <i class="bi bi-archive"></i>
-      <div><strong>Archived view:</strong> Showing archived transactions only.</div>
-    </div>
-  {% endif %}
 
   <!-- ================= DATE RANGE + BULK ACTION ROW ================= -->
   <form id="bulk-action-form" method="post" action="{% url 'transactions:bulk_action' %}" class="border rounded-2 px-3 py-2 d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
@@ -129,11 +128,37 @@
       </thead>
       <tbody>
         {% for tx in transactions %}
+        {% comment %}Treat acquisition-related transactions as a package: prevent per-row edit/delete and bulk selection{% endcomment %}
+        {% if tx.transaction_type == 'buy acquisition' or tx.transaction_type == 'sell acquisition' or tx.transaction_type == 'buy_acquisition' or tx.transaction_type == 'sell_acquisition' or tx.acquisition_purchase or tx.acquisition_sale %}
+        <tr class="">
+          <td class="select-col">&nbsp;</td>
+        {% else %}
+        {# Treat certain transfers as capital-return rows and make them non-clickable #}
+        {% with src_ent=tx.entity_source entity_dst=tx.entity_destination src_acc=tx.account_source %}
+          {% with desc=tx.description|default_if_none:""|lower %}
+          {% if tx.transaction_type == 'transfer' and src_acc and src_acc.account_name == 'Outside' and src_ent and entity_dst and src_ent.id == entity_dst.id and 'capital return' in desc %}
+          <tr class="">
+            <td class="select-col">&nbsp;</td>
+          {% else %}
         <tr class="clickable-row" data-href="{% url 'transactions:transaction_update' tx.pk %}">
           <td class="select-col"><input type="checkbox" name="selected_ids" value="{{ tx.id }}" class="row-checkbox form-check-input" form="bulk-action-form" /></td>
+          {% endif %}
+          {% endwith %}
+        {% endwith %}
+        {% endif %}
           <td>{{ tx.date|date:"M d, Y" }}</td>
           <td>{{ tx.description }}</td>
-          <td>{{ tx.get_transaction_type_display }}</td>
+          {% with src_ent=tx.entity_source entity_dst=tx.entity_destination src_acc=tx.account_source %}
+            {% with desc=tx.description|default_if_none:""|lower %}
+            {% if tx.transaction_type == 'sell acquisition' or tx.transaction_type == 'sell_acquisition' %}
+              <td>Sell Acquisition</td>
+            {% elif tx.transaction_type == 'transfer' and src_acc and src_acc.account_name == 'Outside' and src_ent and entity_dst and src_ent.id == entity_dst.id and 'capital return' in desc %}
+              <td>Sell Acquisition</td>
+            {% else %}
+              <td>{{ tx.get_transaction_type_display }}</td>
+            {% endif %}
+            {% endwith %}
+          {% endwith %}
           <td>{{ tx.account_source }}</td>
           <td>{{ tx.account_destination }}</td>
           {% display tx.amount tx.currency.code as tx_amt %}
@@ -169,46 +194,39 @@
         </div>
 
         <div>
-          <label class="form-label small mb-1">From account</label>
-          <select name="account_source" class="form-select form-select-sm">
+          <label class="form-label small mb-1">Account</label>
+          <select name="account" class="form-select form-select-sm">
             <option value="">Any</option>
             {% for a in accounts %}
-            <option value="{{ a.id }}" {% if request.GET.account_source == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
+            <option value="{{ a.id }}" {% if request.GET.account == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div>
-          <label class="form-label small mb-1">To account</label>
-          <select name="account_destination" class="form-select form-select-sm">
-            <option value="">Any</option>
-            {% for a in accounts %}
-            <option value="{{ a.id }}" {% if request.GET.account_destination == a.id|stringformat:'s' %}selected{% endif %}>{{ a.account_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label class="form-label small mb-1">From entity</label>
-          <select name="entity_source" class="form-select form-select-sm">
+          <label class="form-label small mb-1">Entity</label>
+          <select name="entity" class="form-select form-select-sm">
             <option value="">Any</option>
             {% for e in entities %}
-            <option value="{{ e.id }}" {% if request.GET.entity_source == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+            <option value="{{ e.id }}" {% if request.GET.entity == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div>
-          <label class="form-label small mb-1">To entity</label>
-          <select name="entity_destination" class="form-select form-select-sm">
-            <option value="">Any</option>
-            {% for e in entities %}
-            <option value="{{ e.id }}" {% if request.GET.entity_destination == e.id|stringformat:'s' %}selected{% endif %}>{{ e.entity_name }}</option>
+          <label class="form-label small mb-1">Asset type</label>
+          <select name="asset_type" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for val,label in asset_type_choices %}
+              {% if val %}
+              <option value="{{ val }}" {% if request.GET.asset_type == val %}selected{% endif %}>{{ label }}</option>
+              {% endif %}
             {% endfor %}
           </select>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 pt-2">
+        <div class="d-flex justify-content-between gap-2 pt-2 align-items-center">
+          <a href="{{ request.path }}" class="btn btn-outline-secondary btn-sm">Reset</a>
           <button type="button" id="filter-cancel" class="btn btn-outline-secondary btn-sm">Cancel</button>
           <button type="submit" class="btn btn-success btn-sm">Apply Filters</button>
         </div>

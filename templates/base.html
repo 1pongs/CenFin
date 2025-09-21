@@ -103,5 +103,73 @@
       });
     });
   </script>
+  <script>
+    // Globally mark labels for required form controls with a red '*' so
+    // required fields are visible across all forms during development.
+    (function markAllRequiredLabels(){
+      function mark(root=document){
+        // Mark labels for controls that are explicitly required
+        const els = root.querySelectorAll('input[required], select[required], textarea[required]');
+        els.forEach(el => {
+          let lbl = null;
+          if (el.id) lbl = document.querySelector(`label[for="${el.id}"]`);
+          if (!lbl) {
+            // check if element is wrapped by a label
+            let p = el.parentElement;
+            while (p && p !== document.body) {
+              if (p.tagName === 'LABEL') { lbl = p; break; }
+              p = p.parentElement;
+            }
+          }
+          if (lbl) addStarIfNeeded(lbl);
+        });
+
+        // Also mark labels that already carry a 'required' class (server-side rendered)
+        const lbls = root.querySelectorAll('label.required, .required label');
+        lbls.forEach(l => addStarIfNeeded(l));
+      }
+
+      function addStarIfNeeded(lbl){
+        try{
+          // Remove any existing visual star elements (server-side or previous JS)
+          const removeStarNode = (n) => {
+            if (!n) return;
+            if (n.nodeType === 3) { // text node
+              if (n.textContent && n.textContent.trim() === '*') n.remove();
+              return;
+            }
+            const txt = (n.textContent || '').trim();
+            if (txt === '*') n.remove();
+          };
+          Array.from(lbl.childNodes).forEach(removeStarNode);
+
+          // Avoid duplicate if req-star already exists as a child element
+          if (lbl.querySelector('.req-star')) return;
+
+          const star = document.createElement('span');
+          star.className = 'req-star';
+          star.textContent = '*';
+          // Inline styles to ensure visibility even if external CSS hasn't loaded yet
+          star.style.color = '#dc3545';
+          star.style.fontWeight = '600';
+          star.style.marginLeft = '0.25rem';
+          lbl.appendChild(star);
+        } catch(e) {}
+      }
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => mark());
+      else mark();
+
+      // Observe DOM additions so dynamically-rendered forms (widgets) are handled
+      const mo = new MutationObserver(muts => {
+        for (const m of muts) {
+          if (m.addedNodes && m.addedNodes.length) {
+            m.addedNodes.forEach(node => { if (node.nodeType === 1) mark(node); });
+          }
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>

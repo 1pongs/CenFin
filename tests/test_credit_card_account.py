@@ -6,20 +6,24 @@ from django.urls import reverse
 
 from liabilities.models import CreditCard, Lender
 from accounts.models import Account
-from django.core.exceptions import ValidationError
 from transactions.forms import TransactionForm
 from transactions.models import Transaction
 from entities.models import Entity
 from entities.utils import ensure_fixed_entities
 from accounts.utils import ensure_outside_account
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class CreditCardAccountTests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="cc", password="p")
         self.lender = Lender.objects.create(name="CardBank")
-        self.entity = Entity.objects.create(entity_name="Vendor", entity_type="personal fund", user=self.user)
+        self.entity = Entity.objects.create(
+            entity_name="Vendor", entity_type="personal fund", user=self.user
+        )
         self.outside_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
         self.client.force_login(self.user)
@@ -72,7 +76,9 @@ class CreditCardAccountTests(TestCase):
             statement_day=1,
             payment_due_day=10,
         )
-        cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        cash = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         form = TransactionForm(
             data={
                 "date": "2025-01-01",
@@ -87,7 +93,7 @@ class CreditCardAccountTests(TestCase):
             user=self.user,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        tx = form.save()
+        _tx = form.save()
         card.refresh_from_db()
         self.assertEqual(card.outstanding_amount, Decimal("200"))
         self.assertEqual(card.available_credit, Decimal("800"))
@@ -174,7 +180,9 @@ class CreditCardAccountTests(TestCase):
             statement_day=1,
             payment_due_day=10,
         )
-        cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        cash = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         # simulate existing spend to create balance
         Transaction.objects.create(
             user=self.user,
@@ -235,7 +243,9 @@ class CreditCardAccountTests(TestCase):
             statement_day=1,
             payment_due_day=10,
         )
-        cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        cash = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         tx = Transaction.objects.create(
             user=self.user,
             date=date(2025, 1, 1),

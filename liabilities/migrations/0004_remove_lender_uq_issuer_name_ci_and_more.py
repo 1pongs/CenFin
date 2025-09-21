@@ -7,16 +7,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('liabilities', '0003_remove_lender_lender_name_ci_unique_and_more'),
+        ("liabilities", "0003_remove_lender_lender_name_ci_unique_and_more"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='lender',
-            name='uq_issuer_name_ci',
+            model_name="lender",
+            name="uq_issuer_name_ci",
         ),
         migrations.AddConstraint(
-            model_name='lender',
-            constraint=models.UniqueConstraint(django.db.models.functions.text.Lower('name'), name='uniq_lender_name_ci'),
+            model_name="lender",
+            constraint=models.UniqueConstraint(
+                django.db.models.functions.text.Lower("name"),
+                name="uniq_lender_name_ci",
+            ),
         ),
     ]

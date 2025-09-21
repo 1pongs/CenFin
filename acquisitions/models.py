@@ -1,11 +1,12 @@
 from django.db import models
-from django.db import models, transaction
+from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
 from decimal import Decimal
 from transactions.models import Transaction
 
 # Create your models here.
+
 
 class Acquisition(models.Model):
     """General record of an acquired asset linked to buy/sell transactions."""
@@ -28,7 +29,7 @@ class Acquisition(models.Model):
         ("inactive", "Inactive"),
         ("active", "Active"),
     ]
-    
+
     name = models.CharField(max_length=255)
     # Optional provider/source name for the acquisition (kept nullable for
     # compatibility with existing databases that may require a value).
@@ -78,7 +79,7 @@ class Acquisition(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="inactive")
     # Soft delete flag to allow undo/restore
     is_deleted = models.BooleanField(default=False)
-    
+
     created_at = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -105,7 +106,7 @@ class Acquisition(models.Model):
     def capital_cost(self):
         """Purchase price of the acquisition."""
         return self.purchase_tx.amount or Decimal("0")
-    
+
     @property
     def selling_date(self):
         """Return the date the acquisition was sold, if any."""

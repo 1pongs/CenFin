@@ -56,19 +56,27 @@ class AccountSoftDeleteTest(TestCase):
 
         # restore
         resp = self.client.post(reverse("accounts:restore", args=[self.acc.pk]))
-        self.assertRedirects(resp, reverse("accounts:archived"))
+        self.assertRedirects(resp, reverse("accounts:list"))
         self.acc.refresh_from_db()
         self.assertTrue(self.acc.is_active)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class AccountBalanceCalculationTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="w", password="p")
-        self.acc = Account.objects.create(account_name="Woori Bank", account_type="Banks", user=self.user)
-        self.other = Account.objects.create(account_name="BDO", account_type="Banks", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.acc = Account.objects.create(
+            account_name="Woori Bank", account_type="Banks", user=self.user
+        )
+        self.other = Account.objects.create(
+            account_name="BDO", account_type="Banks", user=self.user
+        )
+        self.ent = Entity.objects.create(
+            entity_name="Me", entity_type="outside", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, _ = ensure_fixed_entities(self.user)
 

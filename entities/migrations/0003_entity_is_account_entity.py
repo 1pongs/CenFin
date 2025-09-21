@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('entities', '0002_auto_add_fixed_entities'),
+        ("entities", "0002_auto_add_fixed_entities"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='entity',
-            name='is_account_entity',
+            model_name="entity",
+            name="is_account_entity",
             field=models.BooleanField(default=False),
         ),
     ]

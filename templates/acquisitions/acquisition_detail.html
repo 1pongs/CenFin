@@ -4,32 +4,84 @@
 
 {% block content %}
 
-<div class="container py-4" style="max-width: 700px;">
+<div class="container py-4">
   <a href="#" onclick="history.back();return false;" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 mb-3">
-  <i class="bi bi-arrow-left"></i> Back
-</a>
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">{{ object.name }}</h1>
-    <div class="d-flex gap-2">
-      <a href="{% url 'acquisitions:acquisition-update' object.pk %}" class="btn btn-sm btn-primary">Edit</a>
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+
+  <div class="row gx-4">
+    <div class="col-lg-8">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <h1 class="h3 mb-0">{{ object.name }}</h1>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Category</dt>
+            <dd class="col-sm-8">{{ object.get_category_display }}</dd>
+
+            <dt class="col-sm-4">Date Bought</dt>
+            <dd class="col-sm-8">{{ object.purchase_tx.date|date:"M d, Y" }}</dd>
+
+            <dt class="col-sm-4">Cost</dt>
+            {% display object.purchase_tx.amount object.purchase_tx.currency.code as disp_cost %}
+            <dd class="col-sm-8"><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_cost|floatformat:2|intcomma }}</span></dd>
+
+            <dt class="col-sm-4">Current Value</dt>
+            <dd class="col-sm-8">{{ object.current_value|default_if_none:"-" }}</dd>
+
+            <dt class="col-sm-4">Selling Date</dt>
+            <dd class="col-sm-8">{% if object.selling_date %}{{ object.selling_date|date:"M d, Y" }}{% else %}-{% endif %}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="d-flex justify-content-end mb-3">
+        <!-- Primary actions grouped together -->
+        <div class="d-flex gap-2 me-2">
+          {% if object.purchase_tx %}
+            <a href="{% url 'transactions:transaction_update' object.purchase_tx.pk %}" class="btn btn-sm btn-outline-primary">Edit Buy Acquisition</a>
+          {% endif %}
+          {% if object.sell_tx %}
+            <a href="{% url 'transactions:transaction_update' object.sell_tx.pk %}" class="btn btn-sm btn-outline-primary">Edit Profit</a>
+            {% if capital_return_tx %}
+              <a href="{% url 'transactions:transaction_update' capital_return_tx.pk %}" class="btn btn-sm btn-outline-secondary">Edit Capital Return</a>
+            {% else %}
+              <a href="{% url 'transactions:transaction_list' %}?q={{ object.name|urlencode }}" class="btn btn-sm btn-outline-secondary">Edit Capital Return</a>
+            {% endif %}
+          {% else %}
+            <a href="{% url 'acquisitions:acquisition-update' object.pk %}" class="btn btn-sm btn-primary">Edit</a>
+          {% endif %}
+        </div>
+
+        <!-- Delete action intentionally removed: use Edit Buy Acquisition to delete related transactions -->
+      </div>
+
+      <div class="card border-0">
+        <div class="card-body p-0">
+          <div class="bg-light rounded p-3">
+            <h6 class="mb-2">Sale Summary</h6>
+            <dl class="row mb-0 small">
+              <dt class="col-6">Price Sold</dt>
+              <dd class="col-6 text-end">{% if object.price_sold %}{% display object.price_sold object.purchase_tx.currency.code as disp_sold %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_sold|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
+
+              <dt class="col-6">Profit</dt>
+              <dd class="col-6 text-end">{% if object.profit %}{% display object.profit object.purchase_tx.currency.code as disp_profit %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_profit|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <!-- Acquisition delete: allow deleting the whole acquisition (and related txns) -->
+      <div class="mt-3">
+        <form method="post" action="{% url 'acquisitions:acquisition-delete' object.pk %}" onsubmit="return confirm('Delete this acquisition and all related transactions? This action cannot be undone.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Delete Acquisition</button>
+        </form>
+      </div>
     </div>
   </div>
-  <dl class="row">
-    <dt class="col-sm-4">Category</dt>
-    <dd class="col-sm-8">{{ object.get_category_display }}</dd>
-    <dt class="col-sm-4">Date Bought</dt>
-    <dd class="col-sm-8">{{ object.purchase_tx.date|date:"M d, Y" }}</dd>
-    <dt class="col-sm-4">Cost</dt>
-    {% display object.purchase_tx.amount object.purchase_tx.currency.code as disp_cost %}
-    <dd class="col-sm-8"><span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_cost|floatformat:2|intcomma }}</span></dd>
-    <dt class="col-sm-4">Current Value</dt>
-    <dd class="col-sm-8">{{ object.current_value|default_if_none:"-" }}</dd>
-    <dt class="col-sm-4">Selling Date</dt>
-    <dd class="col-sm-8">{% if object.selling_date %}{{ object.selling_date|date:"M d, Y" }}{% else %}-{% endif %}</dd>
-    <dt class="col-sm-4">Price Sold</dt>
-    <dd class="col-sm-8">{% if object.price_sold %}{% display object.price_sold object.purchase_tx.currency.code as disp_sold %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_sold|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
-    <dt class="col-sm-4">Profit</dt>
-    <dd class="col-sm-8">{% if object.profit %}{% display object.profit object.purchase_tx.currency.code as disp_profit %}<span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_profit|floatformat:2|intcomma }}</span>{% else %}-{% endif %}</dd>
-  </dl>
 </div>
 {% endblock %}

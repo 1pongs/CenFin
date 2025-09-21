@@ -1,0 +1,133 @@
+{# Analytics fragment: KPIs and category charts. Expects `entity` in context. #}
+<div class="mt-4">
+  <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+    <h2 class="mb-0">Analytics — {{ entity.entity_name }}</h2>
+    <div class="d-flex gap-2">
+      <input type="date" id="start" class="form-control form-control-sm" />
+      <input type="date" id="end" class="form-control form-control-sm" />
+      <button id="apply" class="btn btn-sm btn-primary">Apply</button>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-sm-3">
+      <div class="card"><div class="card-body">
+        <div class="text-muted">Income ({{ base_currency.code }})</div>
+        <div id="kpi-income" class="fs-4">—</div>
+      </div></div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card"><div class="card-body">
+        <div class="text-muted">Expenses ({{ base_currency.code }})</div>
+        <div id="kpi-expenses" class="fs-4">—</div>
+      </div></div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card"><div class="card-body">
+        <div class="text-muted">Capital ({{ base_currency.code }})</div>
+        <div id="kpi-capital" class="fs-4">—</div>
+      </div></div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card"><div class="card-body">
+        <div class="text-muted">Net ({{ base_currency.code }})</div>
+        <div id="kpi-net" class="fs-4">—</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Categories</span>
+          <select id="type" class="form-select form-select-sm" style="width:auto">
+            <option value="expense" selected>Expenses</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfer</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <canvas id="catChart" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Category Trend</span>
+          <input id="catName" class="form-control form-control-sm" placeholder="Category name (e.g., Feeds)" style="width:auto"/>
+        </div>
+        <div class="card-body">
+          <canvas id="trendChart" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const analytics_base = "{% url 'entities:analytics' entity.pk %}";
+    const fmt = new Intl.NumberFormat(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    const params = () => {
+      const s = document.getElementById('start').value;
+      const e = document.getElementById('end').value;
+      const t = document.getElementById('type').value;
+      const c = document.getElementById('catName').value.trim();
+      const out = new URLSearchParams();
+      if (s) out.set('start', s);
+      if (e) out.set('end', e);
+      if (t) out.set('type', t);
+      if (c) out.set('category', c);
+      return out.toString();
+    };
+
+    let catChart, trendChart;
+    async function loadKPIs(){
+      const res = await fetch(`${analytics_base}kpis/?` + params());
+      const j = await res.json();
+      document.getElementById('kpi-income').textContent = fmt.format(parseFloat(j.income || '0'));
+      document.getElementById('kpi-expenses').textContent = fmt.format(parseFloat(j.expenses || '0'));
+      document.getElementById('kpi-capital').textContent = fmt.format(parseFloat(j.capital || '0'));
+      document.getElementById('kpi-net').textContent = fmt.format(parseFloat(j.net || '0'));
+    }
+
+    async function loadCategorySummary(){
+      const res = await fetch(`${analytics_base}category-summary/?` + params());
+      const rows = await res.json();
+      const labels = rows.map(r=>r.name);
+      const data = rows.map(r=>parseFloat(r.total));
+      const ctx = document.getElementById('catChart');
+      if (catChart) catChart.destroy();
+      catChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {labels, datasets:[{label: 'Total', data} ]},
+        options: {responsive:true, plugins:{legend:{position:'bottom'}}}
+      });
+    }
+
+    async function loadTrend(){
+      const res = await fetch(`${analytics_base}category-timeseries/?` + params());
+      const rows = await res.json();
+      const labels = rows.map(r=>r.period);
+      const data = rows.map(r=>parseFloat(r.total));
+      const ctx = document.getElementById('trendChart');
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {labels, datasets:[{label: 'Total', data}]},
+        options: {responsive:true, scales:{y:{beginAtZero:true}}}
+      });
+    }
+
+    async function refreshAll(){
+      await Promise.all([loadKPIs(), loadCategorySummary(), loadTrend()]);
+    }
+
+    document.getElementById('apply').addEventListener('click', refreshAll);
+    document.getElementById('type').addEventListener('change', refreshAll);
+    document.getElementById('catName').addEventListener('change', loadTrend);
+    // Initial load
+    refreshAll();
+  </script>
+</div>

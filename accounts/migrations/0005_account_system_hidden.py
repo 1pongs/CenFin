@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0004_account_uniq_account_name_user_active_ci'),
+        ("accounts", "0004_account_uniq_account_name_user_active_ci"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='account',
-            name='system_hidden',
+            model_name="account",
+            name="system_hidden",
             field=models.BooleanField(default=False),
         ),
     ]

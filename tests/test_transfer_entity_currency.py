@@ -11,17 +11,33 @@ from transactions.models import Transaction
 from entities.utils import get_entity_aggregate_rows
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class EntityAggregateConversionTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         self.cur_krw = Currency.objects.create(code="KRW", name="Won")
-        ExchangeRate.objects.create(currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04"))
+        ExchangeRate.objects.create(
+            currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04")
+        )
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
-        self.entity = Entity.objects.create(entity_name="Fund", entity_type="free fund", user=self.user)
-        self.acc_krw = Account.objects.create(account_name="KRW", account_type="Cash", user=self.user, currency=self.cur_krw)
-        self.acc_php = Account.objects.create(account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php)
+        self.entity = Entity.objects.create(
+            entity_name="Fund", entity_type="free fund", user=self.user
+        )
+        self.acc_krw = Account.objects.create(
+            account_name="KRW",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_krw,
+        )
+        self.acc_php = Account.objects.create(
+            account_name="PHP",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_php,
+        )
         Transaction.objects.create(
             user=self.user,
             transaction_type="transfer",
@@ -38,19 +54,37 @@ class EntityAggregateConversionTests(TestCase):
         self.assertEqual(totals[self.entity.pk], Decimal("5"))
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class TransferCurrencyAssignmentTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         self.cur_krw = Currency.objects.create(code="KRW", name="Won")
-        ExchangeRate.objects.create(currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04"))
+        ExchangeRate.objects.create(
+            currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04")
+        )
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
-        self.acc_krw = Account.objects.create(account_name="KRW", account_type="Cash", user=self.user, currency=self.cur_krw)
-        self.acc_php = Account.objects.create(account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php)
-        self.ent_src = Entity.objects.create(entity_name="Src", entity_type="outside", user=self.user)
-        self.ent_dest = Entity.objects.create(entity_name="Dest", entity_type="free fund", user=self.user)
+        self.acc_krw = Account.objects.create(
+            account_name="KRW",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_krw,
+        )
+        self.acc_php = Account.objects.create(
+            account_name="PHP",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_php,
+        )
+        self.ent_src = Entity.objects.create(
+            entity_name="Src", entity_type="outside", user=self.user
+        )
+        self.ent_dest = Entity.objects.create(
+            entity_name="Dest", entity_type="free fund", user=self.user
+        )
 
     def test_cross_currency_creates_two_child_transactions(self):
         data = {
@@ -78,7 +112,9 @@ class TransferCurrencyAssignmentTests(TestCase):
         self.assertEqual(inflow.amount, Decimal("4"))
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class EntityAccountsViewBalanceTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
@@ -93,10 +129,16 @@ class EntityAccountsViewBalanceTests(TestCase):
             entity_name="Pig", entity_type="free fund", user=self.user
         )
         self.acc_php = Account.objects.create(
-            account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php
+            account_name="PHP",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_php,
         )
         self.acc_krw = Account.objects.create(
-            account_name="KRW", account_type="Cash", user=self.user, currency=self.cur_krw
+            account_name="KRW",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_krw,
         )
         Transaction.objects.create(
             user=self.user,

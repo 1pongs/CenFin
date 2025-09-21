@@ -1,15 +1,13 @@
-from decimal import Decimal
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 from accounts.models import Account
 from currencies.models import Currency
-from entities.models import Entity
-from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class AccountBalanceConversionTests(TestCase):
     def setUp(self):
         self.cur = Currency.objects.create(code="USD", name="US Dollar")

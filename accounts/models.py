@@ -2,15 +2,16 @@ from django.db import models
 from django.conf import settings
 from django.db.models.functions import Coalesce, Lower
 from django.db.models import Q
-from currencies.models import Currency, get_rate
+from currencies.models import Currency
 
 
 # Create your models here.
 
+
 class AccountQuerySet(models.QuerySet):
     def active(self):
         return self.filter(is_active=True)
-    
+
     def with_current_balance(self):
         """Annotate accounts with their current balance."""
         from decimal import Decimal
@@ -21,7 +22,6 @@ class AccountQuerySet(models.QuerySet):
             F,
             DecimalField,
             Value,
-            Q,
             OuterRef,
             Subquery,
         )
@@ -66,12 +66,15 @@ class AccountQuerySet(models.QuerySet):
             .values("total")
         )
 
-        return (
-            self.annotate(
-                inflow=Coalesce(Subquery(inflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
-                outflow=Coalesce(Subquery(outflow_sq, output_field=DecimalField()), Value(Decimal("0"))),
-            ).annotate(current_balance=F("inflow") - F("outflow"))
-        )
+        return self.annotate(
+            inflow=Coalesce(
+                Subquery(inflow_sq, output_field=DecimalField()), Value(Decimal("0"))
+            ),
+            outflow=Coalesce(
+                Subquery(outflow_sq, output_field=DecimalField()), Value(Decimal("0"))
+            ),
+        ).annotate(current_balance=F("inflow") - F("outflow"))
+
 
 class AccountManager(models.Manager):
     def get_queryset(self):
@@ -86,13 +89,13 @@ class AccountManager(models.Manager):
 
 class Account(models.Model):
     account_type_choices = [
-        ('Banks', 'Banks'),
-        ('E-Wallet', 'E-Wallet'),
-        ('Cash','Cash'),
-        ('Crypto Wallet', 'Crypto Wallet'),
-        ('Entity','Entity'),
-        ('Credit', 'Credit'),
-        ('Outside','Outside'),
+        ("Banks", "Banks"),
+        ("E-Wallet", "E-Wallet"),
+        ("Cash", "Cash"),
+        ("Crypto Wallet", "Crypto Wallet"),
+        ("Entity", "Entity"),
+        ("Credit", "Credit"),
+        ("Outside", "Outside"),
     ]
     account_name = models.CharField(max_length=100)
     account_type = models.CharField(max_length=50, choices=account_type_choices)
@@ -105,7 +108,12 @@ class Account(models.Model):
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
     system_hidden = models.BooleanField(default=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts", null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="accounts",
+        null=True,
+    )
 
     objects = AccountManager()
 
@@ -128,21 +136,26 @@ class Account(models.Model):
             else:
                 default_cur = Currency.objects.filter(code="PHP").first()
             self.currency = default_cur
-        
+
         if self._state.adding:
-            qs = Account.objects.filter(account_name__iexact=self.account_name, user=self.user)
+            qs = Account.objects.filter(
+                account_name__iexact=self.account_name, user=self.user
+            )
             if qs.filter(is_active=True).exists():
                 from django.core.exceptions import ValidationError
+
                 raise ValidationError({"account_name": "Name already in use."})
             inactive = qs.filter(is_active=False).first()
             if inactive:
                 self.pk = inactive.pk
                 self.is_active = True
                 self._state.adding = False
-        super().save(force_insert=force_insert if self._state.adding else False, *args, **kwargs)
+        super().save(
+            force_insert=force_insert if self._state.adding else False, *args, **kwargs
+        )
 
     def delete(self, *args, **kwargs):
-        self.is_active=False
+        self.is_active = False
         self.save()
 
     def __str__(self):
@@ -151,7 +164,7 @@ class Account(models.Model):
     def get_current_balance(self):
         """Return the current balance for this account."""
         from decimal import Decimal
-        
+
         val = (
             Account.objects.filter(pk=self.pk)
             .with_current_balance()
@@ -171,4 +184,5 @@ class Account(models.Model):
         if target is None:
             return None
         from utils.currency import convert_amount
+
         return convert_amount(self.get_current_balance(), self.currency, target)

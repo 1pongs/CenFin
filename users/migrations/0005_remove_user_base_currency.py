@@ -6,12 +6,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0004_remove_user_preferred_rate_source'),
+        ("users", "0004_remove_user_preferred_rate_source"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='user',
-            name='base_currency',
+            model_name="user",
+            name="base_currency",
         ),
     ]

@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from entities.models import Entity
 
+
 class Command(BaseCommand):
     help = "Delete Entity rows with no associated user"
 

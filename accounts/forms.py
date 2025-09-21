@@ -4,6 +4,7 @@ from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 from .models import Account
 
+
 class AccountForm(forms.ModelForm):
     class Meta:
         model = Account
@@ -15,7 +16,7 @@ class AccountForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.fields["currency"].required = False
-        
+
         layout_fields = [
             Row(
                 Column("account_name", css_class="col-md-4"),

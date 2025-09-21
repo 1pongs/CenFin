@@ -6,24 +6,26 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.shortcuts import redirect, get_object_or_404
 
 from .models import Loan, CreditCard, Lender
 from .forms import LoanForm, CreditCardForm
-from django.db import transaction
+
 
 @login_required
 def lender_search(request):
-    q = request.GET.get('q', '')
-    objs = Lender.objects.filter(name__icontains=q).order_by('name')[:10]
-    return JsonResponse({'results': [{'id': o.pk, 'text': o.name} for o in objs]})
+    q = request.GET.get("q", "")
+    objs = Lender.objects.filter(name__icontains=q).order_by("name")[:10]
+    return JsonResponse({"results": [{"id": o.pk, "text": o.name} for o in objs]})
 
 
 @login_required
 @require_POST
 def lender_create(request):
-    name = request.POST['name'].strip()
-    lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={'name': name})
-    return JsonResponse({'id': lender.pk, 'text': lender.name})
+    name = request.POST["name"].strip()
+    lender, _ = Lender.objects.get_or_create(name__iexact=name, defaults={"name": name})
+    return JsonResponse({"id": lender.pk, "text": lender.name})
+
 
 class LiabilityListView(TemplateView):
     template_name = "liabilities/liability_list.html"
@@ -106,33 +108,41 @@ class LiabilityListView(TemplateView):
         qs = self.get_queryset(tab)
         paginator = Paginator(qs, 20)
         page_obj = paginator.get_page(self.request.GET.get("page"))
-        ctx.update({
-            "tab": tab,
-            "object_list": page_obj.object_list,
-            "page_obj": page_obj,
-            "paginator": paginator,
-            "credit_cards": page_obj.object_list if tab == "credit" else [],
-            "loans": page_obj.object_list if tab == "loans" else [],
-            "search": self.request.GET.get("q", ""),
-            "status": self.request.GET.get("status", ""),
-            "start": self.request.GET.get("start", ""),
-            "end": self.request.GET.get("end", ""),
-            "entity_id": self.request.GET.get("entity", ""),
-            "sort": self.request.GET.get("sort", "name"),
-            "currency_code": self.request.GET.get("currency", ""),
-            "entities": Lender.objects.all().order_by("name"),
-        })
+        ctx.update(
+            {
+                "tab": tab,
+                "object_list": page_obj.object_list,
+                "page_obj": page_obj,
+                "paginator": paginator,
+                "credit_cards": page_obj.object_list if tab == "credit" else [],
+                "loans": page_obj.object_list if tab == "loans" else [],
+                "search": self.request.GET.get("q", ""),
+                "status": self.request.GET.get("status", ""),
+                "start": self.request.GET.get("start", ""),
+                "end": self.request.GET.get("end", ""),
+                "entity_id": self.request.GET.get("entity", ""),
+                "sort": self.request.GET.get("sort", "name"),
+                "currency_code": self.request.GET.get("currency", ""),
+                "entities": Lender.objects.all().order_by("name"),
+            }
+        )
         # Inline undo banner after delete (credit/loans)
-        undo_kind = self.request.session.pop("undo_liability_kind", None)  # 'credit' or 'loan'
+        undo_kind = self.request.session.pop(
+            "undo_liability_kind", None
+        )  # 'credit' or 'loan'
         undo_obj_name = self.request.session.pop("undo_liability_name", None)
         undo_obj_id = self.request.session.pop("undo_liability_id", None)
         undo_restore_url = None
         if undo_obj_id is not None and undo_kind in {"credit", "loan"}:
             try:
                 if undo_kind == "credit":
-                    undo_restore_url = reverse("liabilities:credit-restore", args=[undo_obj_id])
+                    undo_restore_url = reverse(
+                        "liabilities:credit-restore", args=[undo_obj_id]
+                    )
                 else:
-                    undo_restore_url = reverse("liabilities:loan-restore", args=[undo_obj_id])
+                    undo_restore_url = reverse(
+                        "liabilities:loan-restore", args=[undo_obj_id]
+                    )
             except Exception:
                 undo_restore_url = None
         ctx["undo_liability_kind"] = undo_kind
@@ -153,7 +163,14 @@ class LiabilityListView(TemplateView):
                 ("Balance", bal),
                 ("Interest Paid", int_paid),
                 ("Rate", f"{loan.interest_rate}%"),
-                ("Maturity", loan.maturity_date.strftime("%b %d, %Y") if loan.maturity_date else "-"),
+                (
+                    "Maturity",
+                    (
+                        loan.maturity_date.strftime("%b %d, %Y")
+                        if loan.maturity_date
+                        else "-"
+                    ),
+                ),
                 ("Currency", loan.currency),
             ]
         for card in ctx.get("credit_cards", []):
@@ -171,7 +188,7 @@ class LiabilityListView(TemplateView):
                 avail_calc = (card.credit_limit or 0) - (card.outstanding_amount or 0)
                 avail_disp = f"{avail_calc:,.2f}"
             except Exception:
-                avail_disp = (card.available_credit or 0)
+                avail_disp = card.available_credit or 0
             card.field_tags = [
                 ("Limit", limit_disp),
                 ("Outstanding", out_disp),
@@ -182,22 +199,21 @@ class LiabilityListView(TemplateView):
 
 
 class CreditArchivedListView(TemplateView):
+    """Deprecated: archived view removed globally."""
     template_name = "liabilities/credit_archived_list.html"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["cards"] = CreditCard.objects.filter(user=self.request.user, is_deleted=True).order_by("card_name")
-        return ctx
+    def dispatch(self, request, *args, **kwargs):
+        return redirect(reverse("liabilities:list"))
 
 
 class LoanArchivedListView(TemplateView):
+    """Deprecated: archived view removed globally."""
     template_name = "liabilities/loan_archived_list.html"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["loans"] = Loan.objects.filter(user=self.request.user, is_deleted=True).order_by("lender__name")
-        return ctx
-    
+    def dispatch(self, request, *args, **kwargs):
+        return redirect(reverse("liabilities:list"))
+
+
 class CreditCardCreateView(CreateView):
     model = CreditCard
     form_class = CreditCardForm
@@ -207,7 +223,7 @@ class CreditCardCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         cancel = self.request.GET.get("next") or reverse("liabilities:list")
@@ -225,22 +241,33 @@ class LoanCreateView(CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        cancel = (
+            self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        )
         kwargs["cancel_url"] = cancel
         kwargs["user"] = self.request.user
+        # When editing a loan, present principal_amount as disabled to
+        # avoid changing ledgered principal after creation.
+        if self.request.method in ("GET", "HEAD"):
+            kwargs["disable_amount"] = True
         if self.object:
             kwargs.setdefault("initial", {})
-            kwargs["initial"].update({
-                "lender_text": self.object.lender.name,
-                "lender_id": self.object.lender_id,
-            })
+            kwargs["initial"].update(
+                {
+                    "lender_text": self.object.lender.name,
+                    "lender_id": self.object.lender_id,
+                }
+            )
         return kwargs
 
     def get_success_url(self):
-        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        return (
+            self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        )
+
 
 class CreditCardUpdateView(UpdateView):
     model = CreditCard
@@ -258,10 +285,12 @@ class CreditCardUpdateView(UpdateView):
         kwargs["user"] = self.request.user
         if self.object:
             kwargs.setdefault("initial", {})
-            kwargs["initial"].update({
-                "issuer_text": self.object.issuer.name,
-                "issuer_id": self.object.issuer_id,
-            })
+            kwargs["initial"].update(
+                {
+                    "issuer_text": self.object.issuer.name,
+                    "issuer_id": self.object.issuer_id,
+                }
+            )
         return kwargs
 
     def form_valid(self, form):
@@ -287,11 +316,17 @@ class CreditCardDeleteView(DeleteView):
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         undo_url = reverse("liabilities:credit-restore", args=[obj.pk])
-        messages.success(request, "Credit card deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        messages.success(
+            request,
+            "Credit card deleted. "
+            + f'<a href="{undo_url}" class="ms-2 btn btn-sm btn-light">Undo</a>',
+            extra_tags="safe",
+        )
         request.session["undo_liability_kind"] = "credit"
         request.session["undo_liability_id"] = obj.pk
         request.session["undo_liability_name"] = obj.card_name
         return redirect(self.success_url)
+
 
 class CreditCardRestoreView(View):
     def get(self, request, pk):
@@ -316,27 +351,32 @@ class LoanUpdateView(UpdateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        cancel = self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        cancel = (
+            self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        )
         kwargs["cancel_url"] = cancel
         kwargs["user"] = self.request.user
         if self.object:
             kwargs.setdefault("initial", {})
-            kwargs["initial"].update({
-                "lender_text": self.object.lender.name,
-                "lender_id": self.object.lender_id,
-            })
+            kwargs["initial"].update(
+                {
+                    "lender_text": self.object.lender.name,
+                    "lender_id": self.object.lender_id,
+                }
+            )
         return kwargs
 
     def get_success_url(self):
-        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        return (
+            self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        )
 
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, "Loan updated successfully!")
         return response
 
-    def get_success_url(self):
-        return reverse("liabilities:list") + "?tab=loans"
+
 
 class LoanDeleteView(DeleteView):
     model = Loan
@@ -352,11 +392,17 @@ class LoanDeleteView(DeleteView):
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         undo_url = reverse("liabilities:loan-restore", args=[obj.pk])
-        messages.success(request, "Loan deleted. " + f"<a href=\"{undo_url}\" class=\"ms-2 btn btn-sm btn-light\">Undo</a>", extra_tags="safe")
+        messages.success(
+            request,
+            "Loan deleted. "
+            + f'<a href="{undo_url}" class="ms-2 btn btn-sm btn-light">Undo</a>',
+            extra_tags="safe",
+        )
         request.session["undo_liability_kind"] = "loan"
         request.session["undo_liability_id"] = obj.pk
         request.session["undo_liability_name"] = getattr(obj.lender, "name", "Loan")
         return redirect(self.success_url)
+
 
 class LoanRestoreView(View):
     def get(self, request, pk):
@@ -367,5 +413,6 @@ class LoanRestoreView(View):
         return redirect(reverse("liabilities:list") + "?tab=loans")
 
     def get_success_url(self):
-        return self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
-       
+        return (
+            self.request.GET.get("next") or f"{reverse('liabilities:list')}?tab=loans"
+        )

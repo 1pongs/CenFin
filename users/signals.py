@@ -6,12 +6,11 @@ from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
 
 
-
 @receiver(post_save, sender=get_user_model())
 def ensure_defaults_exist(sender, instance, created, **kwargs):
     """Create default entities for the new user and ensure shared records exist."""
     if created:
-         # per-user default entities
+        # per-user default entities
         ensure_fixed_entities(instance)
         # shared outside account remains global
         ensure_outside_account()

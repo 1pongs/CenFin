@@ -5,6 +5,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, Button
 from crispy_forms.bootstrap import FormActions
 
+
 class UserSettingsForm(forms.ModelForm):
     class Meta:
         model = get_user_model()

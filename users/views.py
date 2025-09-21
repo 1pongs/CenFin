@@ -10,14 +10,17 @@ from django.contrib.auth import get_user_model
 
 from .forms import UserSettingsForm, CustomUserCreationForm
 
+
 class UserLoginView(LoginView):
     template_name = "users/login.html"
     redirect_authenticated_user = True
+
 
 class RegisterView(CreateView):
     form_class = CustomUserCreationForm
     template_name = "users/register.html"
     success_url = reverse_lazy("users:login")
+
 
 class UserLogoutView(View):
     def post(self, request, *args, **kwargs):
@@ -26,6 +29,7 @@ class UserLogoutView(View):
 
     def get(self, request, *args, **kwargs):
         return self.post(request, *args, **kwargs)
+
 
 class UserSettingsView(UpdateView):
     model = get_user_model()

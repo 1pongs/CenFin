@@ -5,6 +5,7 @@ from django.urls import reverse_lazy
 from crispy_forms.bootstrap import FormActions
 from .models import Entity
 
+
 class EntityForm(forms.ModelForm):
     class Meta:
         model = Entity
@@ -16,7 +17,7 @@ class EntityForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
-        
+
         layout_fields = [
             Row(
                 Column("entity_name", css_class="col-md-6"),
@@ -40,4 +41,4 @@ class EntityForm(forms.ModelForm):
                 )
             )
 
-        self.helper.layout = Layout(*layout_fields)    
+        self.helper.layout = Layout(*layout_fields)

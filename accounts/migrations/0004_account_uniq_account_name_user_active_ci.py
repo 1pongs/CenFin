@@ -8,14 +8,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0003_account_currency_alter_account_account_type'),
-        ('currencies', '0003_alter_exchangerate_source'),
+        ("accounts", "0003_account_currency_alter_account_account_type"),
+        ("currencies", "0003_alter_exchangerate_source"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='account',
-            constraint=models.UniqueConstraint(django.db.models.functions.text.Lower('account_name'), models.F('user'), condition=models.Q(('is_active', True)), name='uniq_account_name_user_active_ci'),
+            model_name="account",
+            constraint=models.UniqueConstraint(
+                django.db.models.functions.text.Lower("account_name"),
+                models.F("user"),
+                condition=models.Q(("is_active", True)),
+                name="uniq_account_name_user_active_ci",
+            ),
         ),
     ]

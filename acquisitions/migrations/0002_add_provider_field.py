@@ -15,7 +15,9 @@ class Migration(migrations.Migration):
                 migrations.AddField(
                     model_name="acquisition",
                     name="provider",
-                    field=models.CharField(max_length=255, blank=True, null=True, default=None),
+                    field=models.CharField(
+                        max_length=255, blank=True, null=True, default=None
+                    ),
                 ),
             ],
             database_operations=[],

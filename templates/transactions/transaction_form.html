@@ -6,7 +6,6 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
 {% endblock %}
 
 {% block content %}
@@ -22,6 +21,7 @@
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-success btn-sm" id="quick-account-btn">+ Account</button>
             <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-category-btn">+ Category</button>
           </div>
         </div>
         <div class="card-body">
@@ -86,15 +86,51 @@
   </div>
 </div>
 
+      <div class="modal fade" id="modal-category" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">New Category</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="quick-category-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="quick-category-name" class="form-label">Name</label>
+                  <input id="quick-category-name" name="name" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                  <label for="quick-category-transaction-type" class="form-label">Transaction type</label>
+                  <select id="quick-category-transaction-type" name="transaction_type" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="quick-category-entity" class="form-label">Entity</label>
+                  <select id="quick-category-entity" name="entity" class="form-select"></select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" form="quick-category-form">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
 <script src="{% static 'js/category-tags.js' %}"></script>
 
 <script type="text/javascript">
   // Parse the JSON blob into a JS object at runtime.
   const templatesData = JSON.parse('{{ templates_json|escapejs }}');
+  // Mapping of transaction_type -> which entity side is primary ("source" or "destination").
+  // Injected from the server as `entity_side_map`.
+  const entitySideMap = JSON.parse('{{ entity_side_map|default:"{}"|escapejs }}');
+  // Expose globally for legacy scripts (category-tags.js) that run on DOMContentLoaded
+  window.entitySideMap = entitySideMap;
 
   const templateSelect = document.getElementById('id_template');
   templateSelect.addEventListener('change', function() {
@@ -114,19 +150,83 @@
       document.getElementById('id_amount').value = defaults.amount;
     }
     if (defaults.account_source !== undefined) {
-      document.getElementById('id_account_source').value = defaults.account_source;
+      const srcEl = document.getElementById('id_account_source');
+      if (srcEl) {
+        srcEl.value = defaults.account_source;
+        // If the provided value isn't present in options, try to select the
+        // 'Outside' option (by visible text) as a sensible fallback so the
+        // field doesn't become blank.
+        if (!srcEl.value) {
+          const opt = outsideOption(srcEl);
+          if (opt) srcEl.value = opt.value;
+        }
+      }
     }
     if (defaults.account_destination !== undefined) {
-      document.getElementById('id_account_destination').value = defaults.account_destination;
+      const dstEl = document.getElementById('id_account_destination');
+      if (dstEl) {
+        dstEl.value = defaults.account_destination;
+        if (!dstEl.value) {
+          const opt = outsideOption(dstEl);
+          if (opt) dstEl.value = opt.value;
+        }
+      }
     }
     if (defaults.entity_source !== undefined) {
-      document.getElementById('id_entity_source').value = defaults.entity_source;
+      const esEl = document.getElementById('id_entity_source');
+      if (esEl) {
+        esEl.value = defaults.entity_source;
+        if (!esEl.value) {
+          const opt = outsideOption(esEl);
+          if (opt) esEl.value = opt.value;
+        }
+      }
     }
     if (defaults.entity_destination !== undefined) {
-      document.getElementById('id_entity_destination').value = defaults.entity_destination;
+      const edEl = document.getElementById('id_entity_destination');
+      if (edEl) {
+        edEl.value = defaults.entity_destination;
+        if (!edEl.value) {
+          const opt = outsideOption(edEl);
+          if (opt) edEl.value = opt.value;
+        }
+      }
     }
     if (defaults.remarks !== undefined) {
       document.getElementById('id_remarks').value = defaults.remarks;
+    }
+    // Dispatch change events on the fields that other scripts listen to so
+    // selecting a template behaves like the user actually changed those
+    // controls. This will refresh the balance summary and load category
+    // suggestions.
+    [
+      'id_transaction_type',
+      'id_account_source',
+      'id_account_destination',
+      'id_entity_source',
+      'id_entity_destination'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Ensure UI-level prereq checks and balance summary visibility update.
+    try {
+      if (typeof updatePrereqState === 'function') updatePrereqState();
+      if (typeof toggleCurrencyInputs === 'function') toggleCurrencyInputs();
+      if (typeof toggleBalanceSummary === 'function') toggleBalanceSummary();
+    } catch (e) {
+      // non-fatal; just continue
+      console.error('Template post-processing error', e);
+    }
+
+    // If template provides a category id (backwards compatible keys), select it
+    const catId = defaults.category !== undefined ? defaults.category : (defaults.category_id !== undefined ? defaults.category_id : null);
+    if (catId !== null && document.getElementById('id_category')) {
+      try {
+        document.getElementById('id_category').value = catId;
+        document.getElementById('id_category').dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (e) {}
     }
   });
 
@@ -151,6 +251,79 @@
       });
       accModal.hide();
       e.target.reset();
+    }
+  });
+
+  // ---------- Quick-add category ----------
+  const catModal = new bootstrap.Modal(document.getElementById('modal-category'));
+  const quickCatBtn = document.getElementById('quick-category-btn');
+  if (quickCatBtn) quickCatBtn.addEventListener('click', () => {
+    // Populate modal selects immediately so users see current options
+    const txTypeSel = document.getElementById('id_transaction_type');
+    // Pick the entity select based on the configured entity-side map for the
+    // currently selected transaction type. Fall back to existing heuristic if
+    // mapping not present.
+    let entSel = null;
+    try {
+      const selType = txTypeSel ? txTypeSel.value : '';
+      const primary = entitySideMap[selType];
+      if (primary === 'destination') entSel = document.getElementById('id_entity_destination');
+      else if (primary === 'source') entSel = document.getElementById('id_entity_source');
+    } catch (e) { entSel = null; }
+    if (!entSel) entSel = document.getElementById('id_entity_source') || document.getElementById('id_entity_destination');
+    const modalTx = document.getElementById('quick-category-transaction-type');
+    const modalEnt = document.getElementById('quick-category-entity');
+    if (modalTx && txTypeSel && modalTx.options.length <= 1) {
+      Array.from(txTypeSel.options).forEach(o => { if (o.value !== '') modalTx.add(new Option(o.text, o.value)); });
+    }
+    if (modalEnt && entSel && modalEnt.options.length <= 1) {
+      Array.from(entSel.options).forEach(o => { if (o.value !== '') modalEnt.add(new Option(o.text, o.value)); });
+    }
+    // Pre-select current page values for convenience
+    try {
+      if (modalTx && txTypeSel) modalTx.value = txTypeSel.value || '';
+      if (modalEnt && entSel) modalEnt.value = entSel.value || '';
+    } catch (e) {}
+    catModal.show();
+  });
+  document.getElementById('quick-category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // ensure modal selects are populated with current page values (submit-time fallback)
+    const txTypeSel = document.getElementById('id_transaction_type');
+    const entSrcSel = document.getElementById('id_entity_source');
+    const entDstSel = document.getElementById('id_entity_destination');
+    const modalTx = document.getElementById('quick-category-transaction-type');
+    const modalEnt = document.getElementById('quick-category-entity');
+    // copy options if empty (defensive - primary copy happens when modal opens)
+    if (modalTx && modalTx.options.length <= 1 && txTypeSel) {
+      Array.from(txTypeSel.options).forEach(o => modalTx.add(new Option(o.text, o.value)));
+    }
+    if (modalEnt && modalEnt.options.length <= 1 && (entSrcSel || entDstSel)) {
+      // Choose the primary side based on the transaction type currently
+      // selected in the modal (if present). Fall back to source/destination
+      // heuristic when mapping is absent.
+      let copyFrom = null;
+      try {
+        const mType = modalTx ? modalTx.value : (txTypeSel ? txTypeSel.value : '');
+        const primary = entitySideMap[mType];
+        if (primary === 'destination') copyFrom = document.getElementById('id_entity_destination');
+        else if (primary === 'source') copyFrom = document.getElementById('id_entity_source');
+      } catch (e) { copyFrom = null; }
+      if (!copyFrom) copyFrom = document.getElementById('id_entity_source') || document.getElementById('id_entity_destination');
+      if (copyFrom) Array.from(copyFrom.options).forEach(o => modalEnt.add(new Option(o.text, o.value)));
+    }
+
+    const resp = await fetch('/transactions/tags/', { method: 'POST', body: new FormData(e.target) });
+    if (resp.ok) {
+      const data = await resp.json();
+      // Insert into category select if present
+      const sel = document.getElementById('id_category');
+      if (sel) sel.add(new Option(data.name, data.id, true, true));
+      catModal.hide();
+      e.target.reset();
+    } else {
+      const text = await resp.text();
+      alert('Could not create category: ' + text);
     }
   });
 
@@ -184,7 +357,7 @@
   const currencyWarning = document.getElementById('currency_warning');
   const accountCurrencies = JSON.parse('{{ account_currency_map|escapejs }}');
   const amountInput = document.getElementById('id_amount');
-  const categoryInput = document.getElementById('id_category_names');
+  const categoryInput = document.getElementById('id_category_names') || document.getElementById('id_category');
 
   function outsideOption(select) {
     return Array.from(select.options).find(o => o.text.trim() === 'Outside');
@@ -201,44 +374,55 @@
 
   function toggleOutside() {
     const type = txTypeSel.value;
-    const accVal = outsideValues(accSrc);
-    const entVal = outsideValues(entSrc);
-    const hideOutside = type === 'income';
-    [accDest, entDest].forEach(sel => {
-      if (!sel) return;
-      const opt = outsideOption(sel);
-      if (!opt) return;
-      if (hideOutside) {
-        opt.disabled = true;
-        opt.hidden = true;
-        if (sel.value === opt.value) {
-          const first = firstInternalOption(sel);
-          sel.value = first ? first.value : '';
-        }
-      } else {
-        opt.disabled = false;
-        opt.hidden = false;
-      }
-    });
+    // Determine which entity side should be primary for this transaction type.
+    const primarySide = entitySideMap[type];
+    // Determine outside values from whichever selects contain the Outside option.
+    const accOutsideVal = outsideValues(accSrc) || outsideValues(accDest);
+    const entOutsideVal = outsideValues(entSrc) || outsideValues(entDest);
+
+    // If this is a transfer, both sides are active.
+    if (type === 'transfer' || !primarySide) {
+      // fall back to previous behavior for income/expense when no mapping
     if (type === 'income') {
-      accSrc.value = accVal;
-      entSrc.value = entVal;
-      accSrc.disabled = true;
-      entSrc.disabled = true;
-      accDest.disabled = false;
-      entDest.disabled = false;
-    } else if (type === 'expense') {
-      accDest.value = accVal;
-      entDest.value = entVal;
-      accDest.disabled = true;
-      entDest.disabled = true;
-      accSrc.disabled = false;
-      entSrc.disabled = false;
+      // Use the discovered Outside value from either account select.
+      const accVal = accOutsideVal;
+      const entVal = entOutsideVal;
+      if (accSrc) { if (accVal) accSrc.value = accVal; accSrc.disabled = true; }
+      if (entSrc) { if (entVal) entSrc.value = entVal; entSrc.disabled = true; }
+          if (accDest) accDest.disabled = false;
+          if (entDest) entDest.disabled = false;
+        } else if (type === 'expense') {
+          // For expenses the destination should be Outside. Use the discovered
+          // Outside value from either side so we don't copy an empty value.
+          const accVal = accOutsideVal;
+          const entVal = entOutsideVal;
+          if (accDest) { accDest.value = accVal || ''; accDest.disabled = true; }
+          if (entDest) { entDest.value = entVal || ''; entDest.disabled = true; }
+          if (accSrc) accSrc.disabled = false;
+          if (entSrc) entSrc.disabled = false;
+      } else {
+        accSrc.disabled = false;
+        entSrc.disabled = false;
+        accDest.disabled = false;
+        entDest.disabled = false;
+      }
     } else {
-      accSrc.disabled = false;
-      entSrc.disabled = false;
-      accDest.disabled = false;
-      entDest.disabled = false;
+      // Primary side defined by mapping: lock the non-primary side to Outside
+      const primaryAcc = primarySide === 'source' ? accSrc : accDest;
+      const primaryEnt = primarySide === 'source' ? entSrc : entDest;
+      const nonAcc = primarySide === 'source' ? accDest : accSrc;
+      const nonEnt = primarySide === 'source' ? entDest : entSrc;
+
+      if (nonAcc) {
+        if (accOutsideVal) nonAcc.value = accOutsideVal;
+        nonAcc.disabled = true;
+      }
+      if (nonEnt) {
+        if (entOutsideVal) nonEnt.value = entOutsideVal;
+        nonEnt.disabled = true;
+      }
+      if (primaryAcc) primaryAcc.disabled = false;
+      if (primaryEnt) primaryEnt.disabled = false;
     }
     toggleCurrencyInputs();
   }
@@ -291,7 +475,11 @@
 
   function updatePrereqState(){
     const ready = prereqsReady();
-    if (categoryInput) categoryInput.disabled = !ready;
+    // Keep category input enabled at all times (templates should be able
+    // to supply category and users may want to pick categories before
+    // filling all prereqs). Previously we disabled this, which made the
+    // field inert unless using a template. Do not change the disabled
+    // state here.
     // Only evaluate cross-currency once accounts are present
     if (ready) toggleCurrencyInputs();
     else {
@@ -319,4 +507,53 @@ function toggleBalanceSummary() {
   document.addEventListener('DOMContentLoaded', toggleBalanceSummary);
 </script>
 
+<script type="text/javascript">
+  // Normalize placeholder option text to a uniform '-----------' so all
+  // dropdowns look consistent. We intentionally skip the Template
+  // select (`id_template`) because that field is allowed to be empty and
+  // shows a helpful placeholder.
+  (function normalizePlaceholderOptions(){
+    function normalizeOnce(root=document){
+      const selects = Array.from(root.querySelectorAll('select'));
+      selects.forEach(sel => {
+        if (!sel.id) return;
+        if (sel.id === 'id_template') return; // keep template placeholder
+        Array.from(sel.options).forEach(opt => {
+          const txt = opt.text.trim();
+          // Convert '(none)' to the uniform dashes
+          if (txt === '(none)') {
+            opt.text = '-----------';
+          }
+          // If the option is any dash-only placeholder (1+ dashes), normalize
+          else if (/^-{1,}$/.test(txt)) {
+            opt.text = '-----------';
+          }
+        });
+      });
+    }
+
+    // Run once on DOMContentLoaded
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => normalizeOnce());
+    else normalizeOnce();
+
+    // Also observe for dynamically inserted selects (e.g. category widgets)
+    const mo = new MutationObserver(mutations => {
+      for (const m of mutations) {
+        if (m.type === 'childList') {
+          m.addedNodes.forEach(node => {
+            try {
+              if (node.nodeType === 1) normalizeOnce(node);
+            } catch (e) {}
+          });
+        }
+        // attribute changes could alter option text; re-run on attribute changes of selects
+        if (m.type === 'attributes' && m.target && m.target.tagName === 'SELECT') {
+          try { normalizeOnce(m.target.parentNode || document); } catch (e) {}
+        }
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'disabled'] });
+  })();
+  // Required label marking is handled globally in base.html
+</script>
 {% endblock %}

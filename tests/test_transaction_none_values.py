@@ -6,7 +6,9 @@ from django.contrib.auth import get_user_model
 from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class TransactionListNoneHandlingTests(TestCase):
     def setUp(self):
         User = get_user_model()

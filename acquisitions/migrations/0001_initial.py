@@ -11,33 +11,92 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('transactions', '0001_initial'),
+        ("transactions", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Acquisition',
+            name="Acquisition",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
-                ('category', models.CharField(choices=[('product', 'Product'), ('stock_bond', 'Stock/Bond'), ('property', 'Property'), ('equipment', 'Equipment'), ('vehicle', 'Vehicle')], default='product', max_length=20)),
-                ('current_value', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
-                ('market', models.CharField(blank=True, max_length=100)),
-                ('expected_lifespan_years', models.IntegerField(blank=True, null=True)),
-                ('location', models.CharField(blank=True, max_length=120)),
-                ('target_selling_date', models.DateField(blank=True, null=True)),
-                ('mileage', models.PositiveIntegerField(blank=True, null=True)),
-                ('plate_number', models.CharField(blank=True, max_length=20)),
-                ('model_year', models.PositiveIntegerField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('inactive', 'Inactive'), ('active', 'Active')], default='inactive', max_length=10)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('purchase_tx', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='acquisition_purchase', to='transactions.transaction')),
-                ('sell_tx', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='acquisition_sale', to='transactions.transaction')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='acquisitions', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
+                (
+                    "category",
+                    models.CharField(
+                        choices=[
+                            ("product", "Product"),
+                            ("stock_bond", "Stock/Bond"),
+                            ("property", "Property"),
+                            ("equipment", "Equipment"),
+                            ("vehicle", "Vehicle"),
+                        ],
+                        default="product",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "current_value",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=12, null=True
+                    ),
+                ),
+                ("market", models.CharField(blank=True, max_length=100)),
+                ("expected_lifespan_years", models.IntegerField(blank=True, null=True)),
+                ("location", models.CharField(blank=True, max_length=120)),
+                ("target_selling_date", models.DateField(blank=True, null=True)),
+                ("mileage", models.PositiveIntegerField(blank=True, null=True)),
+                ("plate_number", models.CharField(blank=True, max_length=20)),
+                ("model_year", models.PositiveIntegerField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("inactive", "Inactive"), ("active", "Active")],
+                        default="inactive",
+                        max_length=10,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                (
+                    "purchase_tx",
+                    models.OneToOneField(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="acquisition_purchase",
+                        to="transactions.transaction",
+                    ),
+                ),
+                (
+                    "sell_tx",
+                    models.OneToOneField(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="acquisition_sale",
+                        to="transactions.transaction",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="acquisitions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'acquisitions_acquisition',
+                "db_table": "acquisitions_acquisition",
             },
         ),
     ]

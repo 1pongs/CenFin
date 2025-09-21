@@ -15,28 +15,77 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Currency',
+            name="Currency",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('code', models.CharField(max_length=3, unique=True)),
-                ('name', models.CharField(max_length=50)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("code", models.CharField(max_length=3, unique=True)),
+                ("name", models.CharField(max_length=50)),
             ],
             options={
-                'ordering': ['code'],
+                "ordering": ["code"],
             },
         ),
         migrations.CreateModel(
-            name='ExchangeRate',
+            name="ExchangeRate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('source', models.CharField(choices=[('USER', 'User-defined'), ('XE', 'XE.com'), ('RC_A', 'Remittance Center A')], max_length=20)),
-                ('rate', models.DecimalField(decimal_places=6, max_digits=12)),
-                ('currency_from', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rates_from', to='currencies.currency')),
-                ('currency_to', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rates_to', to='currencies.currency')),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exchange_rates', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "source",
+                    models.CharField(
+                        choices=[
+                            ("USER", "User-defined"),
+                            ("XE", "XE.com"),
+                            ("RC_A", "Remittance Center A"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("rate", models.DecimalField(decimal_places=6, max_digits=12)),
+                (
+                    "currency_from",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="rates_from",
+                        to="currencies.currency",
+                    ),
+                ),
+                (
+                    "currency_to",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="rates_to",
+                        to="currencies.currency",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="exchange_rates",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('source', 'currency_from', 'currency_to', 'user')},
+                "unique_together": {("source", "currency_from", "currency_to", "user")},
             },
         ),
     ]

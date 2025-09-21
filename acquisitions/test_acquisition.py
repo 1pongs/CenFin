@@ -58,6 +58,7 @@ class AcquisitionListViewTest(TestCase):
         self.assertContains(resp, "Alpha")
         self.assertNotContains(resp, "Beta")
 
+
 @override_settings(
     DATABASES={
         "default": {
@@ -118,8 +119,49 @@ class AcquisitionTransactionAmountTest(TestCase):
         self.assertIsNotNone(sell_tx)
         self.assertEqual(sell_tx.amount, Decimal("4000"))
 
-        #buy transaction plus two sale-related transactions should exist
+        # buy transaction plus two sale-related transactions should exist
         self.assertEqual(Transaction.objects.count(), 3)
+
+    def test_editing_sell_updates_existing_transactions(self):
+        # First sale
+        response = self.client.post(
+            reverse("acquisitions:sell", args=[self.acquisition.pk]),
+            {
+                "date": timezone.now().date(),
+                "sale_price": "10000",
+                "account_source": self.acc_dest.pk,
+                "account_destination": self.acc_src.pk,
+                "entity_source": self.ent_dest.pk,
+                "entity_destination": self.ent_src.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.acquisition.refresh_from_db()
+        self.assertIsNotNone(self.acquisition.sell_tx)
+        # Record current transaction ids and counts
+        tx_count_after_first = Transaction.objects.count()
+        tx_ids = list(Transaction.objects.values_list("pk", flat=True))
+
+        # Now 'edit' the sale by posting again with a different date and price
+        new_date = timezone.now().date()
+        response2 = self.client.post(
+            reverse("acquisitions:sell", args=[self.acquisition.pk]),
+            {
+                "date": new_date,
+                "sale_price": "10500",
+                "account_source": self.acc_dest.pk,
+                "account_destination": self.acc_src.pk,
+                "entity_source": self.ent_dest.pk,
+                "entity_destination": self.ent_src.pk,
+            },
+        )
+        self.assertEqual(response2.status_code, 302)
+
+        # Transaction count should remain the same (no new buy tx created)
+        self.assertEqual(Transaction.objects.count(), tx_count_after_first)
+        # The sale transaction id should remain the same (updated)
+        self.acquisition.refresh_from_db()
+        self.assertIn(self.acquisition.sell_tx.pk, tx_ids)
 
 
 @override_settings(
@@ -257,6 +299,80 @@ class AcquisitionComputedFieldsTest(TestCase):
         self.assertEqual(self.acquisition.selling_date, sale_date)
         self.assertEqual(self.acquisition.price_sold, Decimal("1000"))
         self.assertEqual(self.acquisition.profit, Decimal("400"))
+
+
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
+class AcquisitionDeleteRestoresBalanceTest(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="delbal", password="p")
+        self.client.force_login(self.user)
+        from accounts.utils import ensure_outside_account
+        from entities.utils import ensure_fixed_entities
+
+        self.cash = Account.objects.create(
+            account_name="Cash-on-hand", account_type="Cash", user=self.user
+        )
+        self.out_acc = ensure_outside_account()
+        self.ent = Entity.objects.create(
+            entity_name="Me", entity_type="personal fund", user=self.user
+        )
+        self.out_ent, _ = ensure_fixed_entities(self.user)
+        # Seed balance: 63,434 PHP
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("63434"),
+            account_source=self.out_acc,
+            account_destination=self.cash,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        # Create a Buy Acquisition of 1,000 PHP from Cash-on-hand to Outside
+        buy = Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="Test",
+            transaction_type="buy acquisition",
+            amount=Decimal("1000"),
+            account_source=self.cash,
+            account_destination=self.out_acc,
+            entity_source=self.ent,
+            entity_destination=self.out_ent,
+        )
+        self.acq = Acquisition.objects.create(
+            user=self.user,
+            name="Test",
+            category="product",
+            purchase_tx=buy,
+            status="active",
+        )
+
+    def test_delete_acquisition_reverses_and_hides(self):
+        # Before delete: balance should be 63,434 - 1,000 = 62,434
+        self.assertEqual(self.cash.get_current_balance(), Decimal("62434"))
+        # Delete the acquisition via its delete view
+        resp = self.client.post(reverse("acquisitions:acquisition-delete", args=[self.acq.pk]))
+        self.assertEqual(resp.status_code, 302)
+        # After delete: balance should be restored to 63,434
+        self.assertEqual(self.cash.get_current_balance(), Decimal("63434"))
+        # The original buy transaction should be hidden and marked reversed
+        orig = Transaction.all_objects.get(pk=self.acq.purchase_tx_id)
+        self.assertTrue(orig.is_hidden)
+        self.assertTrue(orig.is_reversed)
+        # Reversal row exists (hidden)
+        rev = Transaction.all_objects.filter(
+            reversed_transaction_id=orig.pk, is_reversal=True
+        ).first()
+        self.assertIsNotNone(rev)
+        # And the active transactions list should not include the original
+        list_resp = self.client.get(reverse("transactions:transaction_list"))
+        self.assertEqual(list_resp.status_code, 200)
+        self.assertNotContains(list_resp, "Test")
 
 
 @override_settings(

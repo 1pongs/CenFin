@@ -32,11 +32,11 @@
   <div class="col-lg-8 mb-4">
     <ul class="nav nav-tabs mb-3">
       <li class="nav-item">
-        <a class="nav-link{% if not current_type %} active{% endif %}" href="?{% if status %}status={{ status }}&{% endif %}{% if start %}start={{ start }}&{% endif %}{% if end %}end={{ end }}&{% endif %}{% if search %}q={{ search }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}fund_type=">All</a>
+        <a class="nav-link{% if not current_type %} active{% endif %}" href="?{% if start %}start={{ start }}&{% endif %}{% if end %}end={{ end }}&{% endif %}{% if search %}q={{ search }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}fund_type=">All</a>
       </li>
       {% for val,label in fund_types %}
       <li class="nav-item">
-        <a class="nav-link{% if current_type == val %} active{% endif %}" href="?fund_type={{ val }}{% if status %}&status={{ status }}{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if search %}&q={{ search }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ label }}</a>
+        <a class="nav-link{% if current_type == val %} active{% endif %}" href="?fund_type={{ val }}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}{% if search %}&q={{ search }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ label }}</a>
       </li>
       {% endfor %}
     </ul>
@@ -72,16 +72,10 @@
       <a href="{% url 'entities:create' %}" class="btn btn-success w-100 mb-3">
         <i class="bi bi-plus-lg me-1"></i>Add
       </a>
-      <a href="{% url 'entities:archived' %}" class="btn btn-outline-secondary w-100 mb-3">
-        <i class="bi bi-archive me-1"></i>View Archived
-      </a>
+      
       <form id="filter-form" method="get">
         <input type="text" name="q" value="{{ search }}" class="form-control mb-2" placeholder="Search">
-        <select name="status" class="form-select mb-2">
-          <option value="">All Status</option>
-          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
-          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
-        </select>
+        
         <div class="d-flex gap-2 mb-2">
           <input type="date" name="start" value="{{ start }}" class="form-control">
           <input type="date" name="end" value="{{ end }}" class="form-control">

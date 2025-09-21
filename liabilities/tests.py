@@ -12,7 +12,9 @@ from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LoanModelTest(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -30,7 +32,9 @@ class LoanModelTest(TestCase):
         )
         self.assertEqual(LoanPayment.objects.filter(loan=loan).count(), 3)
         self.assertEqual(loan.outstanding_balance, Decimal("1000"))
-        self.assertEqual(Transaction.objects.filter(transaction_type="loan_disbursement").count(), 1)
+        self.assertEqual(
+            Transaction.objects.filter(transaction_type="loan_disbursement").count(), 1
+        )
 
     def test_mark_payment_updates_balance(self):
         loan = Loan.objects.create(
@@ -54,7 +58,9 @@ class LoanModelTest(TestCase):
         self.assertEqual(loan.outstanding_balance, Decimal("200"))
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LiabilityListViewTest(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -63,15 +69,19 @@ class LiabilityListViewTest(TestCase):
 
     def test_list_view_uses_template(self):
         from django.urls import reverse
+
         resp = self.client.get(reverse("liabilities:list"))
         self.assertEqual(resp.status_code, 200)
         self.assertTemplateUsed(resp, "liabilities/liability_list.html")
 
     def test_list_view_renders_nav_tabs_and_filters(self):
         from django.urls import reverse
+
         resp = self.client.get(reverse("liabilities:list"))
         self.assertContains(resp, "navbar-dark")
-        self.assertContains(resp, '<a class="nav-link active" href="?tab=credit">Credit</a>', html=True)
+        self.assertContains(
+            resp, '<a class="nav-link active" href="?tab=credit">Credit</a>', html=True
+        )
         self.assertContains(resp, 'id="filter-form"')
 
     def test_credit_card_details_displayed(self):
@@ -92,8 +102,10 @@ class LiabilityListViewTest(TestCase):
         self.assertContains(resp, "Outstanding")
         self.assertContains(resp, "Available")
 
-        
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LenderUniqueTest(TestCase):
     def test_lender_name_unique_case_insensitive(self):
         Lender.objects.create(name="Test Bank")
@@ -101,7 +113,9 @@ class LenderUniqueTest(TestCase):
             Lender.objects.create(name="test bank")
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class CreditCardFormTest(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -111,6 +125,7 @@ class CreditCardFormTest(TestCase):
 
     def _post_card(self, **overrides):
         from django.urls import reverse
+
         data = {
             "issuer_id": overrides.get("issuer_id", ""),
             "issuer_text": overrides.get("issuer_text", ""),
@@ -126,7 +141,11 @@ class CreditCardFormTest(TestCase):
         resp = self._post_card()
         self.assertEqual(resp.status_code, 200)
         form = resp.context["form"]
-        self.assertFormError(form, "issuer_text", "Issuer is required — select one or create a new issuer first.")
+        self.assertFormError(
+            form,
+            "issuer_text",
+            "Issuer is required — select one or create a new issuer first.",
+        )
 
     def test_new_issuer_created(self):
         resp = self._post_card(issuer_text="NewBank")
@@ -142,14 +161,18 @@ class CreditCardFormTest(TestCase):
         self.assertEqual(card.issuer, self.lender)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LoanPaymentTransactionTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="pay", password="p")
         self.client.force_login(self.user)
         self.lender = Lender.objects.create(name="BDO")
-        self.cash = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
+        self.cash = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
         self.out_acc = ensure_outside_account()
         self.out_ent, self.acc_ent = ensure_fixed_entities(self.user)
         self.loan = Loan.objects.create(

@@ -8,18 +8,34 @@ from accounts.models import Account
 from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class TransactionConversionTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         self.cur_krw = Currency.objects.create(code="KRW", name="Won")
-        ExchangeRate.objects.create(currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04"))
-        ExchangeRate.objects.create(currency_from=self.cur_php, currency_to=self.cur_krw, rate=Decimal("0.04"))
+        ExchangeRate.objects.create(
+            currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04")
+        )
+        ExchangeRate.objects.create(
+            currency_from=self.cur_php, currency_to=self.cur_krw, rate=Decimal("0.04")
+        )
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
-        self.acc_php = Account.objects.create(account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php)
-        self.acc_krw = Account.objects.create(account_name="KRW", account_type="Cash", user=self.user, currency=self.cur_krw)
+        self.acc_php = Account.objects.create(
+            account_name="PHP",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_php,
+        )
+        self.acc_krw = Account.objects.create(
+            account_name="KRW",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_krw,
+        )
 
     def test_krw_to_php_conversion(self):
         Transaction.objects.create(

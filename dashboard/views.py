@@ -1,8 +1,7 @@
 from decimal import Decimal
 
-from django.shortcuts import render
 from django.views.generic import TemplateView, View
-from django.db.models import Case, When, Value, CharField, Q
+from django.db.models import Q
 from django.utils import timezone
 from datetime import date, timedelta
 
@@ -20,6 +19,7 @@ from utils.currency import get_active_currency, convert_to_base
 
 # Create your views here.
 
+
 class DashboardView(TemplateView):
     template_name = "dashboard.html"
 
@@ -29,10 +29,13 @@ class DashboardView(TemplateView):
         base_cur = get_active_currency(self.request)
         ctx["base_currency"] = base_cur
         income = expenses = liquid = asset = liabilities = Decimal("0")
-        qs_all = (
-            Transaction.objects.filter(user=self.request.user)
-            .select_related("currency", "account_destination__currency", "account_destination", "account_source")
+        qs_all = Transaction.objects.filter(user=self.request.user).select_related(
+            "currency",
+            "account_destination__currency",
+            "account_destination",
+            "account_source",
         )
+
         def inflow_base(tx):
             # Prefer destination_amount in the destination account's currency
             if (
@@ -46,9 +49,14 @@ class DashboardView(TemplateView):
                     base_cur,
                     user=self.request.user,
                 )
-            return convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
+            return convert_to_base(
+                tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user
+            )
+
         def outflow_base(tx):
-            return convert_to_base(tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user)
+            return convert_to_base(
+                tx.amount or Decimal("0"), tx.currency, base_cur, user=self.request.user
+            )
 
         for tx in qs_all:
             # Skip only pure internal moves where asset class doesn't change
@@ -72,8 +80,20 @@ class DashboardView(TemplateView):
             adest = (tx.asset_type_destination or "").lower()
             asrc = (tx.asset_type_source or "").lower()
             ttype = (tx.transaction_type or "").lower()
-            dest_is_outside = bool(getattr(tx, "account_destination", None) and (tx.account_destination.account_type == "Outside" or tx.account_destination.account_name == "Outside"))
-            src_is_outside = bool(getattr(tx, "account_source", None) and (tx.account_source.account_type == "Outside" or tx.account_source.account_name == "Outside"))
+            dest_is_outside = bool(
+                getattr(tx, "account_destination", None)
+                and (
+                    tx.account_destination.account_type == "Outside"
+                    or tx.account_destination.account_name == "Outside"
+                )
+            )
+            src_is_outside = bool(
+                getattr(tx, "account_source", None)
+                and (
+                    tx.account_source.account_type == "Outside"
+                    or tx.account_source.account_name == "Outside"
+                )
+            )
             if tdest == "income":
                 income += inflow_base(tx)
             if tsrc == "expense":
@@ -96,12 +116,23 @@ class DashboardView(TemplateView):
         # Liabilities from loans and credit cards
         from liabilities.models import Loan, CreditCard
         from currencies.models import Currency
+
         for loan in Loan.objects.filter(user=self.request.user):
             cur = Currency.objects.filter(code=loan.currency).first()
-            liabilities += convert_to_base(loan.outstanding_balance or Decimal("0"), cur, base_cur, user=self.request.user)
+            liabilities += convert_to_base(
+                loan.outstanding_balance or Decimal("0"),
+                cur,
+                base_cur,
+                user=self.request.user,
+            )
         for card in CreditCard.objects.filter(user=self.request.user):
             cur = Currency.objects.filter(code=card.currency).first()
-            liabilities += convert_to_base(card.outstanding_amount or Decimal("0"), cur, base_cur, user=self.request.user)
+            liabilities += convert_to_base(
+                card.outstanding_amount or Decimal("0"),
+                cur,
+                base_cur,
+                user=self.request.user,
+            )
 
         aggregates = {
             "income": income,
@@ -115,17 +146,26 @@ class DashboardView(TemplateView):
         ctx["totals"] = aggregates
 
         ctx["cards"] = [
-            ("Income",    "income",    "success"),
-            ("Expenses",  "expenses",  "danger"),
+            ("Income", "income", "success"),
+            ("Expenses", "expenses", "danger"),
             ("Liquid", "liquid", "warning"),
             ("Asset", "asset", "info"),
             ("Liabilities", "liabilities", "secondary"),
         ]
-        ctx["monthly_summary"] = get_monthly_summary(user=self.request.user, currency=base_cur)
+        # Ensure monthly_summary includes both 'non_liquid' and 'asset' keys
+        ms = get_monthly_summary(user=self.request.user, currency=base_cur)
+        for item in ms:
+            if "non_liquid" in item and "asset" not in item:
+                item["asset"] = item["non_liquid"]
+        ctx["monthly_summary"] = ms
         today = timezone.now().date()
         ctx["today"] = today
-        
-        ctx["entities"] = Entity.objects.active().filter(user=self.request.user).order_by("entity_name")
+
+        ctx["entities"] = (
+            Entity.objects.active()
+            .filter(user=self.request.user)
+            .order_by("entity_name")
+        )
         # Unique category names for the analytics filter
         cat_qs = CategoryTag.objects.filter(user=self.request.user).order_by("name")
         cat_names = []
@@ -187,7 +227,12 @@ class DashboardView(TemplateView):
 
         entries = []
         for tx in qs:
-            amt = convert_to_base(abs(tx.amount or Decimal("0")), tx.currency, base_cur, user=self.request.user)
+            amt = convert_to_base(
+                abs(tx.amount or Decimal("0")),
+                tx.currency,
+                base_cur,
+                user=self.request.user,
+            )
             if tx.transaction_type_destination == "Income":
                 entry_type = "income"
             elif tx.transaction_type_source == "Expense":
@@ -196,15 +241,19 @@ class DashboardView(TemplateView):
                 entry_type = "asset"
             else:
                 entry_type = "other"
-            entries.append({"category": tx.description, "amount": amt, "type": entry_type})
+            entries.append(
+                {"category": tx.description, "amount": amt, "type": entry_type}
+            )
 
         entries.sort(key=lambda r: r["amount"], reverse=True)
         ctx["top10_big_tickets"] = entries[:10]
 
         return ctx
 
+
 class MonthlyDataView(View):
     """Return monthly summary JSON filtered by entity."""
+
     def get(self, request, *args, **kwargs):
         ent = request.GET.get("entity_id")
         if ent and ent != "all":
@@ -217,7 +266,7 @@ class MonthlyDataView(View):
         base_cur = get_active_currency(request)
         data = get_monthly_summary(ent, user=request.user, currency=base_cur)
         return JsonResponse(data, safe=False)
-    
+
 
 class MonthlyChartDataView(View):
     """Return monthly chart data filtered by entity and months."""
@@ -242,5 +291,8 @@ class MonthlyChartDataView(View):
         data = get_monthly_cash_flow(
             ent, months, drop_empty=True, user=request.user, currency=base_cur
         )
+        # Remap 'non_liquid' to 'asset' for chart compatibility
+        for item in data:
+            if "non_liquid" in item:
+                item["asset"] = item.pop("non_liquid")
         return JsonResponse(data, safe=False)
-    

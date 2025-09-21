@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('transactions', '0004_transaction_is_hidden_transaction_parent_transfer'),
+        ("transactions", "0004_transaction_is_hidden_transaction_parent_transfer"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='transaction',
-            name='destination_amount',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True),
+            model_name="transaction",
+            name="destination_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=12, null=True
+            ),
         ),
     ]

@@ -13,7 +13,9 @@ from accounts.utils import ensure_outside_account
 from entities.utils import ensure_fixed_entities
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class CategoryTagScopeTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -85,9 +87,7 @@ class CategoryTagScopeTests(TestCase):
         CategoryTag.objects.create(
             user=self.user, transaction_type="expense", name="Food"
         )
-        dup = CategoryTag(
-            user=self.user, transaction_type="expense", name="Food"
-        )
+        dup = CategoryTag(user=self.user, transaction_type="expense", name="Food")
         with self.assertRaises(ValidationError):
             dup.full_clean()
 

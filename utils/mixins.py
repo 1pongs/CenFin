@@ -8,7 +8,9 @@ class CurrencyConversionMixin:
     def get_display_currency(self):
         return getattr(self.request, "display_currency", settings.BASE_CURRENCY)
 
-    def convert_queryset_balance(self, qs, amount_attr="current_balance", currency_attr="currency"):
+    def convert_queryset_balance(
+        self, qs, amount_attr="current_balance", currency_attr="currency"
+    ):
         """Attach ``converted_balance`` to objects in ``qs``.
 
         Each object's ``amount_attr`` is converted from its ``currency_attr``'s

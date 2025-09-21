@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from entities.utils import ensure_fixed_entities
 from accounts.utils import ensure_outside_account
 
+
 class Command(BaseCommand):
     help = "Ensure Outside and Account entities and Outside account exist for a user"
 

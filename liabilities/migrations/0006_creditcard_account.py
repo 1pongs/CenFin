@@ -7,14 +7,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0003_account_currency_alter_account_account_type'),
-        ('liabilities', '0005_loan_disbursement_tx'),
+        ("accounts", "0003_account_currency_alter_account_account_type"),
+        ("liabilities", "0005_loan_disbursement_tx"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='creditcard',
-            name='account',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='credit_card', to='accounts.account'),
+            model_name="creditcard",
+            name="account",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="credit_card",
+                to="accounts.account",
+            ),
         ),
     ]

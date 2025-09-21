@@ -12,13 +12,19 @@ from .models import Transaction
 from .ledger import check_lifo_allowed, delete_unit, reverse_unit
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LedgerSequencingTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
-        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.acc = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
+        self.ent = Entity.objects.create(
+            entity_name="Me", entity_type="outside", user=self.user
+        )
 
     def _create_income(self, amt):
         return Transaction.objects.create(
@@ -48,14 +54,22 @@ class LedgerSequencingTest(TestCase):
         self.assertTrue(t3.is_deleted)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class LedgerPairTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="p", password="p")
-        self.acc_a = Account.objects.create(account_name="A", account_type="Cash", user=self.user)
-        self.acc_b = Account.objects.create(account_name="B", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.acc_a = Account.objects.create(
+            account_name="A", account_type="Cash", user=self.user
+        )
+        self.acc_b = Account.objects.create(
+            account_name="B", account_type="Cash", user=self.user
+        )
+        self.ent = Entity.objects.create(
+            entity_name="Me", entity_type="outside", user=self.user
+        )
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         self.cur_krw = Currency.objects.create(code="KRW", name="Won")
 
@@ -74,7 +88,7 @@ class LedgerPairTest(TestCase):
             currency=self.cur_krw,
             group_id=gid,
         )
-        t2 = Transaction.objects.create(
+        Transaction.objects.create(
             user=self.user,
             date=timezone.now().date(),
             description="php side",
@@ -137,13 +151,19 @@ class LedgerPairTest(TestCase):
         self.assertEqual(amounts, [Decimal("-200000"), Decimal("5000000")])
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class IncomeDeleteTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="x", password="p")
-        self.acc = Account.objects.create(account_name="Cash", account_type="Cash", user=self.user)
-        self.ent = Entity.objects.create(entity_name="Me", entity_type="outside", user=self.user)
+        self.acc = Account.objects.create(
+            account_name="Cash", account_type="Cash", user=self.user
+        )
+        self.ent = Entity.objects.create(
+            entity_name="Me", entity_type="outside", user=self.user
+        )
 
     def test_income_delete_only(self):
         t = Transaction.objects.create(

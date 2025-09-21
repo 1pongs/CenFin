@@ -15,14 +15,45 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Entity',
+            name="Entity",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('entity_name', models.CharField(max_length=100)),
-                ('entity_type', models.CharField(choices=[('free fund', 'Free Fund'), ('investment fund', 'Investment Fund'), ('emergency fund', 'Emergency Fund'), ('business fund', 'Business Fund'), ('retirement fund', 'Retirement Fund'), ('educational fund', 'Educational Fund'), ('outside', 'Outside'), ('personal fund', 'Personal Fund')], max_length=50)),
-                ('is_active', models.BooleanField(default=True)),
-                ('is_visible', models.BooleanField(default=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='entities', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("entity_name", models.CharField(max_length=100)),
+                (
+                    "entity_type",
+                    models.CharField(
+                        choices=[
+                            ("free fund", "Free Fund"),
+                            ("investment fund", "Investment Fund"),
+                            ("emergency fund", "Emergency Fund"),
+                            ("business fund", "Business Fund"),
+                            ("retirement fund", "Retirement Fund"),
+                            ("educational fund", "Educational Fund"),
+                            ("outside", "Outside"),
+                            ("personal fund", "Personal Fund"),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("is_visible", models.BooleanField(default=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="entities",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

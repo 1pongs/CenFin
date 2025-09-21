@@ -6,29 +6,38 @@ from decimal import Decimal
 from accounts.models import Account
 from entities.models import Entity
 from currencies.models import Currency
-from django.db.models import JSONField, Max, Q
+from django.db.models import Max, Q
 from django.core.exceptions import ValidationError
 from .constants import transaction_type_TX_MAP, TXN_TYPE_CHOICES
 from cenfin_proj.utils import (
     get_account_entity_balance,
-    get_entity_balance as util_entity_balance,
 )
 
 # Create your models here.
 
+
 class TransactionTemplate(models.Model):
     name = models.CharField(max_length=60, unique=True)
     autopop_map = models.JSONField(default=dict, blank=True, null=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transaction_templates", null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="transaction_templates",
+        null=True,
+    )
 
     def __str__(self):
         return self.name
-    
+
+
 class CategoryTag(models.Model):
     """User-defined tag for categorizing transactions."""
+
     name = models.CharField(max_length=60)
     # Normalized key for case/plural-insensitive uniqueness (lowercased, basic singular)
-    name_key = models.CharField(max_length=80, editable=False, db_index=True, default="")
+    name_key = models.CharField(
+        max_length=80, editable=False, db_index=True, default=""
+    )
     transaction_type = models.CharField(
         max_length=20, choices=TXN_TYPE_CHOICES, blank=True, null=True
     )
@@ -97,7 +106,8 @@ class CategoryTag(models.Model):
         # Ensure name_key is set before saving
         self.name_key = self._normalize_name(self.name)
         return super().save(*args, **kwargs)
-                
+
+
 class TransactionQuerySet(models.QuerySet):
     def visible(self):
         return self.filter(is_hidden=False)
@@ -110,14 +120,34 @@ class TransactionManager(models.Manager):
     def with_hidden(self):
         return TransactionQuerySet(self.model, using=self._db)
 
+    def include_reversals(self):
+        """Return a queryset that includes normally-visible transactions plus
+        reversal rows even if they are hidden. This keeps the default manager
+        behavior unchanged while providing a discoverable path for code and
+        tests that need to find reversal entries without using the raw
+        `all_objects` manager.
+        """
+        # Start from the hidden-aware queryset then explicitly include
+        # reversal rows (is_reversal=True) regardless of is_hidden flag.
+        return TransactionQuerySet(self.model, using=self._db).filter(
+            Q(is_reversal=True) | Q(is_hidden=False)
+        )
+
+
 class Transaction(models.Model):
     template = models.ForeignKey(
         TransactionTemplate,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         on_delete=models.SET_NULL,
     )
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transactions", null=True)
-    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="transactions",
+        null=True,
+    )
+
     TRANSACTION_TYPE_CHOICES = [
         ("income", "Income"),
         ("expense", "Expense"),
@@ -131,62 +161,92 @@ class Transaction(models.Model):
         ("cc_payment", "Cc Payment"),
     ]
 
-    date = models.DateField(default=timezone.now, null=True, blank=True,)
-    description = models.CharField(max_length=255, null=True, blank=True,)
+    date = models.DateField(
+        default=timezone.now,
+        null=True,
+        blank=True,
+    )
+    description = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
 
     account_source = models.ForeignKey(
         Account,
         on_delete=models.SET_NULL,
-        related_name='transaction_as_source',
+        related_name="transaction_as_source",
         null=True,
         blank=True,
-        limit_choices_to={'is_active': True},
+        limit_choices_to={"is_active": True},
         db_index=True,
     )
     account_destination = models.ForeignKey(
         Account,
         on_delete=models.SET_NULL,
-        related_name='transaction_as_destination',
+        related_name="transaction_as_destination",
         null=True,
         blank=True,
-        limit_choices_to={'is_active': True},
+        limit_choices_to={"is_active": True},
         db_index=True,
     )
 
     entity_source = models.ForeignKey(
-        Entity, on_delete=models.SET_NULL,
-        related_name='transaction_entity_source',
+        Entity,
+        on_delete=models.SET_NULL,
+        related_name="transaction_entity_source",
         null=True,
         blank=True,
-        limit_choices_to={'is_active':True},
+        limit_choices_to={"is_active": True},
     )
     entity_destination = models.ForeignKey(
-        Entity, on_delete=models.SET_NULL,
-        related_name='transaction_entity_destination',
+        Entity,
+        on_delete=models.SET_NULL,
+        related_name="transaction_entity_destination",
         null=True,
         blank=True,
-        limit_choices_to={'is_active':True},
+        limit_choices_to={"is_active": True},
     )
 
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES, blank=True, null=True)
-    transaction_type_source = models.CharField(max_length=20, editable=False, blank=True, null=True)
-    transaction_type_destination = models.CharField(max_length=20, editable=False, blank=True, null=True)
+    transaction_type = models.CharField(
+        max_length=20, choices=TRANSACTION_TYPE_CHOICES, blank=True, null=True
+    )
+    transaction_type_source = models.CharField(
+        max_length=20, editable=False, blank=True, null=True
+    )
+    transaction_type_destination = models.CharField(
+        max_length=20, editable=False, blank=True, null=True
+    )
 
-    asset_type_source = models.CharField(max_length=20, editable=False, blank=True, null=True)
-    asset_type_destination = models.CharField(max_length=20, editable=False, blank=True, null=True)
+    asset_type_source = models.CharField(
+        max_length=20, editable=False, blank=True, null=True
+    )
+    asset_type_destination = models.CharField(
+        max_length=20, editable=False, blank=True, null=True
+    )
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
-    destination_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    destination_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
     currency = models.ForeignKey(
         Currency,
         on_delete=models.PROTECT,
         related_name="transactions",
         null=True,
     )
-    categories = models.ManyToManyField(CategoryTag, related_name="transactions", blank=True)
+    categories = models.ManyToManyField(
+        CategoryTag, related_name="transactions", blank=True
+    )
     remarks = models.TextField(blank=True, null=True)
     is_hidden = models.BooleanField(default=False)
-    parent_transfer = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='child_transfers')
+    parent_transfer = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="child_transfers",
+    )
 
     # ledger management fields
     ledger_status = models.CharField(
@@ -228,7 +288,7 @@ class Transaction(models.Model):
         on_delete=models.SET_NULL,
         related_name="transactions_deleted",
     )
-    
+
     objects = TransactionManager()
     all_objects = models.Manager()
 
@@ -240,7 +300,7 @@ class Transaction(models.Model):
 
     def _populate_from_template(self):
         """Apply defaults from the selected template."""
-        if self.template and self.template.autopop_map:   
+        if self.template and self.template.autopop_map:
             for field, default in self.template.autopop_map.items():
                 if getattr(self, field) in (None, "", 0):
                     setattr(self, field, default)
@@ -251,12 +311,14 @@ class Transaction(models.Model):
         try:
             tsrc, tdest, asrc, adest = transaction_type_TX_MAP[key]
         except KeyError:
-            raise ValidationError({"transaction_type": "Unknown mapping—update TX_MAP."})
+            raise ValidationError(
+                {"transaction_type": "Unknown mapping—update TX_MAP."}
+            )
 
-        self.transaction_type_source      = tsrc
+        self.transaction_type_source = tsrc
         self.transaction_type_destination = tdest
-        self.asset_type_source            = asrc
-        self.asset_type_destination       = adest
+        self.asset_type_source = asrc
+        self.asset_type_destination = adest
 
     # auto-fill before validation *and* before saving
     def clean(self):
@@ -272,24 +334,146 @@ class Transaction(models.Model):
                 getattr(self, "account_destination", None)
                 and (
                     getattr(self.account_destination, "account_type", None) == "Outside"
-                    or getattr(self.account_destination, "account_name", None) == "Outside"
+                    or getattr(self.account_destination, "account_name", None)
+                    == "Outside"
                 )
             )
         except Exception:
             dest_is_outside = False
+        # Symmetric rule for Capital Return (Sell Acquisition): if the
+        # source account is Outside and both entities are the same (i.e.,
+        # a conversion from Non‑Liquid back to Liquid), convert to
+        # 'sell acquisition'. This ensures the correct asset mapping is
+        # applied (non_liquid -> liquid) and entity balances reflect a
+        # capital return. We only apply during creation to avoid mutating
+        # existing rows during edits.
+        try:
+            src_is_outside = bool(
+                getattr(self, "account_source", None)
+                and (
+                    getattr(self.account_source, "account_type", None) == "Outside"
+                    or getattr(self.account_source, "account_name", None)
+                    == "Outside"
+                )
+            )
+        except Exception:
+            src_is_outside = False
         same_entity = (
             getattr(self, "entity_source_id", None)
             and getattr(self, "entity_destination_id", None)
             and self.entity_source_id == self.entity_destination_id
         )
-        if dest_is_outside and (same_entity or (self.transaction_type or "").lower() == "transfer"):
-            # Use the label form to satisfy model choices; mapping handles underscores
-            self.transaction_type = "buy acquisition"
+        # Only apply the auto-mapping when creating a new transaction. This
+        # prevents updates to existing transfer rows (for example when editing
+        # a sale) from being reinterpreted as a 'buy acquisition'. See bug where
+        # editing sell date mutated the capital return transfer into a buy.
+        creating = self.pk is None
+        if creating:
+            if (
+                dest_is_outside
+                and (same_entity or (self.transaction_type or "").lower() == "transfer")
+            ):
+                # Use the label form to satisfy model choices; mapping handles underscores
+                self.transaction_type = "buy acquisition"
+            elif (
+                src_is_outside
+                and (same_entity or (self.transaction_type or "").lower() == "transfer")
+            ):
+                # Capital return path: treat as Sell Acquisition
+                self.transaction_type = "sell acquisition"
 
         self._apply_defaults()
         super().clean()
 
-        # Prevent single-leg transactions from mixing currencies
+        # Additional business-rule validations (previously in TransactionForm.clean)
+        # These checks are important to enforce even when transactions are
+        # created programmatically from templates. Use similar rules as the
+        # form: credit-limit, insufficient funds (account/entity), and
+        # credit-card payment bounds.
+        amt = getattr(self, "amount", None) or Decimal("0")
+        tx_type = (self.transaction_type or "").lower()
+
+        # If the source account is a credit card, ensure the credit limit
+        # will not be exceeded when charging a new amount.
+        if (
+            getattr(self, "account_source", None)
+            and getattr(self.account_source, "account_name", None) != "Outside"
+        ):
+            src_acc = self.account_source
+            # If this account has a related credit_card, check limits
+            if hasattr(src_acc, "credit_card") and src_acc.credit_card is not None:
+                bal = abs(src_acc.get_current_balance())
+                limit = src_acc.credit_card.credit_limit or Decimal("0")
+                if bal + amt > limit:
+                    raise ValidationError({"account_source": "Credit limit exceeded."})
+            else:
+                # For new transactions (no PK) and non-cc_payment types, ensure
+                # the source account has sufficient funds
+                if self.pk is None and tx_type != "cc_payment":
+                    try:
+                        if src_acc.get_current_balance() < amt:
+                            raise ValidationError(
+                                {"account_source": f"Insufficient funds in {src_acc}."}
+                            )
+                    except Exception:
+                        # If account balance retrieval fails, skip strict blocking
+                        pass
+
+        # Entity-level balance checks for new transactions (non-Outside entities)
+        if (
+            self.pk is None
+            and getattr(self, "entity_source", None)
+            and getattr(self.entity_source, "entity_name", None) != "Outside"
+        ):
+            ent = self.entity_source
+            try:
+                pair_bal = Decimal("0")
+                if getattr(self, "account_source", None):
+                    pair_bal = get_account_entity_balance(
+                        self.account_source.id, ent.id
+                    )
+                ent_liquid = ent.current_balance() or Decimal("0")
+                # Allow if either the account+entity pair or the entity's liquid
+                # total can cover the amount. Only block when neither can and
+                # the account itself is also insufficient.
+                if not (pair_bal >= amt or ent_liquid >= amt):
+                    if (
+                        not getattr(self, "account_source", None)
+                        or self.account_source.get_current_balance() < amt
+                    ):
+                        raise ValidationError(
+                            {"entity_source": f"Insufficient funds in {ent}."}
+                        )
+            except ValidationError:
+                raise
+            except Exception:
+                try:
+                    if ent.current_balance() < amt and (
+                        not getattr(self, "account_source", None)
+                        or self.account_source.get_current_balance() < amt
+                    ):
+                        raise ValidationError(
+                            {"entity_source": f"Insufficient funds in {ent}."}
+                        )
+                except Exception:
+                    # If any error happens while checking, do not block save here.
+                    pass
+
+        # cc_payment: destination account must have sufficient (absolute) balance
+        if tx_type == "cc_payment":
+            dest_acc = getattr(self, "account_destination", None)
+            if (
+                dest_acc
+                and hasattr(dest_acc, "credit_card")
+                and dest_acc.credit_card is not None
+            ):
+                bal = abs(dest_acc.get_current_balance())
+                if amt > bal:
+                    raise ValidationError(
+                        {"amount": "Payment amount cannot exceed current balance"}
+                    )
+
+        # Prevent single-leg transactions from mixing currencies (kept from model-level)
         if (
             self.transaction_type != "transfer"
             and self.account_source
@@ -308,7 +492,13 @@ class Transaction(models.Model):
         self._apply_defaults()
 
         creating = self.pk is None
-        
+        # If creating a transaction that references a template, ensure the
+        # full validation run (including checks moved from the form) is
+        # executed so template-based creation cannot bypass business rules.
+        if creating and getattr(self, "template_id", None) is not None:
+            # full_clean will call self.clean() and raise ValidationError on failure
+            self.full_clean()
+
         account = None
         if self.transaction_type == "income" and self.account_destination_id:
             account = self.account_destination
@@ -326,12 +516,11 @@ class Transaction(models.Model):
             next_seq = 0
             for acc_id in accounts:
                 last = (
-                    Transaction.all_objects
-                    .filter(
+                    Transaction.all_objects.filter(
                         Q(account_source_id=acc_id) | Q(account_destination_id=acc_id),
                         is_deleted=False,
-                    )
-                    .aggregate(Max("seq_account"))["seq_account__max"] or 0
+                    ).aggregate(Max("seq_account"))["seq_account__max"]
+                    or 0
                 )
                 if last > next_seq:
                     next_seq = last
@@ -348,7 +537,7 @@ class Transaction(models.Model):
                 self.currency = self.user.base_currency
             else:
                 self.currency = Currency.objects.filter(code="PHP").first()
-                
+
         super().save(*args, **kwargs)
         for acc_field in ["account_source", "account_destination"]:
             acc = getattr(self, acc_field, None)

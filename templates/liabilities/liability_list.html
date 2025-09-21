@@ -73,16 +73,11 @@
         <a href="{% url 'liabilities:loan-create' %}" class="btn btn-success w-100 mb-3">
           <i class="bi bi-plus-lg me-1"></i>Add
         </a>
-        <a href="{% url 'liabilities:loan-archived' %}" class="btn btn-outline-secondary w-100 mb-3">
-          <i class="bi bi-archive me-1"></i>View Archived
-        </a>
       {% else %}
         <a href="{% url 'liabilities:credit-create' %}" class="btn btn-success w-100 mb-3">
           <i class="bi bi-plus-lg me-1"></i>Add
         </a>
-        <a href="{% url 'liabilities:credit-archived' %}" class="btn btn-outline-secondary w-100 mb-3">
-          <i class="bi bi-archive me-1"></i>View Archived
-        </a>
+        
       {% endif %}
       {% include 'liabilities/_toolbar.html' %}
     </div>

@@ -6,13 +6,30 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('transactions', '0001_initial'),
+        ("transactions", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='categorytag',
-            name='transaction_type',
-            field=models.CharField(blank=True, choices=[('', '---------'), ('income', 'Income'), ('expense', 'Expense'), ('premium_payment', 'Premium Payment'), ('transfer', 'Transfer'), ('buy_acquisition', 'Buy Acquisition'), ('sell_acquisition', 'Sell Acquisition'), ('loan_disbursement', 'Loan Disbursement'), ('loan_repayment', 'Loan Repayment'), ('cc_purchase', 'Cc Purchase'), ('cc_payment', 'Cc Payment')], max_length=20, null=True),
+            model_name="categorytag",
+            name="transaction_type",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("", "---------"),
+                    ("income", "Income"),
+                    ("expense", "Expense"),
+                    ("premium_payment", "Premium Payment"),
+                    ("transfer", "Transfer"),
+                    ("buy_acquisition", "Buy Acquisition"),
+                    ("sell_acquisition", "Sell Acquisition"),
+                    ("loan_disbursement", "Loan Disbursement"),
+                    ("loan_repayment", "Loan Repayment"),
+                    ("cc_purchase", "Cc Purchase"),
+                    ("cc_payment", "Cc Payment"),
+                ],
+                max_length=20,
+                null=True,
+            ),
         ),
     ]

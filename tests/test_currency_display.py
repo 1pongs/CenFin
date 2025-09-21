@@ -8,7 +8,9 @@ from accounts.models import Account
 from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class CurrencyDisplayTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")

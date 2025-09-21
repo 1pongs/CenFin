@@ -9,18 +9,31 @@ from entities.models import Entity
 from transactions.models import Transaction
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class DisplayCurrencyPageTests(TestCase):
     def setUp(self):
         self.cur_php = Currency.objects.create(code="PHP", name="Peso")
         self.cur_krw = Currency.objects.create(code="KRW", name="Won")
-        ExchangeRate.objects.create(currency_from=self.cur_php, currency_to=self.cur_krw, rate=Decimal("25"))
-        ExchangeRate.objects.create(currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04"))
+        ExchangeRate.objects.create(
+            currency_from=self.cur_php, currency_to=self.cur_krw, rate=Decimal("25")
+        )
+        ExchangeRate.objects.create(
+            currency_from=self.cur_krw, currency_to=self.cur_php, rate=Decimal("0.04")
+        )
         User = get_user_model()
         self.user = User.objects.create_user(username="u", password="p")
         self.client.force_login(self.user)
-        self.acc_php = Account.objects.create(account_name="PHP", account_type="Cash", user=self.user, currency=self.cur_php)
-        self.entity = Entity.objects.create(entity_name="Ent", entity_type="personal fund", user=self.user)
+        self.acc_php = Account.objects.create(
+            account_name="PHP",
+            account_type="Cash",
+            user=self.user,
+            currency=self.cur_php,
+        )
+        self.entity = Entity.objects.create(
+            entity_name="Ent", entity_type="personal fund", user=self.user
+        )
         Transaction.objects.create(
             user=self.user,
             transaction_type="income",

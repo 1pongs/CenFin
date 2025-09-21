@@ -52,19 +52,24 @@ class EntitySoftDeleteTest(TestCase):
         self.assertTrue(Transaction.objects.filter(pk=self.tx.pk).exists())
 
         resp = self.client.post(reverse("entities:restore", args=[self.ent.pk]))
-        self.assertRedirects(resp, reverse("entities:archived"))
+        self.assertRedirects(resp, reverse("entities:list"))
         self.ent.refresh_from_db()
         self.assertTrue(self.ent.is_active)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class OutsideHiddenListTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="x", password="p")
         self.client.force_login(self.user)
-        Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
+        Entity.objects.create(
+            entity_name="Mine", entity_type="personal fund", user=self.user
+        )
         from entities.utils import ensure_fixed_entities
+
         self.outside, _ = ensure_fixed_entities(self.user)
 
     def test_outside_not_in_list(self):
@@ -74,14 +79,19 @@ class OutsideHiddenListTest(TestCase):
         self.assertNotIn("Outside", names)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class AccountVisibleListTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="y", password="p")
         self.client.force_login(self.user)
-        Entity.objects.create(entity_name="Mine", entity_type="personal fund", user=self.user)
+        Entity.objects.create(
+            entity_name="Mine", entity_type="personal fund", user=self.user
+        )
         from entities.utils import ensure_fixed_entities
+
         _, self.account_ent = ensure_fixed_entities(self.user)
 
     def test_account_in_list(self):
@@ -91,13 +101,16 @@ class AccountVisibleListTest(TestCase):
         self.assertIn("Account", names)
 
 
-@override_settings(DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
+@override_settings(
+    DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+)
 class SystemDefaultProtectionTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="z", password="p")
         self.client.force_login(self.user)
         from entities.utils import ensure_fixed_entities
+
         _, self.account_ent = ensure_fixed_entities(self.user)
 
     def test_ui_hides_controls(self):
@@ -105,10 +118,13 @@ class SystemDefaultProtectionTest(TestCase):
         self.assertNotContains(resp, "Edit")
 
     def test_http_block(self):
-        resp = self.client.post(reverse("entities:edit", args=[self.account_ent.pk]), {
-            "entity_name": "New",
-            "entity_type": "free fund",
-        })
+        resp = self.client.post(
+            reverse("entities:edit", args=[self.account_ent.pk]),
+            {
+                "entity_name": "New",
+                "entity_type": "free fund",
+            },
+        )
         self.assertEqual(resp.status_code, 403)
 
     def test_model_protection(self):

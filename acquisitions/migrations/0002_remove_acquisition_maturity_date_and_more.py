@@ -6,28 +6,30 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('acquisitions', '0001_initial'),
+        ("acquisitions", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='acquisition',
-            name='avg_unit_cost',
+            model_name="acquisition",
+            name="avg_unit_cost",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=15),
         ),
         migrations.AddField(
-            model_name='acquisition',
-            name='quantity',
+            model_name="acquisition",
+            name="quantity",
             field=models.DecimalField(decimal_places=4, default=0, max_digits=15),
         ),
         migrations.AddField(
-            model_name='acquisition',
-            name='size_sqm',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True),
+            model_name="acquisition",
+            name="size_sqm",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=15, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='acquisition',
-            name='vehicle_type',
+            model_name="acquisition",
+            name="vehicle_type",
             field=models.CharField(blank=True, max_length=50),
         ),
     ]
