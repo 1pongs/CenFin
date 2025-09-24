@@ -17,6 +17,7 @@ from cenfin_proj.utils import (
     get_account_entity_balance,
     get_entity_balance as util_entity_balance,
     get_account_balance,
+    get_entity_liquid_nonliquid_totals,
 )
 from utils.currency import get_active_currency, convert_amount, convert_to_base
 
@@ -87,15 +88,16 @@ def _reverse_and_hide(txn, actor=None):
         )
         if original is txn:
             rev_parent = rev
-        # mark original as reversed
-        original.is_reversed = True
-        original.reversed_at = timezone.now()
+        # mark original as reversed (use all_objects to bypass default manager filter)
+        updates = {
+            "is_reversed": True,
+            "reversed_at": timezone.now(),
+            "ledger_status": "reversed",
+        }
         if actor is not None:
-            original.reversed_by = actor
-        original.ledger_status = "reversed"
-        original.save(
-            update_fields=["is_reversed", "reversed_at", "reversed_by", "ledger_status"]
-        )
+            updates["reversed_by"] = actor
+        # Perform an update query to avoid base manager filtering out hidden rows
+        Transaction.all_objects.filter(pk=original.pk).update(**updates)
 
     Transaction.all_objects.filter(Q(pk=txn.pk) | Q(parent_transfer=txn)).update(
         is_hidden=True
@@ -388,11 +390,91 @@ class TransactionListView(ListView):
             # Scope-aware netting: add when matching destination; subtract when matching source.
             acc_any = params.get("account")
             ent_any = params.get("entity")
+            tx_type_filter = params.get("transaction_type")
             # Respect asset_type filter when present: only count sides that match
             asset_filter_raw = (params.get("asset_type") or "").strip().lower()
             asset_filter = asset_filter_raw.replace("-", "_") if asset_filter_raw else ""
             if asset_filter not in {"liquid", "non_liquid", "credit"}:
                 asset_filter = ""
+
+            # When ONLY Entity is selected (no account filters, no type, no asset filter),
+            # show the entity's current holdings (liquid + non‑liquid), matching the
+            # Entities page so this list can serve as a cross‑check tool.
+            if ent_any and not any([acc_any, params.get("account_source"), params.get("account_destination"), params.get("entity_source"), params.get("entity_destination"), tx_type_filter, asset_filter]):
+                try:
+                    ent_id = int(ent_any)
+                except (TypeError, ValueError):
+                    ent_id = None
+                if ent_id:
+                    try:
+                        totals = get_entity_liquid_nonliquid_totals(self.request.user, disp_code)
+                        lt = totals.get(ent_id, {}).get("liquid", Decimal("0"))
+                        nlt = totals.get(ent_id, {}).get("non_liquid", Decimal("0"))
+                        ctx["summary_total"] = lt + nlt
+                        # Provide subtotals in context for optional UI badges
+                        ctx["entity_liquid_total"] = lt
+                        ctx["entity_non_liquid_total"] = nlt
+                        return ctx
+                    except Exception:
+                        pass
+
+            # When both an Entity and a specific asset_type are selected, compute the
+            # summary using the same rules as the Entity card so numbers match exactly.
+            if ent_any and asset_filter in {"liquid", "non_liquid"}:
+                try:
+                    ent_id = int(ent_any)
+                except (TypeError, ValueError):
+                    ent_id = None
+                if ent_id:
+                    try:
+                        totals = get_entity_liquid_nonliquid_totals(self.request.user, disp_code)
+                        bucket = "liquid" if asset_filter == "liquid" else "non_liquid"
+                        ctx["summary_total"] = totals.get(ent_id, {}).get(bucket, Decimal("0"))
+                        return ctx
+                    except Exception:
+                        # If helper fails, fall back to local computation below
+                        pass
+            # When only Entity is selected (no specific asset_type), include both
+            # liquid and non‑liquid in the computation so users see overall net.
+            if ent_any and not asset_filter:
+                asset_filter = ""
+
+            # Fast path: when filtering by transaction_type only (no account/entity scoping),
+            # the summary should reflect the sum of amounts shown in the Amount column.
+            # The table displays tx.amount converted to the active display currency.
+            acc_src = params.get("account_source")
+            acc_dest = params.get("account_destination")
+            ent_src = params.get("entity_source")
+            ent_dest = params.get("entity_destination")
+            only_type = bool(tx_type_filter) and not any(
+                [acc_any, ent_any, acc_src, acc_dest, ent_src, ent_dest]
+            )
+            if only_type:
+                try:
+                    total = sum(
+                        convert_to_base(
+                            getattr(tx, "amount", Decimal("0")) or Decimal("0"),
+                            getattr(tx, "currency", None),
+                            request=self.request,
+                            user=self.request.user,
+                        )
+                        for tx in obj_list
+                    )
+                except Exception:
+                    # If any conversion fails, fall back to 0 for that row
+                    total = Decimal("0")
+                    for tx in obj_list:
+                        try:
+                            total += convert_to_base(
+                                getattr(tx, "amount", Decimal("0")) or Decimal("0"),
+                                getattr(tx, "currency", None),
+                                request=self.request,
+                                user=self.request.user,
+                            )
+                        except Exception:
+                            continue
+                ctx["summary_total"] = total
+                return ctx
 
             def _legacy_non_liquid_src(tx):
                 """Treat certain legacy transfers as Non‑Liquid on the source side.
@@ -875,6 +957,13 @@ class TransactionUpdateView(UpdateView):
 
     def form_valid(self, form):
         visible_tx = form.save(commit=False)
+        # Ensure description changes from POST are preserved even when
+        # some fields are disabled in the form.
+        try:
+            if "description" in form.cleaned_data and form.cleaned_data["description"]:
+                visible_tx.description = form.cleaned_data["description"]
+        except Exception:
+            pass
         # Defensive guard: if the form disabled amount fields (edit flows),
         # preserve the instance's amounts rather than trusting POST data.
         try:
@@ -914,7 +1003,14 @@ class TransactionUpdateView(UpdateView):
                 # Ensure parent currency matches source account
                 visible_tx.currency = src_acc.currency
                 visible_tx.destination_amount = dest_amt
+                # Persist description first in case later operations depend on it
+                try:
+                    if "description" in form.cleaned_data and form.cleaned_data["description"]:
+                        visible_tx.description = form.cleaned_data["description"]
+                except Exception:
+                    pass
                 visible_tx.save()
+                # Use the same form instance to persist category selection
                 form.save_categories(visible_tx)
 
                 rem_ent = ensure_remittance_entity(self.request.user)
@@ -953,6 +1049,11 @@ class TransactionUpdateView(UpdateView):
                     is_hidden=True,
                 )
             else:
+                try:
+                    if "description" in form.cleaned_data and form.cleaned_data["description"]:
+                        visible_tx.description = form.cleaned_data["description"]
+                except Exception:
+                    pass
                 visible_tx.save()
                 form.save_categories(visible_tx)
 
@@ -982,6 +1083,16 @@ class TransactionUpdateView(UpdateView):
             pass
         self.object = visible_tx
         messages.success(self.request, "Transaction updated successfully!")
+        # Final safeguard: ensure description from POST is persisted even if
+        # subsequent operations (e.g., category saves) or disabled-field logic
+        # caused it to be lost. Update directly if provided.
+        try:
+            desc_post = (self.request.POST.get("description") or "").strip()
+            if desc_post and desc_post != (visible_tx.description or ""):
+                Transaction.all_objects.filter(pk=visible_tx.pk).update(description=desc_post)
+                visible_tx.description = desc_post
+        except Exception:
+            pass
         # If this transaction is linked to an Acquisition (purchase or sale),
         # return the user to the Acquisition detail page so they see the
         # acquisition context after editing buy/sell/capital rows.
@@ -1107,6 +1218,13 @@ class TransactionCorrectView(UpdateView):
             tx_type == "income" or tx_type.startswith("sell")
         )
         ctx["correct_mode"] = True
+        # If a pocket-minimum hint was captured during POST validation, expose it to the template
+        try:
+            hint = getattr(self, "_pocket_minimum_hint", None)
+            if hint:
+                ctx["pocket_minimum_hint"] = hint
+        except Exception:
+            pass
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -1183,41 +1301,30 @@ class TransactionCorrectView(UpdateView):
             from django.core.exceptions import ValidationError
 
             if isinstance(e, ValidationError):
-                messages.error(self.request, "; ".join(
-                    [f"{k}: {', '.join(map(str, v))}" if isinstance(v, (list, tuple)) else str(v) for k, v in getattr(e, "message_dict", {"error": [e.message] if hasattr(e, "message") else [str(e)]}).items()]
-                ))
-                # If structured details are present, add a helpful hint with a prefilled link
+                # Attach the error to the form so it appears inline under the field
                 try:
-                    acc_id = getattr(e, "block_account_id", None)
-                    ent_id = getattr(e, "block_entity_id", None)
-                    date_val = getattr(e, "block_date", None) or cleaned.get("date") or original.date
-                    need = getattr(e, "suggest_cover_amount", None)
-                    code = getattr(e, "currency_code", "")
-                    if acc_id and ent_id:
-                        add_url = reverse("transactions:transaction_create")
-                        from urllib.parse import urlencode
+                    message_dict = getattr(e, "message_dict", None)
+                    if isinstance(message_dict, dict):
+                        for field, msgs in message_dict.items():
+                            if isinstance(msgs, (list, tuple)) and msgs:
+                                form.add_error(field, msgs[0])
+                            else:
+                                form.add_error(None, str(msgs))
+                    else:
+                        form.add_error(None, getattr(e, "message", str(e)))
+                except Exception:
+                    form.add_error(None, str(e))
 
-                        desc = f"Cover transfer for blocked correction: {cleaned.get('description') or original.description}"
-                        q = {
-                            "transaction_type": "transfer",
-                            "account_destination": acc_id,
-                            "entity_destination": ent_id,
-                            "date": date_val.isoformat() if hasattr(date_val, "isoformat") else str(date_val),
-                            "description": desc,
+                # If this is the pocket-minimum error, add a small inline hint to the context
+                try:
+                    min_amt = getattr(e, "suggest_correction_min_amount", None)
+                    code = getattr(e, "currency_code", "")
+                    if min_amt:
+                        from decimal import Decimal as _D
+                        self._pocket_minimum_hint = {
+                            "amount": _D(str(min_amt)),
+                            "currency_code": code or "",
                         }
-                        hint_url = f"{add_url}?{urlencode(q)}"
-                        amt_hint = ""
-                        try:
-                            if need and Decimal(str(need)) > 0:
-                                amt_hint = f" Suggested minimum: {code + ' ' if code else ''}{Decimal(str(need)):.2f}."
-                        except Exception:
-                            amt_hint = ""
-                        messages.info(
-                            self.request,
-                            "Tip: Add a transfer into the affected account to cover the shortfall so the correction can proceed." + amt_hint +
-                            f' <a class="btn btn-sm btn-outline-primary ms-2" href="{hint_url}">Add cover transfer</a>',
-                            extra_tags="safe",
-                        )
                 except Exception:
                     pass
                 return self.form_invalid(form)
@@ -1271,32 +1378,6 @@ class TransactionCorrectView(UpdateView):
             )
 
         messages.success(self.request, "Correction applied successfully!")
-        # If entity-level cover allowed this correction, suggest adding a cover transfer
-        try:
-            if getattr(original, "_entity_cover_used", False):
-                acc_id = getattr(original, "_entity_cover_account_id", None)
-                ent_id = getattr(original, "_entity_cover_entity_id", None)
-                date_val = getattr(original, "_entity_cover_date", None) or replacement.date
-                add_url = reverse("transactions:transaction_create")
-                # Build a prefilled transfer to the affected account/entity
-                from urllib.parse import urlencode
-
-                q = {
-                    "transaction_type": "transfer",
-                    "account_destination": acc_id,
-                    "entity_destination": ent_id,
-                    "date": date_val.isoformat() if hasattr(date_val, "isoformat") else str(date_val),
-                    "description": f"Cover transfer for correction: {replacement.description}",
-                }
-                hint_url = f"{add_url}?{urlencode(q)}"
-                messages.info(
-                    self.request,
-                    "This correction relied on entity funds across accounts. Consider adding a transfer into the affected account to reflect the movement. "
-                    + f'<a class="btn btn-sm btn-outline-primary ms-2" href="{hint_url}">Add cover transfer</a>',
-                    extra_tags="safe",
-                )
-        except Exception:
-            pass
         # Redirect to acquisition detail when applicable (same as UpdateView)
         try:
             acq = getattr(replacement, "acquisition_purchase", None) or getattr(
@@ -1358,6 +1439,11 @@ def transaction_delete(request, pk):
                 ),
             )
             return redirect(reverse("transactions:transaction_list"))
+    # Perform reversal/hide BEFORE deleting the loan so the reversal can
+    # reference the original safely; the subsequent loan.delete() will then
+    # remove the original and set the reversal's reversed_transaction to NULL
+    # via on_delete=SET_NULL.
+    _reverse_and_hide(txn, actor=request.user)
     if txn.transaction_type == "loan_disbursement":
         loan = getattr(txn, "loan_disbursement", None)
         if loan:
@@ -1366,7 +1452,6 @@ def transaction_delete(request, pk):
                 request,
                 "Deleting a loan disbursement also removes the associated loan.",
             )
-    _reverse_and_hide(txn, actor=request.user)
     undo_url = reverse("transactions:transaction_undo_delete", args=[txn.pk])
     messages.success(
         request,
@@ -1376,31 +1461,7 @@ def transaction_delete(request, pk):
     )
     request.session["undo_txn_id"] = txn.pk
     request.session["undo_txn_desc"] = txn.description
-    # If entity-level cover allowed this delete, suggest adding a transfer
-    try:
-        if getattr(txn, "_entity_cover_used", False):
-            acc_id = getattr(txn, "_entity_cover_account_id", None)
-            ent_id = getattr(txn, "_entity_cover_entity_id", None)
-            date_val = getattr(txn, "_entity_cover_date", None) or timezone.now().date()
-            add_url = reverse("transactions:transaction_create")
-            from urllib.parse import urlencode
-
-            q = {
-                "transaction_type": "transfer",
-                "account_destination": acc_id,
-                "entity_destination": ent_id,
-                "date": date_val.isoformat() if hasattr(date_val, "isoformat") else str(date_val),
-                "description": f"Cover transfer after delete: {txn.description}",
-            }
-            hint_url = f"{add_url}?{urlencode(q)}"
-            messages.info(
-                request,
-                "This delete was permitted because the entity has enough liquid funds across accounts. Consider recording a transfer into the affected account. "
-                + f'<a class="btn btn-sm btn-outline-primary ms-2" href="{hint_url}">Add cover transfer</a>',
-                extra_tags="safe",
-            )
-    except Exception:
-        pass
+    # No additional hints
     return redirect(reverse("transactions:transaction_list"))
 
 
@@ -1714,9 +1775,8 @@ def tag_list(request):
     except Exception:
         # Avoid raising in production if logging fails for any reason
         pass
-    # Only include tags owned by the user. Tags must be scoped to an entity
-    # (no global tags). If no entity is provided, return an empty list so the
-    # client knows to require selecting an entity first.
+    # Only include tags owned by the user. If no entity is provided,
+    # return an empty list so the client knows to require selecting an entity first.
     tags = CategoryTag.objects.filter(user=request.user)
     # If no entity provided, respond with an empty list (manager page enforces entity selection).
     if not ent:
@@ -1758,8 +1818,12 @@ def tag_list(request):
                     if "_" in cat_tx
                     else cat_tx.replace(" ", "_")
                 )
+                # Include tags with matching type OR without a type (generic)
                 tags = tags.filter(
-                    Q(transaction_type__iexact=cat_tx) | Q(transaction_type__iexact=alt)
+                    Q(transaction_type__iexact=cat_tx)
+                    | Q(transaction_type__iexact=alt)
+                    | Q(transaction_type__isnull=True)
+                    | Q(transaction_type__exact="")
                 )
         else:
             # Fallback: accept both underscore and space separated forms
@@ -1769,11 +1833,14 @@ def tag_list(request):
                 else tx_norm.replace(" ", "_")
             )
             tags = tags.filter(
-                Q(transaction_type__iexact=tx_norm) | Q(transaction_type__iexact=alt)
+                Q(transaction_type__iexact=tx_norm)
+                | Q(transaction_type__iexact=alt)
+                | Q(transaction_type__isnull=True)
+                | Q(transaction_type__exact="")
             )
 
-    # Filter to the requested entity only
-    tags = tags.filter(entity_id=ent)
+    # Filter to the requested entity only, but include global (entity is null)
+    tags = tags.filter(Q(entity_id=ent) | Q(entity__isnull=True))
 
     try:
         c = tags.count()
@@ -1781,23 +1848,7 @@ def tag_list(request):
             f"tag_list matched {c} tags for transaction_type={tx_type!r} entity={ent!r}"
         )
 
-        # If no tags matched the explicit transaction_type filter but the
-        # entity does have tags, fall back to returning all tags for that
-        # entity. This improves UX when older tags were created without a
-        # transaction_type or with a different naming form.
-        if c == 0 and tx_type and tx_type.lower() != "all":
-            try:
-                fallback_count = CategoryTag.objects.filter(
-                    user=request.user, entity_id=ent
-                ).count()
-                logger.debug(
-                    f"tag_list fallback: returning {fallback_count} tags for entity={ent} (ignoring transaction_type)"
-                )
-            except Exception:
-                fallback_count = 0
-
-            tags = CategoryTag.objects.filter(user=request.user, entity_id=ent)
-            c = fallback_count
+        # Do not override explicit filters; return empty when none match.
     except Exception:
         # If tag counting fails, continue and return whatever queryset we have
         pass

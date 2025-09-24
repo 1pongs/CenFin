@@ -239,6 +239,26 @@ class AcquisitionFormBalanceTest(TestCase):
         )
         self.assertTrue(form.is_valid())
 
+    def test_allows_equality_account_balance(self):
+        # Seed exactly 15000 into Cash
+        Transaction.objects.create(
+            user=self.user,
+            date=timezone.now().date(),
+            description="seed",
+            transaction_type="income",
+            amount=Decimal("15000"),
+            account_source=self.out_acc,
+            account_destination=self.acc,
+            entity_source=self.out_ent,
+            entity_destination=self.ent,
+        )
+        # Attempt acquisition with amount equal to balance should be allowed
+        form = AcquisitionForm(
+            data=self._form_data(amount="15000"),
+            user=self.user,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
 
 @override_settings(
     DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}

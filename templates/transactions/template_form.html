@@ -161,6 +161,30 @@
   // Quick-add buttons
   const accModal = new bootstrap.Modal(document.getElementById('modal-account'));
   const entModal = new bootstrap.Modal(document.getElementById('modal-entity'));
+
+  function addOptionPreserve(select, value, label) {
+    if (!select) return;
+    const prev = select.value ?? '';
+    const valStr = String(value);
+    let opt = Array.from(select.options).find(o => o.value === valStr);
+    if (opt) {
+      opt.text = label;
+    } else {
+      opt = new Option(label, valStr, false, false);
+      select.add(opt);
+    }
+    select.value = prev;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function addOptionToSelects(ids, value, label) {
+    ids.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      addOptionPreserve(sel, value, label);
+    });
+  }
+
   document.getElementById('quick-account-btn').addEventListener('click', () => accModal.show());
   document.getElementById('quick-entity-btn').addEventListener('click', () => entModal.show());
 
@@ -169,10 +193,7 @@
     const resp = await fetch('/api/create/account/', { method: 'POST', body: new FormData(e.target) });
     if (resp.ok) {
       const data = await resp.json();
-      ['id_account_source','id_account_destination'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel) sel.add(new Option(data.name, data.id, true, true));
-      });
+      addOptionToSelects(['id_account_source','id_account_destination'], data.id, data.name);
       accModal.hide();
       e.target.reset();
     }
@@ -219,7 +240,7 @@
     if (resp.ok) {
       const data = await resp.json();
       const sel = document.getElementById('id_category');
-      if (sel) sel.add(new Option(data.name, data.id, true, true));
+      addOptionPreserve(sel, data.id, data.name);
       catModal.hide();
       e.target.reset();
     } else {
@@ -233,10 +254,7 @@
     const resp = await fetch('/api/create/entity/', { method: 'POST', body: new FormData(e.target) });
     if (resp.ok) {
       const data = await resp.json();
-      ['id_entity_source','id_entity_destination'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel) sel.add(new Option(data.name, data.id, true, true));
-      });
+      addOptionToSelects(['id_entity_source','id_entity_destination'], data.id, data.name);
       entModal.hide();
       e.target.reset();
     }

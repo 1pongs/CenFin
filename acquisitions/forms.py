@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
@@ -80,6 +80,12 @@ class AcquisitionForm(forms.Form):
         if self.locked_entity is not None:
             self.fields["entity_destination"].initial = self.locked_entity
             self.fields["entity_destination"].disabled = True
+            # Default entity_source to the same locked entity unless user changes it
+            try:
+                if not self.fields["entity_source"].initial:
+                    self.fields["entity_source"].initial = self.locked_entity
+            except Exception:
+                pass
         # If amount edits are disabled (update flows), mark widget disabled
         if getattr(self, "_disable_amount", False):
             try:
@@ -134,35 +140,64 @@ class AcquisitionForm(forms.Form):
         amt = cleaned.get("amount") or Decimal("0")
         acc = cleaned.get("account_source")
         ent = cleaned.get("entity_source")
+        # If the view locked an entity (via URL param) and the user didn't
+        # select an entity_source, default it to the locked one so the
+        # pair-balance logic applies consistently.
+        if (not ent) and getattr(self, "locked_entity", None) is not None:
+            ent = self.locked_entity
+            cleaned["entity_source"] = ent
 
+        # Compare at cent precision so exact-balance spends are allowed
+        amt_c = Decimal(str(amt)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Prepare account balance once for reuse
+        bal_acc_c = None
         if acc and acc.account_name != "Outside":
-            if acc.current_balance() < amt:
-                self.add_error("account_source", f"Insufficient funds in {acc}.")
-        # Entity-side balance check should not block when the specific
-        # account has sufficient funds but the historical ledger was not
-        # tagged to the entity (common when migrating or backfilling).
-        # Prefer the account+entity pair balance; fall back to allowing the
-        # operation when the account itself covers the amount.
+            try:
+                bal = acc.get_current_balance() or Decimal("0")
+            except Exception:
+                bal = acc.current_balance() or Decimal("0")
+            bal_acc_c = Decimal(str(bal)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Prefer pair/entity sufficiency first when an entity is selected
         if ent and ent.entity_name != "Outside":
             try:
                 from cenfin_proj.utils import get_account_entity_balance
-
-                pair_bal = Decimal("0")
-                if acc:
-                    pair_bal = get_account_entity_balance(acc.id, ent.id)
-                ent_liquid = ent.current_balance()
-                # If the pair or entity has enough funds, proceed. Otherwise,
-                # only raise when the account itself cannot cover the amount.
-                if pair_bal >= amt or ent_liquid >= amt:
-                    pass
-                else:
-                    if not acc or acc.current_balance() < amt:
-                        self.add_error("entity_source", f"Insufficient funds in {ent}.")
             except Exception:
-                # On any error, preserve original behaviour but still allow when
-                # the account has enough to proceed.
-                if not acc or acc.current_balance() < amt:
+                get_account_entity_balance = None  # type: ignore
+
+            pair_bal = Decimal("0")
+            if acc and get_account_entity_balance:
+                try:
+                    pair_bal = Decimal(str(get_account_entity_balance(acc.id, ent.id)))
+                except Exception:
+                    pair_bal = Decimal("0")
+            try:
+                ent_liquid = ent.current_balance() or Decimal("0")
+            except Exception:
+                ent_liquid = Decimal("0")
+
+            pair_c = Decimal(str(pair_bal)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            ent_c = Decimal(str(ent_liquid)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            # If the pair OR the entity has enough funds, allow without raising
+            if pair_c >= amt_c or ent_c >= amt_c:
+                pass
+            else:
+                # Neither pair nor entity has enough. If the account is also
+                # insufficient, flag BOTH fields to match historical tests.
+                if bal_acc_c is None or bal_acc_c < amt_c:
+                    if acc and acc.account_name != "Outside":
+                        self.add_error("account_source", f"Insufficient funds in {acc}.")
+                    # Always flag the entity too when its liquidity/pair is short
                     self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                else:
+                    # Account can cover but entity/pair cannot — attribute to entity
+                    self.add_error("entity_source", f"Insufficient funds in {ent}.")
+        else:
+            # No entity chosen — fall back to plain account-level guard
+            if bal_acc_c is not None and bal_acc_c < amt_c:
+                self.add_error("account_source", f"Insufficient funds in {acc}.")
 
         if self.locked_entity is not None:
             cleaned["entity_destination"] = self.locked_entity

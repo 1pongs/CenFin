@@ -75,6 +75,29 @@ class TransactionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
 
+        # If the form is bound with a transaction_type value that is normally
+        # hidden in the generic form (e.g., 'cc_payment'), proactively include
+        # that value in the field choices so Django's ChoiceField validation
+        # accepts it. We'll still re-hide other disallowed types later and lock
+        # the field to the bound value when appropriate.
+        try:
+            if self.is_bound and "transaction_type" in self.fields:
+                posted = self.data.get("transaction_type")
+                if posted:
+                    # Make sure an equivalent choice exists; accept either
+                    # underscore or space separated variants.
+                    variants = {str(posted), str(posted).replace("_", " ")}
+                    exists = any(c[0] in variants for c in self.fields["transaction_type"].choices)
+                    if not exists:
+                        from .constants import label_for_tx
+                        # Prefer the posted raw value as the stored choice value
+                        self.fields["transaction_type"].choices = list(self.fields["transaction_type"].choices) + [
+                            (posted, label_for_tx(posted))
+                        ]
+        except Exception:
+            # Best-effort safeguard; don't break form init on choice tweaks
+            pass
+
         # Normalize legacy underscore transaction_type values on edit so they
         # match the model field choices (which use space-separated values).
         try:
@@ -345,6 +368,8 @@ class TransactionForm(forms.ModelForm):
                                 q = q.filter(
                                     Q(transaction_type__iexact=cat_tx)
                                     | Q(transaction_type__iexact=alt)
+                                    | Q(transaction_type__isnull=True)
+                                    | Q(transaction_type__exact="")
                                 )
                         else:
                             alt = (
@@ -355,6 +380,8 @@ class TransactionForm(forms.ModelForm):
                             q = q.filter(
                                 Q(transaction_type__iexact=tx_norm)
                                 | Q(transaction_type__iexact=alt)
+                                | Q(transaction_type__isnull=True)
+                                | Q(transaction_type__exact="")
                             )
                     # Ensure any categories already attached to the instance
                     # are included in the queryset so the previously-selected
@@ -402,6 +429,27 @@ class TransactionForm(forms.ModelForm):
 
         for n in self._must_fill:
             self.fields[n].required = True
+
+        # Relax requiredness for sides that this tx_type auto-fills to Outside:
+        # - income: source side auto-filled to Outside
+        # - expense/premium_payment: destination side auto-filled to Outside
+        try:
+            tx_req = (
+                self.data.get("transaction_type")
+                or self.initial.get("transaction_type")
+                or getattr(self.instance, "transaction_type", None)
+            )
+            tx_req_l = (str(tx_req) if tx_req is not None else "").lower()
+            if tx_req_l == "income":
+                for name in ("account_source", "entity_source"):
+                    if name in self.fields:
+                        self.fields[name].required = False
+            if tx_req_l in {"expense", "premium_payment"}:
+                for name in ("account_destination", "entity_destination"):
+                    if name in self.fields:
+                        self.fields[name].required = False
+        except Exception:
+            pass
 
         # If any fields are disabled (auto-locked to Outside etc.), they
         # should not be treated as required since the client may omit their
@@ -484,7 +532,10 @@ class TransactionForm(forms.ModelForm):
             # those cases we must allow the Outside account/entity to be
             # selected, so only exclude Outside when this is not a loan flow.
             is_loan_flow = bool(self.data.get("loan_id"))
-            if is_loan_flow:
+            # Also allow Outside for credit card payments where the primary side
+            # is destination and the entity_destination should be Outside.
+            tx_norm = (str(tx_type).lower() if tx_type else "")
+            if is_loan_flow or tx_norm == "cc_payment":
                 self.fields["account_destination"].queryset = account_qs
                 self.fields["entity_destination"].queryset = entity_qs
             else:
@@ -535,7 +586,9 @@ class TransactionForm(forms.ModelForm):
                 self.fields["account_destination"].disabled = True
                 self.fields["entity_destination"].disabled = True
 
-        # Remove asset-related transaction types when using this form
+        # Remove asset/flow-specific types in generic form, but if the form is bound
+        # with one of those hidden types (e.g., 'cc_payment'), keep the posted value
+        # in choices so validation succeeds and lock the field to that value.
         if "transaction_type" in self.fields:
             disallowed = {
                 "buy acquisition",
@@ -552,21 +605,31 @@ class TransactionForm(forms.ModelForm):
                     "cc_purchase",
                     "cc_payment",
                 }
-            current_type = tx_type or getattr(self.instance, "transaction_type", None)
-            # Normalize current type to space-separated form so it matches choice values
-            cur_norm = None
-            if current_type:
-                try:
-                    cur_norm = str(current_type).replace("_", " ")
-                except Exception:
-                    cur_norm = str(current_type)
 
-            # Special case: detect legacy capital-return rows recorded as 'transfer'
-            # and present them as a locked 'Sell Acquisition' in the UI so users
-            # can still edit details without changing the type.
+            def key_of(val):
+                if val is None:
+                    return None
+                return str(val).replace(" ", "_").lower()
+
+            posted_raw = None
             try:
+                posted_raw = self.data.get("transaction_type") if self.is_bound else None
+            except Exception:
+                posted_raw = None
+
+            exclude_keys = {key_of(x) for x in (disallowed | hidden)}
+
+            current_type = tx_type or getattr(self.instance, "transaction_type", None)
+            cur_key = key_of(current_type)
+
+            # Special-case legacy capital return display normalization
+            try:
+                cur_norm_display = None
+                if current_type:
+                    # Prefer a human-readable display for the single-choice lock
+                    cur_norm_display = str(current_type).replace("_", " ")
                 if (
-                    (cur_norm or "").lower() == "transfer"
+                    (str(cur_norm_display or "").lower() == "transfer")
                     and self.instance
                     and getattr(self.instance, "account_source", None)
                     and getattr(self.instance.account_source, "account_name", None) == "Outside"
@@ -576,30 +639,32 @@ class TransactionForm(forms.ModelForm):
                 ):
                     desc_l = (getattr(self.instance, "description", "") or "").lower()
                     if "capital return" in desc_l:
-                        cur_norm = "sell acquisition"
-                        # Reflect the normalized display in initial so the select shows correctly
-                        self.initial["transaction_type"] = cur_norm
-                        # Lock the field below when we set choices to only this value
+                        current_type = "sell acquisition"
+                        cur_key = key_of(current_type)
+                        cur_norm_display = "sell acquisition"
+                        self.initial["transaction_type"] = cur_norm_display
             except Exception:
                 pass
 
-            if cur_norm in disallowed | hidden:
-                from .constants import label_for_tx
-                self.fields["transaction_type"].choices = [
-                    (cur_norm, label_for_tx(cur_norm))
-                ]
+            from .constants import label_for_tx
+
+            if cur_key in exclude_keys:
+                # Lock to the current/posted type; ensure the exact posted value is accepted
+                choice_val = posted_raw or current_type
+                display = label_for_tx(choice_val)
+                self.fields["transaction_type"].choices = [(choice_val, display)]
                 self.fields["transaction_type"].disabled = True
-                # Ensure the normalized value is selected for display
-                self.initial["transaction_type"] = cur_norm
+                self.initial["transaction_type"] = choice_val
             else:
-                self.fields["transaction_type"].choices = [
-                    c
-                    for c in self.fields["transaction_type"].choices
-                    if c[0] not in disallowed | hidden
-                ]
-                # If instance carries an underscore variant, preselect the normalized one
-                if cur_norm:
-                    self.initial["transaction_type"] = cur_norm
+                # Filter choices by normalized keys
+                base = list(self.fields["transaction_type"].choices)
+                filtered = [c for c in base if key_of(c[0]) not in exclude_keys]
+                # Preserve the posted raw value in choices if bound and missing
+                if posted_raw and all(c[0] != posted_raw for c in filtered):
+                    filtered.append((posted_raw, label_for_tx(posted_raw)))
+                self.fields["transaction_type"].choices = filtered
+                if current_type:
+                    self.initial["transaction_type"] = current_type
 
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -722,6 +787,7 @@ class TransactionForm(forms.ModelForm):
         outside_account = ensure_outside_account()
         tx_type = cleaned.get("transaction_type")
 
+        # Auto-fill Outside sides for specific types
         if tx_type == "income" and outside_account and outside_entity:
             cleaned["account_source"] = outside_account
             cleaned["entity_source"] = outside_entity
@@ -731,102 +797,130 @@ class TransactionForm(forms.ModelForm):
         if tx_type == "premium_payment" and outside_account and outside_entity:
             cleaned["account_destination"] = outside_account
             cleaned["entity_destination"] = outside_entity
+
         acc = cleaned.get("account_source")
         dest = cleaned.get("account_destination")
         ent = cleaned.get("entity_source")
-
         is_new = self.instance.pk is None
 
+        # Pocket-aware guard for same-account transfers
+        same_account_transfer = (
+            (tx_type or "").lower() == "transfer"
+            and acc is not None
+            and dest is not None
+            and getattr(acc, "id", None) == getattr(dest, "id", None)
+        )
+        pocket_can_cover = False
+        if same_account_transfer and ent and getattr(ent, "entity_name", None) != "Outside":
+            try:
+                from cenfin_proj.utils import get_account_entity_balance
+                pocket_bal = get_account_entity_balance(acc.id, ent.id, user=self.user)
+                pocket_can_cover = bool(Decimal(str(pocket_bal or 0)) >= Decimal(str(amt or 0)))
+            except Exception:
+                pocket_can_cover = False
+
+        # Account-level insufficient funds (skip for CC payment and allow when pocket covers).
+        # Also skip this guard for transfers originating from an 'outside' entity
+        # so cross-currency funding flows can be initiated without pre-funding.
         if acc and acc.account_name != "Outside":
             if hasattr(acc, "credit_card"):
                 bal = abs(acc.get_current_balance())
                 if bal + amt > acc.credit_card.credit_limit:
-                    self.add_error(
-                        "account_source",
-                        "Credit limit exceeded.",
-                    )
-            elif (
-                is_new
-                and tx_type != "cc_payment"
-                and acc.get_current_balance() < amt
-            ):
-                self.add_error("account_source", f"Insufficient funds in {acc}.")
+                    self.add_error("account_source", "Credit limit exceeded.")
+            else:
+                skip_for_outside_entity_transfer = (
+                    (tx_type or "").lower() == "transfer"
+                    and ent is not None
+                    and getattr(ent, "entity_type", "").lower() == "outside"
+                )
+                if (
+                    is_new
+                    and tx_type != "cc_payment"
+                    and not (same_account_transfer and pocket_can_cover)
+                    and not skip_for_outside_entity_transfer
+                ):
+                    try:
+                        bal = acc.get_current_balance() or Decimal("0")
+                        if bal.quantize(Decimal("0.01")) < (amt or Decimal("0")).quantize(Decimal("0.01")):
+                            self.add_error("account_source", f"Insufficient funds in {acc}.")
+                    except Exception:
+                        if acc.get_current_balance() < amt:
+                            self.add_error("account_source", f"Insufficient funds in {acc}.")
 
+        # Entity-level insufficient funds. Skip for transfers where the
+        # source entity is of type 'outside' to allow funding into the
+        # destination without pre-existing source entity liquidity.
         if is_new and ent and ent.entity_name != "Outside":
             if not getattr(ent, "is_account_entity", False):
                 try:
                     from cenfin_proj.utils import get_account_entity_balance
-
                     pair_bal = Decimal("0")
                     if acc:
                         pair_bal = get_account_entity_balance(acc.id, ent.id)
                     ent_liquid = ent.current_balance() or Decimal("0")
-                    # If either the account+entity pair or the entity's liquid
-                    # total can cover the amount, allow the transaction. Only
-                    # block when neither can cover it AND the account itself is
-                    # also insufficient.
-                    if not (pair_bal >= amt or ent_liquid >= amt):
-                        if not acc or acc.get_current_balance() < amt:
-                            self.add_error(
-                                "entity_source", f"Insufficient funds in {ent}."
-                            )
+                    skip_for_outside_entity_transfer = (
+                        (tx_type or "").lower() == "transfer"
+                        and getattr(ent, "entity_type", "").lower() == "outside"
+                    )
+                    if not skip_for_outside_entity_transfer and not (pair_bal >= amt or ent_liquid >= amt):
+                        if same_account_transfer:
+                            self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                        else:
+                            try:
+                                bal = acc.get_current_balance() if acc else Decimal("0")
+                                if not acc or bal.quantize(Decimal("0.01")) < (amt or Decimal("0")).quantize(Decimal("0.01")):
+                                    self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                            except Exception:
+                                if not acc or acc.get_current_balance() < amt:
+                                    self.add_error("entity_source", f"Insufficient funds in {ent}.")
                 except Exception:
-                    # On any error, fall back to entity-level check but still
-                    # allow if the selected account can cover the amount.
-                    if (
-                        ent.current_balance() < amt
-                        and (not acc or acc.get_current_balance() < amt)
-                    ):
-                        self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                    skip_for_outside_entity_transfer = (
+                        (tx_type or "").lower() == "transfer"
+                        and getattr(ent, "entity_type", "").lower() == "outside"
+                    )
+                    if not skip_for_outside_entity_transfer:
+                        try:
+                            ent_bal = ent.current_balance() or Decimal("0")
+                            acc_bal = acc.get_current_balance() if acc else Decimal("0")
+                            if ent_bal.quantize(Decimal("0.01")) < (amt or Decimal("0")).quantize(Decimal("0.01")) and (
+                                not acc or acc_bal.quantize(Decimal("0.01")) < (amt or Decimal("0")).quantize(Decimal("0.01"))
+                            ):
+                                self.add_error("entity_source", f"Insufficient funds in {ent}.")
+                        except Exception:
+                            if ent.current_balance() < amt and (not acc or acc.get_current_balance() < amt):
+                                self.add_error("entity_source", f"Insufficient funds in {ent}.")
 
+        # CC payment guard
         if tx_type == "cc_payment":
             dest_acc = cleaned.get("account_destination")
             if dest_acc and hasattr(dest_acc, "credit_card"):
                 bal = abs(dest_acc.get_current_balance())
                 if amt > bal:
-                    self.add_error(
-                        "amount", "Payment amount cannot exceed current balance"
-                    )
+                    self.add_error("amount", "Payment amount cannot exceed current balance")
 
-        # For single-leg transactions (non-transfer), ensure both accounts use the
-        # same currency
+        # Currency consistency for non-transfers
         if tx_type != "transfer" and acc and dest:
             c1 = getattr(acc, "currency_id", None)
             c2 = getattr(dest, "currency_id", None)
             if c1 and c2 and c1 != c2:
-                self.add_error(
-                    "account_destination",
-                    "Source and destination accounts must share the same currency.",
-                )
+                self.add_error("account_destination", "Source and destination accounts must share the same currency.")
 
-        # Auto-convert to Buy Acquisition when destination is Outside and
-        # either entities are the same or the user selected Transfer.
+        # Auto-convert transfer to acquisition types when Outside is involved
         try:
             acc_dest = cleaned.get("account_destination")
             acc_src = cleaned.get("account_source")
             ent_src = cleaned.get("entity_source")
             ent_dst = cleaned.get("entity_destination")
             dest_is_outside = bool(
-                acc_dest
-                and (
-                    acc_dest.account_type == "Outside"
-                    or acc_dest.account_name == "Outside"
-                )
+                acc_dest and (acc_dest.account_type == "Outside" or acc_dest.account_name == "Outside")
             )
             src_is_outside = bool(
-                acc_src
-                and (
-                    acc_src.account_type == "Outside" or acc_src.account_name == "Outside"
-                )
+                acc_src and (acc_src.account_type == "Outside" or acc_src.account_name == "Outside")
             )
             same_entity = bool(ent_src and ent_dst and ent_src.id == ent_dst.id)
-            if dest_is_outside and (
-                same_entity or (tx_type or "").lower() == "transfer"
-            ):
+            if dest_is_outside and (same_entity or (tx_type or "").lower() == "transfer"):
                 cleaned["transaction_type"] = "buy acquisition"
-            elif src_is_outside and (
-                same_entity or (tx_type or "").lower() == "transfer"
-            ):
+            elif src_is_outside and (same_entity or (tx_type or "").lower() == "transfer"):
                 cleaned["transaction_type"] = "sell acquisition"
         except Exception:
             pass
@@ -856,6 +950,55 @@ class TransactionForm(forms.ModelForm):
                 if tag:
                     transaction.categories.set([tag])
                     return
+            except Exception:
+                pass
+
+        # Legacy support: accept a free-text 'category_names' field and
+        # create/fetch a CategoryTag for the primary entity scope.
+        names_raw = None
+        try:
+            names_raw = self.data.get("category_names", "")
+        except Exception:
+            names_raw = ""
+        name = (names_raw or "").strip()
+        if name and getattr(self, "user", None):
+            # Determine primary entity side like in __init__
+            tx_type = (
+                self.data.get("transaction_type")
+                or self.initial.get("transaction_type")
+                or getattr(self.instance, "transaction_type", None)
+            )
+            from .constants import CATEGORY_SCOPE_BY_TX
+            ent_id = None
+            if tx_type:
+                tx_key = str(tx_type).replace(" ", "_").lower()
+                scope = CATEGORY_SCOPE_BY_TX.get(tx_key) or {}
+                side = scope.get("side")
+                if not side:
+                    from .constants import ENTITY_SIDE_BY_TX
+                    side = ENTITY_SIDE_BY_TX.get(str(tx_type).lower(), "destination")
+                try:
+                    if side == "source":
+                        ent_id = (
+                            getattr(transaction, "entity_source_id", None)
+                            or self.data.get("entity_source")
+                            or self.initial.get("entity_source")
+                        )
+                    else:
+                        ent_id = (
+                            getattr(transaction, "entity_destination_id", None)
+                            or self.data.get("entity_destination")
+                            or self.initial.get("entity_destination")
+                        )
+                except Exception:
+                    ent_id = None
+            try:
+                from .models import CategoryTag as CT
+                tag = CT.objects.filter(user=self.user, name__iexact=name, entity_id=ent_id).first()
+                if not tag:
+                    tag = CT.objects.create(user=self.user, name=name, entity_id=ent_id, transaction_type=self.cleaned_data.get("transaction_type"))
+                transaction.categories.set([tag])
+                return
             except Exception:
                 pass
 

@@ -19,6 +19,7 @@
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-success btn-sm" id="quick-account-btn">+ Account</button>
             <button type="button" class="btn btn-success btn-sm" id="quick-entity-btn">+ Entity</button>
+            <button type="button" class="btn btn-success btn-sm" id="quick-category-btn">+ Category</button>
           </div>
         </div>
           <div class="card-body">
@@ -96,15 +97,91 @@
   </div>
 </div>
 
+<div class="modal fade" id="modal-category" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="quick-category-form">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="quick-category-name" class="form-label">Name</label>
+            <input id="quick-category-name" name="name" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label for="quick-category-transaction-type" class="form-label">Transaction type</label>
+            <select id="quick-category-transaction-type" name="transaction_type" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label for="quick-category-entity" class="form-label">Entity</label>
+            <select id="quick-category-entity" name="entity" class="form-select"></select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="quick-category-form">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
   const accModal = new bootstrap.Modal(document.getElementById('modal-account'));
   const entModal = new bootstrap.Modal(document.getElementById('modal-entity'));
+  const catModal = new bootstrap.Modal(document.getElementById('modal-category'));
+
+  function addOptionPreserve(select, value, label) {
+    if (!select) return;
+    const prev = select.value ?? '';
+    const valStr = String(value);
+    let opt = Array.from(select.options).find(o => o.value === valStr);
+    if (opt) {
+      opt.text = label;
+    } else {
+      opt = new Option(label, valStr, false, false);
+      select.add(opt);
+    }
+    select.value = prev;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function addOptionToSelects(ids, value, label) {
+    ids.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      addOptionPreserve(sel, value, label);
+    });
+  }
 
   document.getElementById('quick-account-btn').addEventListener('click', () => accModal.show());
   document.getElementById('quick-entity-btn').addEventListener('click', () => entModal.show());
+  const quickCatBtn = document.getElementById('quick-category-btn');
+  if (quickCatBtn) quickCatBtn.addEventListener('click', () => {
+    const modalTx = document.getElementById('quick-category-transaction-type');
+    const modalEnt = document.getElementById('quick-category-entity');
+    if (modalTx && modalTx.options.length === 0) {
+      ['buy acquisition', 'sell acquisition', 'income', 'expense', 'transfer'].forEach(val => {
+        const label = val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        modalTx.add(new Option(label, val));
+      });
+      try { modalTx.value = 'buy acquisition'; } catch (err) {}
+    }
+    const entSel = document.getElementById('id_entity_source') || document.getElementById('id_entity_destination');
+    if (modalEnt && entSel && modalEnt.options.length <= 1) {
+      Array.from(entSel.options).forEach(o => { if (o.value !== '') modalEnt.add(new Option(o.text, o.value)); });
+    }
+    try {
+      if (modalEnt && entSel) modalEnt.value = entSel.value || '';
+    } catch (err) {}
+    catModal.show();
+  });
 
   document.getElementById('quick-account-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -114,10 +191,7 @@
     });
     if (resp.ok) {
       const data = await resp.json();
-      ['id_account_source','id_account_destination'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel) sel.add(new Option(data.name, data.id, true, true));
-      });
+      addOptionToSelects(['id_account_source','id_account_destination'], data.id, data.name);
       accModal.hide();
       e.target.reset();
     }
@@ -131,12 +205,27 @@
     });
     if (resp.ok) {
       const data = await resp.json();
-      ['id_entity_source','id_entity_destination'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel) sel.add(new Option(data.name, data.id, true, true));
-      });
+      addOptionToSelects(['id_entity_source','id_entity_destination'], data.id, data.name);
       entModal.hide();
       e.target.reset();
+    }
+  });
+
+  document.getElementById('quick-category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resp = await fetch('/transactions/tags/', {
+      method: 'POST',
+      body: new FormData(e.target)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const sel = document.getElementById('id_category');
+      addOptionPreserve(sel, data.id, data.name);
+      catModal.hide();
+      e.target.reset();
+    } else {
+      const text = await resp.text();
+      alert('Could not create category: ' + text);
     }
   });
 

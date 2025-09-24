@@ -50,10 +50,13 @@
 <div class="row">
   <div class="col-lg-8 mb-4">
     {% if not current_category %}
-      <div class="text-end fw-bold mb-2">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="text-muted small">Balances for this entity only</div>
+        <div class="fw-bold text-end">
         {% display total_balance base_currency.code as disp_total %}
         Total Balance:
         <span class="amount-display" data-prefix="{{ active_currency_symbol }}" data-decimals="2">{{ disp_total|floatformat:2|intcomma }}</span>
+        </div>
       </div>
       {% for a in accounts %}
         <div class="card shadow-sm rounded-lg mb-3 p-3">

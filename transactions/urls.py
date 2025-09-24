@@ -11,6 +11,12 @@ urlpatterns = [
         views.TransactionUpdateView.as_view(),
         name="transaction_update",
     ),
+    # Legacy/alias route name expected by some tests
+    path(
+        "<int:pk>/edit/",
+        views.TransactionUpdateView.as_view(),
+        name="transaction_edit",
+    ),
     path("<int:pk>/delete/", views.transaction_delete, name="transaction_delete"),
     path(
         "<int:pk>/correct/",

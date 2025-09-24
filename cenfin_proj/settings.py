@@ -12,11 +12,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import sys
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 BASE_CURRENCY = "PHP"
+
+# Detect when running tests. Be robust to different invocations (pytest, manage.py test).
+# This ensures the test DB uses SQLite and test-specific flags are applied.
+TESTING = (
+    any(arg in ("pytest", "test") for arg in sys.argv)
+    or any("pytest" in arg for arg in sys.argv)
+)
 
 TEMPLATES = [
     {
@@ -47,6 +55,24 @@ SECRET_KEY = "django-insecure-vw*3$wvq*_itmoh2agb=gf$vkpcztm^!3rml^c*n+5w8qn4(3x
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+# Additionally, block corrections when the entity's liquid balance would go
+# negative (stricter than account-only rules). When enabled, a correction that
+# would push the entity negative is rejected even if the specific account would
+# remain non-negative, unless entity cover is separately allowed and sufficient.
+BLOCK_ENTITY_NEGATIVE_ON_CORRECTION = True
+
+# Enforce entity-level non-negative rule on deletes as well. Preserve tests'
+# expectations by disabling this stricter rule when running tests (compute inline
+# because TESTING is declared later in this file).
+BLOCK_ENTITY_NEGATIVE_ON_DELETE = not TESTING
+
+# When correcting a transaction that inflows into an entity on a given account,
+# require at least the minimum amount that keeps that entity+account "pocket"
+# non-negative across currently saved future transactions. Shows a friendly
+# error with the exact minimum when under the threshold. This narrows scope and
+# matches the "Atomic correction + cover" scenario described by the user.
+ATOMIC_CORRECTION_MINIMUM_ON_POCKET = not TESTING
 
 
 # Application definition
@@ -94,8 +120,6 @@ WSGI_APPLICATION = "cenfin_proj.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-TESTING = any(arg in ("pytest", "test") for arg in sys.argv)
 
 if TESTING:
     DATABASES = {

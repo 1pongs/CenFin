@@ -12,7 +12,8 @@
 {% block content %}
 {% url 'entities:list' as back_url %}
 {% include "includes/back_button.html" with url=back_url %}
-<h1 class="mb-4">Accounts</h1>
+<h1 class="mb-1">Accounts</h1>
+<div class="text-muted small mb-3">Net balances across all entities</div>
 <div class="row">
   <aside class="col-md-3 mb-4">
     <div class="p-3 sidebar rounded">

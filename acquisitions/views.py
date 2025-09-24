@@ -219,7 +219,17 @@ class AcquisitionCreateView(FormView):
         try:
             tx.full_clean()
         except ValidationError as e:
-            form.add_error(None, e.message or e.messages)
+            # Robustly attach validation errors from the model to the form
+            if hasattr(e, "message_dict"):
+                for field, msgs in e.message_dict.items():
+                    msgs_list = msgs if isinstance(msgs, (list, tuple)) else [msgs]
+                    for m in msgs_list:
+                        form.add_error(None if field in (None, "__all__") else field, m)
+            elif hasattr(e, "messages"):
+                for m in e.messages:
+                    form.add_error(None, m)
+            else:
+                form.add_error(None, str(e))
             return self.form_invalid(form)
         tx.save()
         Acquisition.objects.create(
@@ -355,7 +365,17 @@ class AcquisitionUpdateView(AcquisitionCreateView):
         try:
             tx.full_clean()
         except ValidationError as e:
-            form.add_error(None, e.message or e.messages)
+            # Robustly attach validation errors from the model to the form
+            if hasattr(e, "message_dict"):
+                for field, msgs in e.message_dict.items():
+                    msgs_list = msgs if isinstance(msgs, (list, tuple)) else [msgs]
+                    for m in msgs_list:
+                        form.add_error(None if field in (None, "__all__") else field, m)
+            elif hasattr(e, "messages"):
+                for m in e.messages:
+                    form.add_error(None, m)
+            else:
+                form.add_error(None, str(e))
             return self.form_invalid(form)
         tx.save()
         if creating_tx:

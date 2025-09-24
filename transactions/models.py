@@ -2,7 +2,7 @@ from django.db import models
 import re
 from django.utils import timezone
 from django.conf import settings
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from accounts.models import Account
 from entities.models import Entity
 from currencies.models import Currency
@@ -234,6 +234,7 @@ class Transaction(models.Model):
         on_delete=models.PROTECT,
         related_name="transactions",
         null=True,
+        blank=True,
     )
     categories = models.ManyToManyField(
         CategoryTag, related_name="transactions", blank=True
@@ -398,6 +399,7 @@ class Transaction(models.Model):
         if (
             getattr(self, "account_source", None)
             and getattr(self.account_source, "account_name", None) != "Outside"
+            and tx_type not in {"income", "loan_disbursement"}
         ):
             src_acc = self.account_source
             # If this account has a related credit_card, check limits
@@ -409,55 +411,89 @@ class Transaction(models.Model):
             else:
                 # For new transactions (no PK) and non-cc_payment types, ensure
                 # the source account has sufficient funds
-                if self.pk is None and tx_type != "cc_payment":
+                skip_for_outside_entity_transfer = (
+                    tx_type == "transfer"
+                    and getattr(self, "entity_source", None)
+                    and getattr(self.entity_source, "entity_type", "").lower() == "outside"
+                )
+                # Also skip when source and destination are the same account; net effect on
+                # the account is non-negative in our correction and simulation rules.
+                same_account = (
+                    getattr(self, "account_destination_id", None)
+                    and getattr(self, "account_source_id", None)
+                    and self.account_destination_id == self.account_source_id
+                )
+                if self.pk is None and tx_type != "cc_payment" and not skip_for_outside_entity_transfer:
                     try:
-                        if src_acc.get_current_balance() < amt:
-                            raise ValidationError(
-                                {"account_source": f"Insufficient funds in {src_acc}."}
-                            )
+                        if not same_account:
+                            bal = src_acc.get_current_balance() or Decimal("0")
+                            # Compare at cent precision, explicit rounding to avoid binary/str noise
+                            bal_c = (bal or Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            amt_c = (amt or Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            if bal_c < amt_c:
+                                raise ValidationError(
+                                    {"account_source": f"Insufficient funds in {src_acc}."}
+                                )
+                    except ValidationError:
+                        raise
                     except Exception:
                         # If account balance retrieval fails, skip strict blocking
                         pass
 
-        # Entity-level balance checks for new transactions (non-Outside entities)
-        if (
-            self.pk is None
-            and getattr(self, "entity_source", None)
-            and getattr(self.entity_source, "entity_name", None) != "Outside"
-        ):
-            ent = self.entity_source
+        # Pocket-level guard: when spending Liquid from a specific entity on a
+        # specific account, require that the entity/account "pocket" can cover
+        # the amount. This prevents pockets going negative even when the overall
+        # entity or account has funds elsewhere.
+        try:
+            # Determine if we should skip the pocket-level guard entirely
+            skip_pocket = False
             try:
-                pair_bal = Decimal("0")
-                if getattr(self, "account_source", None):
-                    pair_bal = get_account_entity_balance(
-                        self.account_source.id, ent.id
-                    )
-                ent_liquid = ent.current_balance() or Decimal("0")
-                # Allow if either the account+entity pair or the entity's liquid
-                # total can cover the amount. Only block when neither can and
-                # the account itself is also insufficient.
-                if not (pair_bal >= amt or ent_liquid >= amt):
-                    if (
-                        not getattr(self, "account_source", None)
-                        or self.account_source.get_current_balance() < amt
-                    ):
-                        raise ValidationError(
-                            {"entity_source": f"Insufficient funds in {ent}."}
-                        )
-            except ValidationError:
-                raise
+                if (
+                    (getattr(self, "account_source", None) is not None
+                     and (
+                         getattr(self.account_source, "account_type", "") == "Credit"
+                         or (
+                             hasattr(self.account_source, "credit_card")
+                             and self.account_source.credit_card is not None
+                         )
+                     ))
+                    or tx_type == "cc_payment"
+                ):
+                    skip_pocket = True
             except Exception:
-                try:
-                    if ent.current_balance() < amt and (
-                        not getattr(self, "account_source", None)
-                        or self.account_source.get_current_balance() < amt
-                    ):
+                skip_pocket = False
+
+            if (
+                not skip_pocket
+                and self.pk is None
+                and getattr(self, "entity_source", None)
+                and getattr(self.entity_source, "entity_type", None) != "outside"
+                and getattr(self, "account_source", None)
+                and getattr(self.account_source, "account_name", None) != "Outside"
+                and not (
+                    tx_type == "transfer"
+                    and getattr(self, "entity_source", None)
+                    and getattr(self.entity_source, "entity_type", "").lower() == "outside"
+                )
+            ):
+                # Only enforce for liquid outflows from the source side
+                src_asset_l = (getattr(self, "asset_type_source", "") or "").lower()
+                if src_asset_l == "liquid":
+                    pair_bal = Decimal(str(get_account_entity_balance(self.account_source.id, self.entity_source.id)))
+                    # Compare at cents precision to avoid float noise; allow exact equality
+                    pair_c = (pair_bal or Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    amt_c = (amt or Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    if pair_c < amt_c:
                         raise ValidationError(
-                            {"entity_source": f"Insufficient funds in {ent}."}
+                            {
+                                "amount": f"Insufficient funds in {self.entity_source} / {self.account_source} pocket.",
+                            }
                         )
-                except Exception:
-                    # If any error happens while checking, do not block save here.
-                    pass
+        except ValidationError:
+            raise
+        except Exception:
+            # Best effort: if balance helpers fail, fall back to existing account-level guard above
+            pass
 
         # cc_payment: destination account must have sufficient (absolute) balance
         if tx_type == "cc_payment":

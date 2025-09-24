@@ -27,6 +27,8 @@ urlpatterns = [
     ),
     path("loans/new/", LoanCreateView.as_view(), name="loan-create"),
     path("loans/<int:pk>/edit/", LoanUpdateView.as_view(), name="loan-edit"),
+    # Legacy/alias route name expected by some tests
+    path("loans/<int:pk>/edit/", LoanUpdateView.as_view(), name="loan-update"),
     path("loans/<int:pk>/delete/", LoanDeleteView.as_view(), name="loan-delete"),
     path("loans/<int:pk>/restore/", LoanRestoreView.as_view(), name="loan-restore"),
 ]

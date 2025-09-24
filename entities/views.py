@@ -391,11 +391,17 @@ class EntityAccountsView(TemplateView):
             # ----- Accounts tab -----
             inflow = Transaction.objects.filter(
                 user=self.request.user,
+                parent_transfer__isnull=True,
+                is_deleted=False,
+                is_reversal=False,
                 entity_destination_id=entity_pk,
                 asset_type_destination__iexact="liquid",
             )
             outflow = Transaction.objects.filter(
                 user=self.request.user,
+                parent_transfer__isnull=True,
+                is_deleted=False,
+                is_reversal=False,
                 entity_source_id=entity_pk,
                 asset_type_source__iexact="liquid",
             )

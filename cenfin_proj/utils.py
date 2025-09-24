@@ -297,6 +297,8 @@ def get_account_entity_balance(account_id, entity_id, user=None):
     qs = (
         Transaction.objects.filter(
             parent_transfer__isnull=True,
+            is_deleted=False,
+            is_reversal=False,
         )
         .filter(
             (

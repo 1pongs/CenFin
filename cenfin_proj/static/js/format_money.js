@@ -1,7 +1,15 @@
 function formatInput(el) {
   const start = el.selectionStart;
   const before = el.value;
-  const raw = before.replace(/,/g, '').replace(/[^0-9.]/g, '');
+  // Keep digits and a single dot; allow a trailing dot while typing
+  let raw = before.replace(/,/g, '').replace(/[^0-9.]/g, '');
+  // Collapse multiple dots to a single dot at the first occurrence
+  const firstDot = raw.indexOf('.');
+  if (firstDot !== -1) {
+    const head = raw.slice(0, firstDot + 1);
+    const tail = raw.slice(firstDot + 1).replace(/\./g, '');
+    raw = head + tail;
+  }
   
   if (raw === '') {
     el.dataset.raw = '';
@@ -9,14 +17,18 @@ function formatInput(el) {
     return;
   }
 
+  // If input starts with '.', treat as '0.' for display/caret stability
+  if (raw[0] === '.') raw = '0' + raw;
   const parts = raw.split('.');
   const intPart = parts[0];
+  // Preserve an explicit trailing '.' (user still typing decimals)
+  const hasTrailingDot = raw.endsWith('.') && parts.length === 2 && parts[1] === '';
   const decPart = parts[1] ? parts[1].slice(0, 2) : '';
   const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const formatted = formattedInt + (decPart ? '.' + decPart : '');
+  const formatted = formattedInt + (hasTrailingDot ? '.' : (decPart ? '.' + decPart : ''));
 
   el.value = formatted;
-  el.dataset.raw = intPart + (decPart ? '.' + decPart : '');
+  el.dataset.raw = intPart + (hasTrailingDot ? '.' : (decPart ? '.' + decPart : ''));
 
   const diff = formatted.length - before.length;
   const newPos = start + diff;

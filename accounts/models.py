@@ -131,10 +131,21 @@ class Account(models.Model):
         force_insert = kwargs.pop("force_insert", False)
         if self.currency_id is None:
             default_cur = None
-            if self.user and getattr(self.user, "base_currency_id", None):
-                default_cur = self.user.base_currency
-            else:
-                default_cur = Currency.objects.filter(code="PHP").first()
+            # Prefer a user base_currency if the app defines it; otherwise use settings.BASE_CURRENCY
+            try:
+                if self.user and getattr(self.user, "base_currency_id", None):
+                    default_cur = self.user.base_currency
+            except Exception:
+                default_cur = None
+            if default_cur is None:
+                from django.conf import settings as dj_settings
+                code = getattr(dj_settings, "BASE_CURRENCY", "PHP")
+                # Ensure a Currency row exists for the configured base code even in tests
+                # so newly created Accounts always have a currency for downstream logic.
+                default_cur, _ = Currency.objects.get_or_create(
+                    code=code,
+                    defaults={"name": code},
+                )
             self.currency = default_cur
 
         if self._state.adding:
